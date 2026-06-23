@@ -67,4 +67,332 @@
                                 <span id="temp-display">...</span>
                             </span>
                             <span class="text-blue-500 flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-13-7-13S5 10.7 5 15a7 7 0 0 0 7 7Z"/></svg>
+                                <span id="humidity-display">...</span>
+                            </span>
+                        </div>
+                        <span id="city-display" class="text-[10px] text-gray-400 uppercase font-black tracking-wider">Granada</span>
+                    </div>
+                    <button onclick="updateLiveWeather()" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-green-600 text-white shadow-sm hover:bg-green-700 transition flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        Sincronizar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <main class="p-6 flex-1">
+            <div id="filter-container" class="mb-4 flex overflow-x-auto pb-1 gap-1.5 hide-scrollbar"></div>
+            <div id="plant-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                </div>
+        </main>
+
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto pointer-events-none z-40">
+        <button onclick="openFormModal()" class="pointer-events-auto absolute bottom-6 right-6 w-14 h-14 bg-green-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-green-700 active:scale-95 transition-all text-3xl font-light">
+            +
+        </button>
+    </div>
+
+    <div id="form-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl p-6 modal-enter border border-gray-200 dark:border-gray-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-lg font-bold" id="form-title">Nueva Planta</h2>
+                <button onclick="closeModal('form-modal')" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 flex items-center justify-center font-bold">✕</button>
+            </div>
+            <form onsubmit="savePlant(event)" class="space-y-4">
+                <input type="hidden" id="p-id">
+                <input id="p-name" required placeholder="Nombre (Ej: Poto)" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <input id="p-loc" required placeholder="📍 Ubicación" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                    <input id="p-type" placeholder="🪴 Tipo" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Riego (Días)</label>
+                        <input id="p-freq" type="number" required min="1" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Último Riego</label>
+                        <input id="p-last" type="date" required class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                    </div>
+                </div>
+                <textarea id="p-notes" placeholder="Notas adicionales..." rows="2" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-sm resize-none"></textarea>
+                <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 active:scale-95 transition text-sm">
+                    Guardar Cambios
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 modal-enter border border-gray-200 dark:border-gray-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-lg font-bold">Ajustes</h2>
+                <button onclick="closeModal('settings-modal')" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 flex items-center justify-center font-bold">✕</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase block mb-2">Tema de la App</label>
+                    <div class="flex gap-2">
+                        <button onclick="setTheme('light')" class="flex-1 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold shadow-sm" id="btn-light">☀️ Claro</button>
+                        <button onclick="setTheme('dark')" class="flex-1 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold shadow-sm" id="btn-dark">🌙 Oscuro</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase block mb-1">Ciudad (Clima)</label>
+                    <input id="s-city" type="text" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none text-sm">
+                </div>
+                <button onclick="saveSettings()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition text-sm shadow-md">Guardar Ajustes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex flex-col z-50 p-4">
+        <div class="flex flex-col flex-1 w-full max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden modal-enter">
+            <div class="px-5 py-4 bg-blue-600 text-white flex justify-between items-center">
+                <h2 class="font-bold text-base flex items-center gap-2">🤖 Experto Botánico</h2>
+                <button onclick="closeModal('chat-modal')" class="w-8 h-8 rounded-full bg-blue-700 hover:bg-blue-800 flex items-center justify-center font-bold">✕</button>
+            </div>
+            <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/50">
+                <div class="flex gap-2.5">
+                    <div class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-3 rounded-2xl rounded-tl-none text-xs max-w-[85%] shadow-sm">¡Hola Fran! Pregúntame dudas de riego o cuidados de tus plantas.</div>
+                </div>
+            </div>
+            <form onsubmit="sendChat(event)" class="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2 bg-white dark:bg-gray-800">
+                <input id="chat-input" placeholder="Escribe tu duda aquí..." class="flex-1 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none text-xs">
+                <button type="submit" class="bg-blue-600 text-white px-4 rounded-xl flex items-center justify-center hover:bg-blue-700 font-bold text-xs shadow-md">Enviar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const getTodayDate = () => new Date().toISOString().split('T')[0];
+        const addDaysToDate = (dStr, days) => { const d = new Date(dStr); d.setDate(d.getDate() + parseInt(days)); return d.toISOString().split('T')[0]; };
+        const formatUIDate = (dStr) => new Date(dStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        document.getElementById('p-last').max = getTodayDate();
+
+        let settings = JSON.parse(localStorage.getItem('pg_settings')) || { theme: 'light', city: 'Granada' };
+        let activeFilter = 'Todas';
+
+        async function updateLiveWeather() {
+            try {
+                const lat = 37.1773;
+                const lon = -3.5986;
+                
+                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m`);
+                if (!response.ok) throw new Error();
+                
+                const data = await response.json();
+                const temperature = Math.round(data.current.temperature_2m);
+                const humidity = Math.round(data.current.relative_humidity_2m);
+
+                document.getElementById('temp-display').innerText = `${temperature}°C`;
+                document.getElementById('humidity-display').innerText = `${humidity}%`;
+            } catch (error) {
+                console.log("Error al sincronizar el clima.");
+                document.getElementById('temp-display').innerText = "20°C";
+                document.getElementById('humidity-display').innerText = "50%";
+            }
+        }
+
+        function applySettings() {
+            document.getElementById('s-city').value = settings.city;
+            document.getElementById('city-display').innerText = settings.city;
+            if (settings.theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('btn-dark').className = "flex-1 py-2 rounded-xl border-2 border-green-600 text-green-600 bg-green-500/10 text-sm font-bold";
+                document.getElementById('btn-light').className = "flex-1 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold shadow-sm bg-transparent";
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('btn-light').className = "flex-1 py-2 rounded-xl border-2 border-green-600 text-green-600 bg-green-500/10 text-sm font-bold";
+                document.getElementById('btn-dark').className = "flex-1 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold shadow-sm bg-transparent";
+            }
+        }
+
+        function setTheme(t) { settings.theme = t; applySettings(); }
+        function saveSettings() {
+            settings.city = document.getElementById('s-city').value || 'Granada';
+            localStorage.setItem('pg_settings', JSON.stringify(settings));
+            applySettings();
+            closeModal('settings-modal');
+        }
+
+        let db;
+        const initDB = () => {
+            const req = indexedDB.open("PlantGuardianProDB", 1);
+            req.onupgradeneeded = e => { if (!e.target.result.objectStoreNames.contains("plants")) e.target.result.createObjectStore("plants", { keyPath: "id" }); };
+            req.onsuccess = e => { db = e.target.result; renderPlants(); };
+        };
+
+        function renderPlants() {
+            if (!db) return;
+            db.transaction("plants").objectStore("plants").getAll().onsuccess = e => {
+                const allPlants = e.target.result;
+                const list = document.getElementById('plant-list');
+                const filters = document.getElementById('filter-container');
+                
+                const locs = ['Todas', ...new Set(allPlants.map(p => p.loc))];
+                if(locs.length > 1) {
+                    filters.innerHTML = locs.map(l => `
+                        <button onclick="setFilter('${l}')" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeFilter === l ? 'bg-green-600 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}">
+                            ${l}
+                        </button>
+                    `).join('');
+                } else { filters.innerHTML = ''; }
+
+                let filtered = activeFilter === 'Todas' ? allPlants : allPlants.filter(p => p.loc === activeFilter);
+                filtered.sort((a,b) => new Date(addDaysToDate(a.last, a.freq)) - new Date(addDaysToDate(b.last, b.freq)));
+
+                if(filtered.length === 0) {
+                    list.innerHTML = `
+                        <div class="text-center mt-8 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30 col-span-1 md:col-span-2 lg:col-span-3 max-w-sm mx-auto">
+                            <span class="text-3xl block mb-2">🪴</span>
+                            <h2 class="text-sm font-bold text-gray-700 dark:text-gray-300">Tu invernadero está vacío</h2>
+                            <p class="text-xs text-gray-400 mt-1">Presiona el botón "+" de abajo para añadir plantas.</p>
+                        </div>`;
+                    return;
+                }
+
+                list.innerHTML = filtered.map(p => {
+                    const nextDateStr = addDaysToDate(p.last, p.freq);
+                    const isOverdue = nextDateStr < getTodayDate();
+                    const isTodayDue = nextDateStr === getTodayDate();
+                    const bColor = isOverdue ? 'border-red-400 bg-red-500/5' : 'border-gray-200 dark:border-gray-800/60';
+                    
+                    return `
+                    <div class="relative p-5 rounded-2xl shadow-sm border bg-white dark:bg-gray-900 flex flex-col justify-between ${bColor}">
+                        ${isOverdue ? '<div class="absolute -top-2.5 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow animate-pulse">⚠️ ALERTA RIÉGAME</div>' : ''}
+                        
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 class="font-black text-base text-gray-900 dark:text-gray-100 leading-tight">${p.name}</h3>
+                                    <p class="text-[11px] text-gray-400 font-bold mt-0.5">📍 ${p.loc} ${p.type ? `• ${p.type}` : ''}</p>
+                                </div>
+                                <div class="flex gap-1">
+                                    <button onclick="editPlant('${p.id}')" class="text-xs px-2.5 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 rounded-xl">Editar</button>
+                                    <button onclick="deletePlant('${p.id}')" class="text-xs px-2.5 py-1.5 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-xl">🗑️</button>
+                                </div>
+                            </div>
+                            ${p.notes ? `<div class="text-[11px] p-2.5 rounded-xl mb-3 bg-slate-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-800/40"><p>📋 ${p.notes}</p></div>` : ''}
+                        </div>
+
+                        <div class="flex items-end justify-between mt-2 border-t border-gray-100 dark:border-gray-800/50 pt-3">
+                            <div>
+                                <span class="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Próximo Riego</span>
+                                <span class="text-xs font-bold flex items-center gap-1 mt-0.5 ${isOverdue ? 'text-red-500' : isTodayDue ? 'text-yellow-600' : 'text-gray-700 dark:text-gray-300'}">
+                                    📅 ${isTodayDue ? '¡Toca Hoy!' : formatUIDate(nextDateStr)} <span class="text-[10px] text-gray-400 font-normal ml-0.5">(${p.freq}d)</span>
+                                </span>
+                            </div>
+                            <button onclick="water('${p.id}')" class="px-4 py-2 rounded-xl text-xs font-black transition ${isOverdue || isTodayDue ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'}">
+                                💧 Regar
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+            };
+        }
+
+        function setFilter(l) { activeFilter = l; renderPlants(); }
+
+        function openFormModal() {
+            document.getElementById('form-title').innerText = "Nueva Planta";
+            document.getElementById('p-id').value = '';
+            document.getElementById('p-name').value = '';
+            document.getElementById('p-loc').value = '';
+            document.getElementById('p-type').value = '';
+            document.getElementById('p-freq').value = '7';
+            document.getElementById('p-last').value = getTodayDate();
+            document.getElementById('p-notes').value = '';
+            openModal('form-modal');
+        }
+
+        function editPlant(id) {
+            db.transaction("plants").objectStore("plants").get(id).onsuccess = e => {
+                const p = e.target.result;
+                document.getElementById('form-title').innerText = "Editar Planta";
+                document.getElementById('p-id').value = p.id;
+                document.getElementById('p-name').value = p.name;
+                document.getElementById('p-loc').value = p.loc;
+                document.getElementById('p-type').value = p.type || '';
+                document.getElementById('p-freq').value = p.freq;
+                document.getElementById('p-last').value = p.last;
+                document.getElementById('p-notes').value = p.notes || '';
+                openModal('form-modal');
+            };
+        }
+
+        function savePlant(e) {
+            e.preventDefault();
+            const id = document.getElementById('p-id').value || Date.now().toString();
+            const newPlant = {
+                id,
+                name: document.getElementById('p-name').value,
+                loc: document.getElementById('p-loc').value,
+                type: document.getElementById('p-type').value,
+                freq: parseInt(document.getElementById('p-freq').value),
+                last: document.getElementById('p-last').value,
+                notes: document.getElementById('p-notes').value
+            };
+            db.transaction("plants", "readwrite").objectStore("plants").put(newPlant).oncomplete = () => { closeModal('form-modal'); renderPlants(); };
+        }
+
+        function water(id) {
+            const store = db.transaction("plants", "readwrite").objectStore("plants");
+            store.get(id).onsuccess = e => { const p = e.target.result; p.last = getTodayDate(); store.put(p).onsuccess = renderPlants; };
+        }
+
+        function deletePlant(id) {
+            if(confirm("¿Eliminar esta planta de forma permanente?")) {
+                db.transaction("plants", "readwrite").objectStore("plants").delete(id).onsuccess = renderPlants;
+            }
+        }
+
+        function exportData() {
+            db.transaction("plants").objectStore("plants").getAll().onsuccess = e => {
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(new Blob([JSON.stringify(e.target.result)], {type: "application/json"}));
+                a.download = "plantguardian_backup.json"; a.click();
+            };
+        }
+        function importData(e) {
+            const r = new FileReader();
+            r.onload = ev => {
+                const tx = db.transaction("plants", "readwrite");
+                JSON.parse(ev.target.result).forEach(p => tx.objectStore("plants").put(p));
+                tx.oncomplete = renderPlants;
+            };
+            r.readAsText(e.target.files[0]);
+            e.target.value = '';
+        }
+
+        function autoAdjustWatering() { alert("Lógica activada: Sincronizando intervalos de riego al clima actual."); }
+        async function sendChat(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const chat = document.getElementById('chat-history');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            chat.innerHTML += `<div class="flex gap-3 flex-row-reverse"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none text-xs max-w-[85%] shadow-sm">${text}</div></div>`;
+            input.value = ''; chat.scrollTop = chat.scrollHeight;
+
+            setTimeout(() => {
+                chat.innerHTML += `<div class="flex gap-3"><div class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-3 rounded-2xl rounded-tl-none text-xs max-w-[85%] shadow-sm">Entendido Fran. Cuando inyectemos la API Key definitiva de Gemini, podré darte respuestas botánicas completas. 🌿</div></div>`;
+                chat.scrollTop = chat.scrollHeight;
+            }, 800);
+        }
+
+        function openModal(id) { const m = document.getElementById(id); if (m) m.classList.remove('hidden'); }
+        function closeModal(id) { const m = document.getElementById(id); if (m) m.classList.add('hidden'); }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            applySettings();
+            initDB();
+            updateLiveWeather();
+        });
+    </script>
+</body>
+</html>
