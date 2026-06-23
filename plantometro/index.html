@@ -24,7 +24,7 @@
 </head>
 <body class="bg-slate-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 pb-24 min-h-screen">
 
-    <div class="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-xl border-x border-gray-200/50 dark:border-gray-800 flex flex-col">
+    <div class="max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-xl border-x border-gray-200/50 dark:border-gray-800 flex flex-col">
 
         <header class="sticky top-0 z-30 px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
             <div class="flex items-center gap-2">
@@ -76,13 +76,13 @@
 
         <main class="p-6 flex-1">
             <div id="filter-container" class="mb-4 flex overflow-x-auto pb-1 gap-1.5 hide-scrollbar"></div>
-            <div id="plant-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div id="plant-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 </div>
         </main>
 
     </div>
 
-    <div class="fixed bottom-0 left-0 right-0 max-w-4xl mx-auto pointer-events-none z-40">
+    <div class="fixed bottom-0 left-0 right-0 max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl mx-auto pointer-events-none z-40">
         <button onclick="openFormModal()" class="pointer-events-auto absolute bottom-6 right-6 w-14 h-14 bg-green-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-green-700 active:scale-95 transition-all text-3xl font-light">
             +
         </button>
@@ -219,7 +219,7 @@
 
                 if(filtered.length === 0) {
                     list.innerHTML = `
-                        <div class="text-center mt-8 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30 col-span-1 sm:col-span-2 max-w-sm mx-auto">
+                        <div class="text-center mt-8 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30 col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4 max-w-sm mx-auto">
                             <span class="text-3xl block mb-2">🪴</span>
                             <h2 class="text-sm font-bold text-gray-700 dark:text-gray-300">Tu invernadero está vacío</h2>
                             <p class="text-xs text-gray-400 mt-1">Presiona el botón "+" de abajo para añadir plantas.</p>
