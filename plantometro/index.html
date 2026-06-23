@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plant Guardian Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' }
-    </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    
+    <link rel="stylesheet" href="./app.css">
+    <script src="./icons.js"></script>
+
     <link rel="manifest" href="./manifest.json">
     <script>
         if ('serviceWorker' in navigator) {
@@ -17,32 +18,27 @@
             });
         }
     </script>
-    <style>
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .modal-enter { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 pb-24 min-h-screen">
 
     <header class="sticky top-0 z-10 px-4 py-4 shadow-sm flex items-center justify-between bg-white dark:bg-gray-800 transition-colors">
         <div class="flex items-center gap-2">
-            <i data-lucide="leaf" class="text-green-500 w-6 h-6"></i>
+            <div data-icon="leaf" data-class="text-green-500 w-6 h-6"></div>
             <h1 class="font-bold text-xl tracking-tight">Plant Guardian</h1>
         </div>
         <div class="flex items-center gap-2">
             <button onclick="toggleModal('chat-modal')" class="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 hover:bg-blue-200 transition">
-                <i data-lucide="bot" class="w-5 h-5"></i>
+                <div data-icon="bot"></div>
             </button>
             <label class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition cursor-pointer">
-                <i data-lucide="upload" class="w-5 h-5 text-gray-500 dark:text-gray-400"></i>
+                <div data-icon="upload" data-class="w-5 h-5 text-gray-500 dark:text-gray-400"></div>
                 <input type="file" class="hidden" accept=".json" onchange="importData(event)">
             </label>
             <button onclick="exportData()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                <i data-lucide="download" class="w-5 h-5 text-gray-500 dark:text-gray-400"></i>
+                <div data-icon="download" data-class="w-5 h-5 text-gray-500 dark:text-gray-400"></div>
             </button>
             <button onclick="toggleModal('settings-modal')" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                <i data-lucide="settings" class="w-5 h-5 text-gray-500 dark:text-gray-400"></i>
+                <div data-icon="settings" data-class="w-5 h-5 text-gray-500 dark:text-gray-400"></div>
             </button>
         </div>
     </header>
@@ -50,7 +46,7 @@
     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-gray-800/50">
         <div class="max-w-2xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div class="flex items-start gap-2 flex-1">
-                <i data-lucide="sparkles" class="w-5 h-5 text-green-500 shrink-0 mt-0.5"></i>
+                <span>⭐</span>
                 <div>
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Tip del día</p>
                     <p id="daily-tip" class="text-sm font-medium italic">🌿 Mantén las hojas limpias de polvo para que respiren.</p>
@@ -58,12 +54,12 @@
             </div>
             <div class="flex flex-col items-end gap-2 p-2 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 w-full sm:w-auto">
                 <div class="flex items-center gap-3 text-xs font-medium">
-                    <span class="text-orange-500 flex items-center gap-1"><i data-lucide="thermometer-sun" class="w-3.5 h-3.5"></i> 24°C</span>
-                    <span class="text-blue-500 flex items-center gap-1"><i data-lucide="cloud-rain" class="w-3.5 h-3.5"></i> 45%</span>
+                    <span class="text-orange-500 flex items-center gap-1">☀️ 24°C</span>
+                    <span class="text-blue-500 flex items-center gap-1">💧 45%</span>
                     <span id="city-display" class="text-gray-400">Granada</span>
                 </div>
                 <button onclick="autoAdjustWatering()" class="flex items-center justify-center gap-1 w-full text-[11px] font-bold px-2 py-1.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 transition hover:bg-blue-100">
-                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> Ajustar riegos al clima
+                    Ajustar riegos al clima
                 </button>
             </div>
         </div>
@@ -74,15 +70,15 @@
         <div id="plant-list" class="grid gap-4"></div>
     </main>
 
-    <button onclick="openFormModal()" class="fixed bottom-6 right-6 w-14 h-14 bg-green-500 text-white rounded-full shadow-xl shadow-green-500/30 flex items-center justify-center hover:bg-green-600 active:scale-90 transition-all z-20">
-        <i data-lucide="plus" class="w-7 h-7"></i>
+    <button onclick="openFormModal()" class="fixed bottom-6 right-6 w-14 h-14 bg-green-500 text-white rounded-full shadow-xl shadow-green-500/30 flex items-center justify-center hover:bg-green-600 active:scale-90 transition-all z-20 text-3xl font-light">
+        +
     </button>
 
     <div id="form-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-end sm:items-center justify-center z-50">
         <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 modal-enter">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold" id="form-title">Nueva Planta</h2>
-                <button onclick="toggleModal('form-modal')" class="p-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button onclick="toggleModal('form-modal')" class="p-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition">✕</button>
             </div>
             <form onsubmit="savePlant(event)" class="space-y-4">
                 <input type="hidden" id="p-id">
@@ -103,7 +99,7 @@
                 </div>
                 <textarea id="p-notes" placeholder="Notas de cuidados..." rows="2" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500 resize-none"></textarea>
                 <button type="submit" class="w-full bg-green-500 text-white py-3.5 rounded-xl font-bold flex justify-center gap-2 items-center shadow-lg active:scale-95 transition">
-                    <i data-lucide="check" class="w-5 h-5"></i> Guardar
+                    Guardar Planta
                 </button>
             </form>
         </div>
@@ -113,14 +109,14 @@
         <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 modal-enter">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold">Ajustes</h2>
-                <button onclick="toggleModal('settings-modal')" class="p-2 rounded-full bg-gray-100 dark:bg-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button onclick="toggleModal('settings-modal')" class="p-2 rounded-full bg-gray-100 dark:bg-gray-700">✕</button>
             </div>
             <div class="space-y-5">
                 <div>
                     <label class="text-xs font-bold text-gray-400 uppercase block mb-2">Tema visual</label>
                     <div class="flex gap-2">
-                        <button onclick="setTheme('light')" class="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-center gap-2 items-center font-medium" id="btn-light"><i data-lucide="sun" class="w-4 h-4"></i> Claro</button>
-                        <button onclick="setTheme('dark')" class="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-center gap-2 items-center font-medium" id="btn-dark"><i data-lucide="moon" class="w-4 h-4"></i> Oscuro</button>
+                        <button onclick="setTheme('light')" class="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-center gap-2 items-center font-medium" id="btn-light">☀️ Claro</button>
+                        <button onclick="setTheme('dark')" class="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-center gap-2 items-center font-medium" id="btn-dark">🌙 Oscuro</button>
                     </div>
                 </div>
                 <div>
@@ -136,39 +132,32 @@
         <div class="flex flex-col flex-1 w-full max-w-2xl mx-auto bg-white dark:bg-gray-800 sm:rounded-3xl shadow-2xl overflow-hidden mt-4 sm:my-4 modal-enter">
             <div class="px-5 py-4 bg-blue-500 text-white flex justify-between items-center">
                 <div class="flex items-center gap-3">
-                    <div class="p-2 bg-white/20 rounded-full"><i data-lucide="bot" class="w-6 h-6"></i></div>
-                    <div>
-                        <h2 class="font-bold text-lg leading-tight">Experto Botánico</h2>
-                        <p class="text-xs text-blue-100">Potenciado por Gemini IA</p>
-                    </div>
+                    <h2 class="font-bold text-lg leading-tight">🤖 Experto Botánico</h2>
                 </div>
-                <button onclick="toggleModal('chat-modal')" class="p-2 hover:bg-white/20 rounded-full transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <button onclick="toggleModal('chat-modal')" class="p-2 hover:bg-white/20 rounded-full transition">✕</button>
             </div>
             
             <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/50">
                 <div class="flex gap-3">
-                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0"><i data-lucide="sparkles" class="w-4 h-4"></i></div>
                     <div class="bg-gray-100 dark:bg-gray-700 p-3.5 rounded-2xl rounded-tl-none text-sm max-w-[85%]">¡Hola Fran! ¿Qué le pasa a tus plantas hoy?</div>
                 </div>
             </div>
             
             <form onsubmit="sendChat(event)" class="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2 bg-white dark:bg-gray-800">
                 <input id="chat-input" placeholder="Pregunta algo..." class="flex-1 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition text-sm">
-                <button type="submit" id="chat-submit" class="bg-blue-500 text-white w-12 h-12 rounded-xl flex items-center justify-center hover:bg-blue-600 active:scale-95 transition shrink-0">
-                    <i data-lucide="send" class="w-5 h-5 ml-1"></i>
+                <button type="submit" id="chat-submit" class="bg-blue-500 text-white px-4 rounded-xl flex items-center justify-center hover:bg-blue-600 active:scale-95 transition shrink-0 font-bold">
+                    Enviar
                 </button>
             </form>
         </div>
     </div>
 
     <script>
-        // Utilidades
         const getToday = () => new Date().toISOString().split('T')[0];
         const addDays = (dStr, days) => { const d = new Date(dStr); d.setDate(d.getDate() + parseInt(days)); return d.toISOString().split('T')[0]; };
         const formatDate = (dStr) => new Date(dStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
         document.getElementById('p-last').max = getToday();
 
-        // Configuración inicial
         let settings = JSON.parse(localStorage.getItem('pg_settings')) || { theme: 'light', city: 'Granada, España' };
         let activeFilter = 'Todas';
 
@@ -194,7 +183,6 @@
             toggleModal('settings-modal');
         }
 
-        // Base de datos (IndexedDB)
         let db;
         const initDB = () => {
             const req = indexedDB.open("PlantGuardianProDB", 1);
@@ -202,14 +190,12 @@
             req.onsuccess = e => { db = e.target.result; renderPlants(); };
         };
 
-        // Renderizado UI
         function renderPlants() {
             db.transaction("plants").objectStore("plants").getAll().onsuccess = e => {
                 const allPlants = e.target.result;
                 const list = document.getElementById('plant-list');
                 const filters = document.getElementById('filter-container');
                 
-                // Generar Filtros
                 const locs = ['Todas', ...new Set(allPlants.map(p => p.loc))];
                 if(locs.length > 1) {
                     filters.innerHTML = locs.map(l => `
@@ -219,17 +205,14 @@
                     `).join('');
                 } else { filters.innerHTML = ''; }
 
-                // Filtrar y ordenar
                 let filtered = activeFilter === 'Todas' ? allPlants : allPlants.filter(p => p.loc === activeFilter);
                 filtered.sort((a,b) => new Date(addDays(a.last, a.freq)) - new Date(addDays(b.last, b.freq)));
 
                 if(filtered.length === 0) {
                     list.innerHTML = `
-                        <div class="text-center mt-12 p-8 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-                            <i data-lucide="leaf" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4"></i>
-                            <h2 class="text-lg font-medium text-gray-500 dark:text-gray-400">Tu selva está vacía</h2>
+                        <div class="text-center mt-12 p-8 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
+                            <h2 class="text-lg font-medium text-gray-500 dark:text-gray-400">Tu selva está vacía. Usa el botón "+" abajo.</h2>
                         </div>`;
-                    lucide.createIcons();
                     return;
                 }
 
@@ -240,42 +223,40 @@
                     const bColor = isOverdue ? 'border-red-400 dark:border-red-500/50' : 'border-gray-100 dark:border-gray-700';
                     
                     return `
-                    <div class="relative p-4 rounded-2xl shadow-sm border bg-white dark:bg-gray-800 transition-all ${bColor}">
-                        ${isOverdue ? '<div class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse flex items-center gap-1"><i data-lucide="alert-circle" class="w-3 h-3"></i> Atrasada</div>' : ''}
+                    <div class="relative p-5 rounded-2xl shadow-sm border bg-white dark:bg-gray-800 transition-all ${bColor}">
+                        ${isOverdue ? '<div class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse">⚠️ Atrasada</div>' : ''}
                         
                         <div class="flex justify-between items-start mb-3">
                             <div>
                                 <h3 class="font-bold text-lg leading-tight">${p.name}</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1"><i data-lucide="map-pin" class="w-3 h-3"></i> ${p.loc} ${p.type ? `• ${p.type}` : ''}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">📍 ${p.loc} ${p.type ? `• ${p.type}` : ''}</p>
                             </div>
-                            <div class="flex gap-1">
-                                <button onclick="editPlant('${p.id}')" class="p-1.5 text-gray-400 hover:text-blue-500 rounded-lg transition"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                                <button onclick="deletePlant('${p.id}')" class="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            <div class="flex gap-2">
+                                <button onclick="editPlant('${p.id}')" class="text-sm px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:text-blue-500 transition">📝</button>
+                                <button onclick="deletePlant('${p.id}')" class="text-sm px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:text-red-500 transition">🗑️</button>
                             </div>
                         </div>
 
-                        ${p.notes ? `<div class="text-xs p-2.5 rounded-lg mb-3 bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-300 flex items-start gap-2"><i data-lucide="align-left" class="w-3 h-3 mt-0.5 opacity-50 shrink-0"></i><p>${p.notes}</p></div>` : ''}
+                        ${p.notes ? `<div class="text-xs p-2.5 rounded-lg mb-3 bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-300"><p>📋 ${p.notes}</p></div>` : ''}
 
                         <div class="flex items-end justify-between mt-3 border-t border-gray-50 dark:border-gray-700/50 pt-3">
                             <div class="flex flex-col">
                                 <span class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Próximo riego</span>
-                                <span class="text-sm font-medium flex items-center gap-1 ${isOverdue ? 'text-red-500' : isTodayDue ? 'text-yellow-600' : ''}">
-                                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${isTodayDue ? '¡Hoy!' : formatDate(nextDateStr)} <span class="text-[10px] text-gray-400 font-normal ml-0.5">(${p.freq}d)</span>
+                                <span class="text-sm font-medium flex items-center gap-1 ${isOverdue ? 'text-red-500 font-bold' : isTodayDue ? 'text-yellow-600 font-bold' : ''}">
+                                    📅 ${isTodayDue ? '¡Hoy!' : formatDate(nextDateStr)} <span class="text-[10px] text-gray-400 font-normal ml-0.5">(cada ${p.freq}d)</span>
                                 </span>
                             </div>
-                            <button onclick="water('${p.id}')" class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition ${isOverdue || isTodayDue ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'}">
-                                <i data-lucide="droplet" class="w-4 h-4"></i> Regar
+                            <button onclick="water('${p.id}')" class="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold transition ${isOverdue || isTodayDue ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'}">
+                                💧 Regar
                             </button>
                         </div>
                     </div>`;
                 }).join('');
-                lucide.createIcons();
             };
         }
 
         function setFilter(l) { activeFilter = l; renderPlants(); }
 
-        // Acciones CRUD
         function openFormModal() {
             document.getElementById('form-title').innerText = "Nueva Planta";
             document.getElementById('p-id').value = '';
@@ -289,4 +270,40 @@
         }
 
         function editPlant(id) {
-            db.transaction("plants").objectStore("plants").g
+            db.transaction("plants").objectStore("plants").get(id).onsuccess = e => {
+                const p = e.target.result;
+                document.getElementById('form-title').innerText = "Editar Planta";
+                document.getElementById('p-id').value = p.id;
+                document.getElementById('p-name').value = p.name;
+                document.getElementById('p-loc').value = p.loc;
+                document.getElementById('p-type').value = p.type || '';
+                document.getElementById('p-freq').value = p.freq;
+                document.getElementById('p-last').value = p.last;
+                document.getElementById('p-notes').value = p.notes || '';
+                toggleModal('form-modal');
+            };
+        }
+
+        function savePlant(e) {
+            e.preventDefault();
+            const id = document.getElementById('p-id').value || Date.now().toString();
+            const newPlant = {
+                id,
+                name: document.getElementById('p-name').value,
+                loc: document.getElementById('p-loc').value,
+                type: document.getElementById('p-type').value,
+                freq: parseInt(document.getElementById('p-freq').value),
+                last: document.getElementById('p-last').value,
+                notes: document.getElementById('p-notes').value
+            };
+            db.transaction("plants", "readwrite").objectStore("plants").put(newPlant).oncomplete = () => { toggleModal('form-modal'); renderPlants(); };
+        }
+
+        function water(id) {
+            const store = db.transaction("plants", "readwrite").objectStore("plants");
+            store.get(id).onsuccess = e => { const p = e.target.result; p.last = getToday(); store.put(p).onsuccess = renderPlants; };
+        }
+
+        function deletePlant(id) {
+            if(confirm("¿Eliminar esta planta?")) {
+                db.transaction("plants", "readwrite").objectStore("plants").delete(i
