@@ -7,39 +7,43 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
     
-    <link rel="stylesheet" href="./app.css">
-    <script src="./icons.js"></script>
-
     <link rel="manifest" href="./manifest.json">
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').then(() => {
-                console.log("Service Worker Registrado");
+                console.log("Service Worker Activo");
             });
         }
     </script>
+
+    <style>
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .modal-enter { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
 </head>
 <body class="bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 pb-24 min-h-screen">
 
     <header class="sticky top-0 z-10 px-4 py-4 shadow-sm border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 transition-colors">
         <div class="flex items-center gap-2">
-            <div data-icon="leaf" data-class="text-green-500 w-6 h-6 flex items-center justify-center"></div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-green-500 w-6 h-6"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 8.5C18.5 14 14 19 11 20z"></path><path d="M19 2c-2.26 4.33-5.27 7.14-8 10"></path></svg>
             <h1 class="font-bold text-xl tracking-tight text-gray-800 dark:text-gray-100">Plant Guardian</h1>
         </div>
-        <div class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200/60 dark:border-gray-700/60">
-            <button onclick="toggleModal('chat-modal')" class="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-gray-700 transition shadow-sm bg-transparent" title="IA Bot">
-                <div data-icon="bot"></div>
+        
+        <div class="flex items-center gap-1 bg-gray-50 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200/60 dark:border-gray-700/60">
+            <button onclick="toggleModal('chat-modal')" class="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-gray-700 transition shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
             </button>
             <div class="w-px h-4 bg-gray-200 dark:bg-gray-700"></div>
-            <label class="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 transition shadow-sm cursor-pointer" title="Importar">
-                <div data-icon="upload"></div>
+            <label class="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 transition shadow-sm cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>
                 <input type="file" class="hidden" accept=".json" onchange="importData(event)">
             </label>
-            <button onclick="exportData()" class="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 transition shadow-sm" title="Exportar">
-                <div data-icon="download"></div>
+            <button onclick="exportData()" class="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 transition shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
             </button>
-            <button onclick="toggleModal('settings-modal')" class="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 transition shadow-sm" title="Ajustes">
-                <div data-icon="settings"></div>
+            <button onclick="toggleModal('settings-modal')" class="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 transition shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
         </div>
     </header>
@@ -154,10 +158,10 @@
     </div>
 
     <script>
-        const getToday = () => new Date().toISOString().split('T')[0];
-        const addDays = (dStr, days) => { const d = new Date(dStr); d.setDate(d.getDate() + parseInt(days)); return d.toISOString().split('T')[0]; };
-        const formatDate = (dStr) => new Date(dStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-        document.getElementById('p-last').max = getToday();
+        const getTodayDate = () => new Date().toISOString().split('T')[0];
+        const addDaysToDate = (dStr, days) => { const d = new Date(dStr); d.setDate(d.getDate() + parseInt(days)); return d.toISOString().split('T')[0]; };
+        const formatUIDate = (dStr) => new Date(dStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        document.getElementById('p-last').max = getTodayDate();
 
         let settings = JSON.parse(localStorage.getItem('pg_settings')) || { theme: 'light', city: 'Granada, España' };
         let activeFilter = 'Todas';
@@ -200,83 +204,24 @@
                 const locs = ['Todas', ...new Set(allPlants.map(p => p.loc))];
                 if(locs.length > 1) {
                     filters.innerHTML = locs.map(l => `
-                        <button onclick="setFilter('${l}')" class="px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${activeFilter === l ? 'bg-green-600 text-white shadow-sm' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800'}/80">
+                        <button onclick="setFilter('${l}')" class="px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${activeFilter === l ? 'bg-green-600 text-white shadow-sm' : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800'}">
                             ${l}
                         </button>
                     `).join('');
                 } else { filters.innerHTML = ''; }
 
                 let filtered = activeFilter === 'Todas' ? allPlants : allPlants.filter(p => p.loc === activeFilter);
-                filtered.sort((a,b) => new Date(addDays(a.last, a.freq)) - new Date(addDays(b.last, b.freq)));
+                filtered.sort((a,b) => new Date(addDaysToDate(a.last, a.freq)) - new Date(addDaysToDate(b.last, b.freq)));
 
                 if(filtered.length === 0) {
                     list.innerHTML = `
                         <div class="text-center mt-12 p-10 rounded-3xl border-2 border-dashed border-gray-300 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm max-w-md mx-auto">
                             <span class="text-4xl block mb-3">🪴</span>
                             <h2 class="text-lg font-bold text-gray-700 dark:text-gray-300">Tu selva está vacía</h2>
-                            <p class="text-sm text-gray-400 mt-1">Pulsa el botón verde con el "+" de abajo para registrar tu primera planta.</p>
+                            <p class="text-sm text-gray-400 mt-1">Pulsa el botón verde "+" de abajo para registrar tu primera planta.</p>
                         </div>`;
                     return;
                 }
 
-                list.innerHTML = filtered.map(p => {
-                    const nextDateStr = addDays(p.last, p.freq);
-                    const isOverdue = nextDateStr < getToday();
-                    const isTodayDue = nextDateStr === getToday();
-                    const bColor = isOverdue ? 'border-red-400 dark:border-red-500/50' : 'border-gray-200 dark:border-gray-800';
-                    
-                    return `
-                    <div class="relative p-5 rounded-2xl shadow-sm border bg-white dark:bg-gray-900 transition-all ${bColor}">
-                        ${isOverdue ? '<div class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow animate-pulse">⚠️ Atrasada</div>' : ''}
-                        
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 class="font-bold text-lg text-gray-900 dark:text-gray-100 leading-tight">${p.name}</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 font-semibold mt-1">📍 ${p.loc} ${p.type ? `• ${p.type}` : ''}</p>
-                            </div>
-                            <div class="flex gap-1.5">
-                                <button onclick="editPlant('${p.id}')" class="text-xs font-bold px-2.5 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 rounded-xl transition">Editar</button>
-                                <button onclick="deletePlant('${p.id}')" class="text-xs font-bold px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 rounded-xl transition">Borrar</button>
-                            </div>
-                        </div>
-
-                        ${p.notes ? `<div class="text-xs p-3 rounded-xl mb-3 bg-slate-50 dark:bg-gray-950 text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-800/80"><p>📋 ${p.notes}</p></div>` : ''}
-
-                        <div class="flex items-end justify-between mt-3 border-t border-gray-100 dark:border-gray-800/50 pt-3">
-                            <div class="flex flex-col">
-                                <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Próximo riego</span>
-                                <span class="text-sm font-semibold flex items-center gap-1 ${isOverdue ? 'text-red-500 font-bold' : isTodayDue ? 'text-yellow-600 font-bold' : 'text-gray-700 dark:text-gray-300'}">
-                                    📅 ${isTodayDue ? '¡Hoy!' : formatDate(nextDateStr)} <span class="text-[10px] text-gray-400 font-normal ml-0.5">(cada ${p.freq}d)</span>
-                                </span>
-                            </div>
-                            <button onclick="water('${p.id}')" class="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold transition ${isOverdue || isTodayDue ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20 hover:bg-blue-700' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 hover:bg-blue-100'}">
-                                💧 Regar
-                            </button>
-                        </div>
-                    </div>`;
-                }).join('');
-            };
-        }
-
-        function setFilter(l) { activeFilter = l; renderPlants(); }
-
-        function openFormModal() {
-            document.getElementById('form-title').innerText = "Nueva Planta";
-            document.getElementById('p-id').value = '';
-            document.getElementById('p-name').value = '';
-            document.getElementById('p-loc').value = '';
-            document.getElementById('p-type').value = '';
-            document.getElementById('p-freq').value = '7';
-            document.getElementById('p-last').value = getToday();
-            document.getElementById('p-notes').value = '';
-            toggleModal('form-modal');
-        }
-
-        function editPlant(id) {
-            db.transaction("plants").objectStore("plants").get(id).onsuccess = e => {
-                const p = e.target.result;
-                document.getElementById('form-title').innerText = "Editar Planta";
-                document.getElementById('p-id').value = p.id;
-                document.getElementById('p-name').value = p.name;
-                document.getElementById('p-loc').value = p.loc;
+                list.innerHTML = filtered.map(p =>
         
