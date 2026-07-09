@@ -593,8 +593,38 @@
       try {
         const rawText = await extractTextFromPDF(file);
         const safeText = rawText.substring(0, 3000); 
-        
-        const prompt = `Revisa este texto extraído de una nómina: "${safeText}". Analiza si cuadra el salario sabiendo que la tarifa normal es ${state.config.rateNormal}€/h. Devuelve SOLO un objeto JSON válido con este formato exacto: {"estado":"cuadra"|"no_cuadra", "resumen":"Explicación corta"}. No añadas ni markdown ni comillas fuera del JSON.`;
+
+        // Datos reales del mes que el usuario tiene abierto
+        const mk = monthKey(state.year, state.month);
+        const monthRec = state.allData[mk] || { days: {} };
+        const dim = new Date(state.year, state.month + 1, 0).getDate();
+        const ei = extraActive(state.config) ? calcExtraInfo(state.allData, state.year, state.month, dim) : null;
+        const c = calcMonth(monthRec.days, state.config, dim, ei);
+        const r2 = (n) => (Math.round(n * 100) / 100).toFixed(2);
+
+        const appData = `Mes abierto en la app: ${MESES[state.month]} ${state.year}.
+Datos registrados por el trabajador en la app para ese mes:
+- Horas normales pagadas: ${c.hNormalPaid} h a ${state.config.rateNormal} €/h = ${r2(c.brutoNormal)} €
+- Horas festivas: ${c.hFestivo} h a ${r2(state.config.rateNormal + state.config.plusFestivo)} €/h (tarifa ${state.config.rateNormal} + plus festivo ${state.config.plusFestivo}) = ${r2(c.brutoFestivo)} €
+${c.hExtra ? `- Horas extra (vencidas del mes anterior): ${c.hExtra} h a ${state.config.rateExtra} €/h = ${r2(c.brutoExtra)} €` : ''}
+- BRUTO esperado: ${r2(c.bruto)} €
+- Deducciones esperadas: ${c.dets.map(d => `${d.name} ${d.pct}% = ${r2(d.amount)} €`).join('; ')}
+- Total deducciones: ${r2(c.totalDed)} €
+- NETO esperado: ${r2(c.neto)} €`;
+
+        const prompt = `Eres un verificador de nóminas españolas. Texto extraído de la nómina (PDF): "${safeText}".
+
+${appData}
+
+TAREA:
+1. Detecta el PERIODO (mes y año) al que corresponde la nómina.
+2. Si el periodo de la nómina NO coincide con el mes abierto en la app, responde con estado "mes_incorrecto" e indica en periodo_detectado el mes/año de la nómina. No hagas más comprobaciones.
+3. Si coincide, compara concepto a concepto (horas/unidades, importes, bruto, cada deducción, neto) los valores de la nómina contra los de la app. Pequeñas diferencias de céntimos por redondeo cuentan como correctas.
+4. estado: "cuadra" si todo coincide, "no_cuadra" si hay alguna discrepancia relevante.
+
+Devuelve SOLO un objeto JSON válido con este formato exacto, sin markdown ni texto fuera del JSON:
+{"estado":"cuadra"|"no_cuadra"|"mes_incorrecto","periodo_detectado":"Mes Año o desconocido","resumen":"explicación corta y clara en español","checks":[{"concepto":"nombre","nomina":"valor en la nómina","app":"valor en la app","ok":true|false}]}
+En "checks" incluye SIEMPRE (salvo mes_incorrecto): horas normales, horas festivas si las hay, bruto, cada deducción y neto.`;
         
         const rawReply = await apiCallPublic([{ role: 'user', content: prompt }], false);
         
@@ -604,6 +634,28 @@
       } catch(err) { state.nomina.status = "error"; state.nomina.error = "Error al analizar nómina: " + err.message; }
       render();
     };
+
+    function renderNominaResult() {
+      const r = state.nomina.result;
+      if (!r) return '';
+      if (r.estado === 'mes_incorrecto') {
+        return `<div style="margin-top:10px; font-size:13px; color:var(--warning); background:rgba(255,176,79,0.1); border:1px solid rgba(255,176,79,0.3); padding:10px; border-radius:10px">
+          ⚠️ Esta nómina parece ser de <b>${r.periodo_detectado || 'otro mes'}</b>, pero tienes abierto <b>${MESES[state.month]} ${state.year}</b>.<br>Ve a ese mes con las flechas del calendario y vuelve a subirla.
+        </div>`;
+      }
+      const ok = r.estado === 'cuadra';
+      const checks = Array.isArray(r.checks) ? r.checks : [];
+      return `
+        <div style="margin-top:10px; font-size:13px; padding:10px; border-radius:10px; background:${ok ? 'rgba(123,232,168,0.08)' : 'rgba(255,139,139,0.08)'}; border:1px solid ${ok ? 'rgba(123,232,168,0.3)' : 'rgba(255,139,139,0.3)'}">
+          <div style="font-weight:700; color:${ok ? 'var(--success)' : 'var(--danger)'}; margin-bottom:6px">${ok ? '✔ Todo correcto — te han pagado bien' : '⚠ Hay discrepancias — revisa'}</div>
+          <div style="color:var(--text); margin-bottom:${checks.length ? '8px' : '0'}">${r.resumen || ''}</div>
+          ${checks.map(ch => `
+            <div style="display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-top:1px solid var(--border-light)">
+              <span style="color:${ch.ok ? 'var(--muted)' : 'var(--danger)'}">${ch.ok ? '✅' : '❌'} ${ch.concepto}</span>
+              <span style="text-align:right; color:${ch.ok ? 'var(--text)' : 'var(--danger)'}; font-variant-numeric:tabular-nums">${ch.ok ? (ch.nomina ?? '') : `nómina ${ch.nomina ?? '?'} / app ${ch.app ?? '?'}`}</span>
+            </div>`).join('')}
+        </div>`;
+    }
 
     // ============================================================
     // AISLAMIENTO DOM (CERO PARPADEOS)
@@ -759,7 +811,7 @@
                 <button class="big-btn" style="border-color:var(--success); color:var(--success)" onclick="vibrate(20); getEl('nomina-upload').click()">
                   ${state.nomina.status==='loading' ? '⏳ Analizando PDF internamente...' : '📑 Subir nómina (PDF)'}
                 </button>
-                ${state.nomina.result ? `<div style="margin-top:10px; font-size:13px; color:var(--text); background:rgba(255,255,255,0.05); padding:10px; border-radius:8px">${state.nomina.result.resumen}</div>` : ''}
+                ${renderNominaResult()}
                 ${state.nomina.error ? `<div style="color:var(--danger); font-size:12px; margin-top:8px">${state.nomina.error}</div>` : ''}
               </div>
 
