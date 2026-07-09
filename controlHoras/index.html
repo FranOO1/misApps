@@ -592,55 +592,90 @@
       state.nomina.status = "loading"; render();
       try {
         const rawText = await extractTextFromPDF(file);
-        const safeText = rawText.substring(0, 3000); 
+        const safeText = rawText.substring(0, 7000); 
 
-        // Datos reales del mes que el usuario tiene abierto
-        const mk = monthKey(state.year, state.month);
-        const monthRec = state.allData[mk] || { days: {} };
-        const dim = new Date(state.year, state.month + 1, 0).getDate();
-        const ei = extraActive(state.config) ? calcExtraInfo(state.allData, state.year, state.month, dim) : null;
-        const c = calcMonth(monthRec.days, state.config, dim, ei);
-        const r2 = (n) => (Math.round(n * 100) / 100).toFixed(2);
+        // 1) La IA SOLO extrae los números de la nómina (tarea simple y fiable)
+        const prompt = `Extrae los datos de esta nómina española (texto de PDF): "${safeText}"
 
-        const appData = `Mes abierto en la app: ${MESES[state.month]} ${state.year}.
-Datos registrados por el trabajador en la app para ese mes:
-- Horas normales pagadas: ${c.hNormalPaid} h a ${state.config.rateNormal} €/h = ${r2(c.brutoNormal)} €
-- Horas festivas: ${c.hFestivo} h a ${r2(state.config.rateNormal + state.config.plusFestivo)} €/h (tarifa ${state.config.rateNormal} + plus festivo ${state.config.plusFestivo}) = ${r2(c.brutoFestivo)} €
-${c.hExtra ? `- Horas extra (vencidas del mes anterior): ${c.hExtra} h a ${state.config.rateExtra} €/h = ${r2(c.brutoExtra)} €` : ''}
-- BRUTO esperado: ${r2(c.bruto)} €
-- Deducciones esperadas: ${c.dets.map(d => `${d.name} ${d.pct}% = ${r2(d.amount)} €`).join('; ')}
-- Total deducciones: ${r2(c.totalDed)} €
-- NETO esperado: ${r2(c.neto)} €`;
+Devuelve SOLO un objeto JSON válido, sin markdown ni texto fuera del JSON. Usa punto como separador decimal y no uses separador de miles. Formato exacto:
+{"mes":numero 1-12,"anio":numero,"horas_lineas":[{"concepto":"nombre","unidades":numero}],"plus_festivo_unidades":numero,"bruto":numero,"irpf":numero,"total_deducciones":numero,"neto":numero}
 
-        const prompt = `Eres un verificador de nóminas españolas. Texto extraído de la nómina (PDF): "${safeText}".
-
-${appData}
-
-TAREA:
-1. Detecta el PERIODO (mes y año) al que corresponde la nómina.
-2. Si el periodo de la nómina NO coincide con el mes abierto en la app, responde con estado "mes_incorrecto" e indica en periodo_detectado el mes/año de la nómina. No hagas más comprobaciones.
-3. Si coincide, compara concepto a concepto. REGLAS IMPORTANTES para nóminas de ETT españolas:
-   - HORAS TOTALES: suma las unidades de TODAS las líneas de horas (salario base + horas extras/complementarias). Las nóminas ETT suelen partir las horas en "salario base" (máx. jornada ordinaria) y "horas extras no estructurales" al mismo precio. Compara la SUMA contra el total de horas de la app (normales + festivas). Las unidades del "plus festivo" NO se suman (esas horas ya están incluidas en las otras líneas; el plus es solo el complemento).
-   - PRECIO/HORA: el precio efectivo de la hora normal puede estar repartido en varias líneas (salario base + p.p. pagas extras + p.p. vacaciones). Suma los precios unitarios de esas líneas para compararlo con la tarifa de la app.
-   - SEGURIDAD SOCIAL: suma las cuotas del trabajador de líneas del mismo tipo (ej. "contingencias comunes" + "horas extras no fuerza mayor" van juntas). El MEI puede calcularse solo sobre la base sin horas extras: si es el caso, márcalo como correcto.
-   - El VEREDICTO se decide por el BRUTO (total a abonar) y el NETO (líquido a percibir): si ambos coinciden con la app (tolerancia de 1 €), estado = "cuadra" aunque el desglose se presente distinto.
-   - Diferencias de menos de 1 € por redondeo cuentan como correctas.
-4. estado: "cuadra" si el pago es correcto, "no_cuadra" solo si hay una discrepancia real de dinero.
-
-Devuelve SOLO un objeto JSON válido con este formato exacto, sin markdown ni texto fuera del JSON:
-{"estado":"cuadra"|"no_cuadra"|"mes_incorrecto","periodo_detectado":"Mes Año o desconocido","resumen":"explicación corta y clara en español","checks":[{"concepto":"nombre","nomina":"valor en la nómina","app":"valor en la app","ok":true|false}]}
-En "checks" incluye SIEMPRE (salvo mes_incorrecto): horas normales, horas festivas si las hay, bruto, cada deducción y neto.`;
+Instrucciones:
+- "horas_lineas": SOLO las líneas de salario base y de horas extras/complementarias. NO incluyas líneas de prorrateo como "P.P. Pagas Extras" o "P.P. Vacaciones" (repiten las mismas horas del salario base), ni la línea del plus festivo.
+- "plus_festivo_unidades": unidades de la línea de plus festivo (0 si no hay).
+- "bruto": el TOTAL A ABONAR / total devengado.
+- "irpf": importe de la retención de IRPF.
+- "total_deducciones": el TOTAL A DEDUCIR del trabajador.
+- "neto": el LÍQUIDO A PERCIBIR.
+- Si algún dato no aparece, pon null.`;
         
         const rawReply = await apiCallPublic([{ role: 'user', content: prompt }], false);
-        
         const cleanJson = rawReply.split("```json").join("").split("```").join("").trim();
-        state.nomina.result = JSON.parse(cleanJson);
+        const ext = JSON.parse(cleanJson);
+
+        // 2) Comparación local, determinista
+        state.nomina.result = compareNomina(ext);
         state.nomina.status = "done";
       } catch(err) { state.nomina.status = "error"; state.nomina.error = "Error al analizar nómina: " + err.message; }
       render();
     };
 
-    function renderNominaResult() {
+    function compareNomina(ext) {
+      const num = (v) => { const n = typeof v === 'string' ? parseFloat(v.replace(/\./g, '').replace(',', '.')) || parseFloat(v) : Number(v); return isFinite(n) ? n : null; };
+      const r2 = (n) => (Math.round(n * 100) / 100).toFixed(2);
+
+      // ¿Coincide el mes de la nómina con el mes abierto?
+      const mesN = num(ext.mes), anioN = num(ext.anio);
+      if (mesN && anioN && (mesN !== state.month + 1 || anioN !== state.year)) {
+        return { estado: "mes_incorrecto", periodo_detectado: `${MESES[mesN - 1] || '?'} ${anioN}` };
+      }
+
+      // Datos de la app para el mes abierto
+      const mk = monthKey(state.year, state.month);
+      const monthRec = state.allData[mk] || { days: {} };
+      const dim = new Date(state.year, state.month + 1, 0).getDate();
+      const ei = extraActive(state.config) ? calcExtraInfo(state.allData, state.year, state.month, dim) : null;
+      const c = calcMonth(monthRec.days, state.config, dim, ei);
+      const appHorasTotales = c.hNormalPaid + c.hExtra + c.hFestivo;
+      const appIrpf = c.dets.find(d => /irpf|renta/i.test(d.name));
+
+      // Datos de la nómina
+      const nomHoras = Array.isArray(ext.horas_lineas) ? ext.horas_lineas.reduce((s, l) => s + (num(l.unidades) || 0), 0) : null;
+      const nomFest = num(ext.plus_festivo_unidades);
+      const nomBruto = num(ext.bruto);
+      const nomIrpf = num(ext.irpf);
+      const nomDed = num(ext.total_deducciones);
+      const nomNeto = num(ext.neto);
+
+      const checks = [];
+      const addCheck = (concepto, nomVal, appVal, tol, unit) => {
+        if (nomVal === null || nomVal === undefined) { checks.push({ concepto, nomina: "no encontrado", app: r2(appVal) + unit, ok: false, missing: true }); return null; }
+        const ok = Math.abs(nomVal - appVal) <= tol;
+        checks.push({ concepto, nomina: r2(nomVal) + unit, app: r2(appVal) + unit, ok });
+        return ok;
+      };
+
+      addCheck("Horas totales", nomHoras, appHorasTotales, 0.05, " h");
+      if (c.hFestivo > 0 || (nomFest && nomFest > 0)) addCheck("Horas festivas (plus)", nomFest, c.hFestivo, 0.05, " h");
+      const okBruto = addCheck("Bruto", nomBruto, c.bruto, 1, " €");
+      if (appIrpf) addCheck("Retención IRPF", nomIrpf, appIrpf.amount, 0.5, " €");
+      addCheck("Total retenciones", nomDed, c.totalDed, 1.5, " €");
+      const okNeto = addCheck("Neto", nomNeto, c.neto, 1.5, " €");
+
+      // Veredicto: manda el dinero (bruto y neto)
+      const cuadra = okBruto === true && okNeto === true;
+      const resumen = cuadra
+        ? `La nómina coincide con tus ${appHorasTotales} h registradas. Bruto ${r2(c.bruto)} € y neto ${r2(nomNeto)} € correctos.`
+        : okBruto === false && nomBruto !== null
+          ? `El bruto no cuadra: la nómina paga ${r2(nomBruto)} € y según tus horas deberían ser ${r2(c.bruto)} € (diferencia de ${r2(Math.abs(nomBruto - c.bruto))} €).`
+          : okNeto === false && nomNeto !== null
+            ? `El bruto cuadra pero el neto no: revisa las retenciones (diferencia de ${r2(Math.abs(nomNeto - c.neto))} €).`
+            : `No se pudieron leer todos los datos de la nómina. Revisa las filas marcadas.`;
+
+      return { estado: cuadra ? "cuadra" : "no_cuadra", resumen, checks };
+    }
+
+        function renderNominaResult() {
       const r = state.nomina.result;
       if (!r) return '';
       if (r.estado === 'mes_incorrecto') {
