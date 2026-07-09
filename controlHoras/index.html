@@ -610,22 +610,39 @@ Instrucciones:
 - Si algún dato no aparece, pon null.`;
         
         const rawReply = await apiCallPublic([{ role: 'user', content: prompt }], false);
-        const cleanJson = rawReply.split("```json").join("").split("```").join("").trim();
-        const ext = JSON.parse(cleanJson);
+        state.nomina.raw = rawReply.substring(0, 500);
+        const jStart = rawReply.indexOf('{'), jEnd = rawReply.lastIndexOf('}');
+        if (jStart === -1 || jEnd === -1) throw new Error("La IA no devolvió datos legibles");
+        let ext = JSON.parse(rawReply.substring(jStart, jEnd + 1));
+        // Desanidar si viene envuelto (ej. {"datos": {...}})
+        const topKeys = Object.keys(ext);
+        if (topKeys.length === 1 && ext[topKeys[0]] && typeof ext[topKeys[0]] === 'object' && !Array.isArray(ext[topKeys[0]])) ext = ext[topKeys[0]];
+        // Normalizar claves: minúsculas, sin acentos, espacios como _
+        const normExt = {};
+        for (const k of Object.keys(ext)) normExt[k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_')] = ext[k];
 
         // 2) Comparación local, determinista
-        state.nomina.result = compareNomina(ext);
+        state.nomina.result = compareNomina(normExt);
         state.nomina.status = "done";
       } catch(err) { state.nomina.status = "error"; state.nomina.error = "Error al analizar nómina: " + err.message; }
       render();
     };
 
     function compareNomina(ext) {
-      const num = (v) => { const n = typeof v === 'string' ? parseFloat(v.replace(/\./g, '').replace(',', '.')) || parseFloat(v) : Number(v); return isFinite(n) ? n : null; };
+      const num = (v) => {
+        if (v === null || v === undefined) return null;
+        if (typeof v === 'number') return isFinite(v) ? v : null;
+        let s = String(v).trim().replace(/[€\s]/g, '');
+        if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); // formato español
+        const n = parseFloat(s);
+        return isFinite(n) ? n : null;
+      };
       const r2 = (n) => (Math.round(n * 100) / 100).toFixed(2);
+      const pick = (...keys) => { for (const k of keys) { if (ext[k] !== undefined && ext[k] !== null) return ext[k]; } return null; };
 
       // ¿Coincide el mes de la nómina con el mes abierto?
-      const mesN = num(ext.mes), anioN = num(ext.anio);
+      const mesN = num(pick('mes', 'month'));
+      const anioN = num(pick('anio', 'ano', 'year'));
       if (mesN && anioN && (mesN !== state.month + 1 || anioN !== state.year)) {
         return { estado: "mes_incorrecto", periodo_detectado: `${MESES[mesN - 1] || '?'} ${anioN}` };
       }
@@ -639,13 +656,14 @@ Instrucciones:
       const appHorasTotales = c.hNormalPaid + c.hExtra + c.hFestivo;
       const appIrpf = c.dets.find(d => /irpf|renta/i.test(d.name));
 
-      // Datos de la nómina
-      const nomHoras = Array.isArray(ext.horas_lineas) ? ext.horas_lineas.reduce((s, l) => s + (num(l.unidades) || 0), 0) : null;
-      const nomFest = num(ext.plus_festivo_unidades);
-      const nomBruto = num(ext.bruto);
-      const nomIrpf = num(ext.irpf);
-      const nomDed = num(ext.total_deducciones);
-      const nomNeto = num(ext.neto);
+      // Datos de la nómina (con nombres alternativos por si la IA varía)
+      const hl = pick('horas_lineas', 'horas', 'lineas_horas');
+      const nomHoras = Array.isArray(hl) ? hl.reduce((s, l) => s + (num(l.unidades ?? l.horas ?? l.unidad ?? l.units) || 0), 0) : num(hl);
+      const nomFest = num(pick('plus_festivo_unidades', 'plus_festivo', 'horas_festivas'));
+      const nomBruto = num(pick('bruto', 'total_a_abonar', 'total_devengado', 'total_devengos'));
+      const nomIrpf = num(pick('irpf', 'retencion_irpf', 'retencion'));
+      const nomDed = num(pick('total_deducciones', 'total_a_deducir', 'deducciones'));
+      const nomNeto = num(pick('neto', 'liquido_a_percibir', 'liquido'));
 
       const checks = [];
       const addCheck = (concepto, nomVal, appVal, tol, unit) => {
@@ -685,6 +703,7 @@ Instrucciones:
       }
       const ok = r.estado === 'cuadra';
       const checks = Array.isArray(r.checks) ? r.checks : [];
+      const allMissing = checks.length > 0 && checks.every(ch => ch.missing);
       return `
         <div style="margin-top:10px; font-size:13px; padding:10px; border-radius:10px; background:${ok ? 'rgba(123,232,168,0.08)' : 'rgba(255,139,139,0.08)'}; border:1px solid ${ok ? 'rgba(123,232,168,0.3)' : 'rgba(255,139,139,0.3)'}">
           <div style="font-weight:700; color:${ok ? 'var(--success)' : 'var(--danger)'}; margin-bottom:6px">${ok ? '✔ Todo correcto — te han pagado bien' : '⚠ Hay discrepancias — revisa'}</div>
@@ -694,6 +713,7 @@ Instrucciones:
               <span style="color:${ch.ok ? 'var(--muted)' : 'var(--danger)'}">${ch.ok ? '✅' : '❌'} ${ch.concepto}</span>
               <span style="text-align:right; color:${ch.ok ? 'var(--text)' : 'var(--danger)'}; font-variant-numeric:tabular-nums">${ch.ok ? (ch.nomina ?? '') : `nómina ${ch.nomina ?? '?'} / app ${ch.app ?? '?'}`}</span>
             </div>`).join('')}
+          ${allMissing && state.nomina.raw ? `<div style="margin-top:8px; padding:8px; background:rgba(0,0,0,0.3); border-radius:8px; color:var(--muted); font-size:11px; word-break:break-all"><b>Respuesta de la IA (para depurar):</b><br>${state.nomina.raw.replace(/</g,'&lt;')}</div>` : ''}
         </div>`;
     }
 
