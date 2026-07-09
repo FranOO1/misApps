@@ -614,6 +614,18 @@ Instrucciones:
         const jStart = rawReply.indexOf('{'), jEnd = rawReply.lastIndexOf('}');
         if (jStart === -1 || jEnd === -1) throw new Error("La IA no devolvió datos legibles");
         let ext = JSON.parse(rawReply.substring(jStart, jEnd + 1));
+
+        // Pollinations a veces devuelve su mensaje entero {role, reasoning, content}: extraer el JSON real de dentro
+        if (ext && typeof ext === 'object' && ('role' in ext || 'reasoning' in ext) && !('bruto' in ext)) {
+          let inner = ext.content;
+          if (Array.isArray(inner)) inner = inner.map(b => b?.text || '').join('');
+          if (typeof inner !== 'string' || inner.indexOf('{') === -1) inner = typeof ext.reasoning === 'string' ? ext.reasoning : '';
+          const s2 = inner.indexOf('{'), e2 = inner.lastIndexOf('}');
+          if (s2 === -1 || e2 <= s2) throw new Error("La IA no devolvió el resultado (respuesta incompleta). Vuelve a intentarlo.");
+          ext = JSON.parse(inner.substring(s2, e2 + 1));
+          state.nomina.raw = inner.substring(s2, Math.min(e2 + 1, s2 + 500));
+        }
+
         // Desanidar si viene envuelto (ej. {"datos": {...}})
         const topKeys = Object.keys(ext);
         if (topKeys.length === 1 && ext[topKeys[0]] && typeof ext[topKeys[0]] === 'object' && !Array.isArray(ext[topKeys[0]])) ext = ext[topKeys[0]];
