@@ -323,13 +323,6 @@ html.dark .themeopts button.on{color:#10190f}
       <p style="color:var(--ink2);font-size:14px;margin-top:4px">Vuestro jardín, sincronizado al instante</p>
     </div>
 
-    <div id="gate-config" style="display:none;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)">
-      <h3 style="font-size:17px;margin-bottom:6px">Primera puesta en marcha</h3>
-      <p style="font-size:13px;color:var(--ink2)">Pega aquí la configuración de tu proyecto Firebase (el bloque <b>firebaseConfig</b>). Está explicado paso a paso en el archivo <b>LEEME.md</b>. Solo se hace una vez por móvil.</p>
-      <textarea id="fb-config" rows="7" style="font-family:monospace;font-size:11.5px;margin-top:10px" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "...", ... }'></textarea>
-      <button class="btn primary" onclick="saveConfig()">Guardar configuración</button>
-    </div>
-
     <div id="gate-login" style="display:none;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);text-align:center">
       <p style="font-size:14px;margin-bottom:4px">Entrad <b>los dos con la misma cuenta</b> de Google para compartir el jardín:</p>
       <button class="btn primary" onclick="doSignIn()">
@@ -337,7 +330,6 @@ html.dark .themeopts button.on{color:#10190f}
         Continuar con Google
       </button>
       <p class="note" id="gate-error" style="color:var(--grana)"></p>
-      <button style="font-size:12px;color:var(--ink2);text-decoration:underline;margin-top:10px" onclick="resetConfig()">Cambiar configuración de Firebase</button>
     </div>
   </div>
 </div>
@@ -418,30 +410,16 @@ function saveSettings(){
   persistSettings(); renderSettingsUI(); closeModal("settings-modal"); toast("Ajustes guardados 🌿");
 }
 
-/* ============ Firebase: configuración ============ */
-let fbConfig = null;
-try { const c = localStorage.getItem("pg3_fbconfig"); if(c) fbConfig = JSON.parse(c); } catch(e){}
-
-function parseConfigText(txt){
-  // Acepta el bloque tal cual se copia de Firebase (JS) o JSON puro
-  const m = txt.match(/\{[\s\S]*\}/); if(!m) throw 0;
-  let s = m[0].replace(/\/\/.*$/gm,"").replace(/'/g,'"').replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:/g,'$1"$2":').replace(/,\s*}/g,"}");
-  const cfg = JSON.parse(s);
-  if(!cfg.apiKey || !cfg.projectId || !cfg.authDomain) throw 0;
-  return cfg;
-}
-function saveConfig(){
-  try{
-    fbConfig = parseConfigText($("fb-config").value);
-    localStorage.setItem("pg3_fbconfig", JSON.stringify(fbConfig));
-    location.reload();
-  }catch(e){ toast("Configuración no válida: revisa que copiaste el bloque completo ❌"); }
-}
-function resetConfig(){
-  if(confirm("¿Borrar la configuración de Firebase de este móvil? Tus plantas siguen a salvo en la nube.")){
-    localStorage.removeItem("pg3_fbconfig"); location.reload();
-  }
-}
+/* ============ Firebase: configuración (incrustada, proyecto misApps) ============ */
+const fbConfig = {
+  apiKey: "AIzaSyBkQ4NcoxU0V_R3jXnkH5Eu9WRDpr9eKXo",
+  authDomain: "mishoras-bb0cc.firebaseapp.com",
+  projectId: "mishoras-bb0cc",
+  storageBucket: "mishoras-bb0cc.firebasestorage.app",
+  messagingSenderId: "282064047722",
+  appId: "1:282064047722:web:24a04aabeecb4a67394413"
+};
+try { localStorage.removeItem("pg3_fbconfig"); } catch(e){} // limpieza de la config antigua guardada
 
 /* ============ Firebase: sesión y datos ============ */
 let auth=null, fs=null, user=null, unsub=null, plants=[];
@@ -449,7 +427,6 @@ try { const b = localStorage.getItem("pg3_cache"); if(b) plants = JSON.parse(b);
 
 function showGate(mode){
   $("gate").style.display = mode ? "flex" : "none";
-  $("gate-config").style.display = mode==="config" ? "block" : "none";
   $("gate-login").style.display = mode==="login" ? "block" : "none";
 }
 
@@ -806,7 +783,7 @@ function closeModal(id){ $(id).classList.remove("open"); }
 document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) m.classList.remove("open"); }));
 
 // Exponer funciones usadas en atributos onclick del HTML
-Object.assign(window, { openModal, closeModal, openForm, savePlant, pickPhoto, setLight, setTheme, saveSettings, searchCity, pickCity, useGPS, loadWeather, askNotif, saveConfig, resetConfig, doSignIn, doSignOut, exportDownload, importData, render });
+Object.assign(window, { openModal, closeModal, openForm, savePlant, pickPhoto, setLight, setTheme, saveSettings, searchCity, pickCity, useGPS, loadWeather, askNotif, doSignIn, doSignOut, exportDownload, importData, render });
 
 if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
 
@@ -814,8 +791,7 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").cat
   renderSettingsUI();
   render();
   loadWeather();
-  if (!fbConfig) { showGate("config"); return; }
-  try { startFirebase(); } catch(e){ showGate("config"); toast("La configuración guardada no es válida"); }
+  try { startFirebase(); } catch(e){ showGate("login"); $("gate-error").textContent = "Error al iniciar Firebase. Recarga la página."; }
   setTimeout(notifyDue, 2500);
 })();
 </script>
