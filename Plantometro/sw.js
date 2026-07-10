@@ -1,5 +1,5 @@
 // Plantómetro v2 — caché real para funcionar sin conexión
-const CACHE = "plantometro-v3";
+const CACHE = "plantometro-v6";
 const CORE = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {
