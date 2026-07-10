@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Plantómetro · El jardín compartido</title>
+<meta name="theme-color" content="#173B24">
+<link rel="manifest" href="./manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF1E3; --surface:#FBFCF6; --surface2:#F3F6EA;
+  --ink:#1E2E1C; --ink2:#5C6B57; --line:#DDE4CE;
+  --green:#3E7C4A; --green-deep:#173B24; --leaf:#7FB069;
+  --grana:#C2402A; --amber:#C08A1E; --blue:#3A7CA5;
+  --shadow:0 2px 12px rgba(30,46,28,.08);
+  --r:18px;
+}
+html.dark{
+  --bg:#121810; --surface:#1B241A; --surface2:#222E20;
+  --ink:#E9EFE0; --ink2:#9AAB92; --line:#2E3B2B;
+  --green:#6FAE7C; --green-deep:#DDEBD8; --leaf:#7FB069;
+  --grana:#E06048; --amber:#D9A63F; --blue:#6FA8CB;
+  --shadow:0 2px 14px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'Instrument Sans',system-ui,sans-serif;
+  font-size:15px; line-height:1.45;
+  min-height:100dvh; padding-bottom:96px;
+  transition:background .3s,color .3s;
+}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+h1,h2,h3,.display{font-family:'Fraunces',serif;letter-spacing:-.01em}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;outline:none;transition:border .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--green)}
+label{font-size:12px;font-weight:600;color:var(--ink2);display:block;margin:12px 0 4px;text-transform:uppercase;letter-spacing:.06em}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+/* ---------- Cabecera ---------- */
+header.top{padding:20px 0 6px}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-size:30px;font-weight:700;color:var(--green-deep)}
+.brand h1 .dot{color:var(--grana)}
+.brand .who{font-size:14px;font-style:italic;color:var(--ink2)}
+.topbtns{display:flex;gap:6px;margin-left:auto}
+.iconbtn{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);font-size:17px;transition:transform .1s}
+.iconbtn:active{transform:scale(.93)}
+.headrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* ---------- Clima ---------- */
+.weather{margin:14px 0 4px;background:linear-gradient(120deg,var(--surface),var(--surface2));border:1.5px solid var(--line);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:var(--shadow)}
+.weather .city{font-family:'Fraunces',serif;font-weight:600;font-size:16px}
+.weather .data{display:flex;gap:14px;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+.weather .data span{display:flex;align-items:center;gap:4px}
+.weather .tip{flex-basis:100%;font-size:12.5px;font-style:italic;color:var(--ink2)}
+.chipbtn{font-size:12px;font-weight:700;padding:7px 12px;border-radius:999px;background:var(--green);color:#fff;margin-left:auto}
+html.dark .chipbtn{color:#10190f}
+
+/* ---------- Estadísticas ---------- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.stat{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:10px 14px;box-shadow:var(--shadow)}
+.stat b{font-family:'Fraunces',serif;font-size:24px;display:block;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
+.stat.warn b{color:var(--amber)} .stat.bad b{color:var(--grana)}
+
+/* ---------- Filtros ---------- */
+.tools{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0 8px;transition:background .3s}
+.search{display:flex;gap:8px;margin-bottom:8px}
+.search input{flex:1;border-radius:999px;padding-left:38px;background:var(--surface) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%235C6B57" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>') 13px center no-repeat}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink2)}
+.chip.on{background:var(--green-deep);border-color:var(--green-deep);color:var(--bg)}
+html.dark .chip.on{background:var(--leaf);border-color:var(--leaf);color:#10190f}
+
+/* ---------- Tarjetas ---------- */
+.grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:6px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
+.card{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;position:relative;transition:transform .12s}
+.card:active{transform:scale(.985)}
+.card .body{padding:14px;display:flex;gap:14px;align-items:flex-start;cursor:pointer}
+.ringwrap{position:relative;width:72px;height:72px;flex-shrink:0}
+.ringwrap svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ringwrap .ph{position:absolute;inset:6px;border-radius:50%;overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:26px}
+.ringwrap .ph img{width:100%;height:100%;object-fit:cover}
+.card .info{min-width:0;flex:1}
+.card .name{font-family:'Fraunces',serif;font-weight:600;font-size:18px;line-height:1.15}
+.card .species{font-size:12.5px;font-style:italic;color:var(--ink2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.tag{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
+.card .next{font-size:12.5px;font-weight:600;margin-top:8px;font-variant-numeric:tabular-nums}
+.next.ok{color:var(--green)} .next.today{color:var(--amber)} .next.late{color:var(--grana)}
+.card .foot{display:flex;border-top:1.5px solid var(--line)}
+.card .foot button{flex:1;padding:11px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px}
+.card .foot button+button{border-left:1.5px solid var(--line)}
+.waterbtn{color:var(--blue)}
+.badge{position:absolute;top:10px;right:10px;font-size:9.5px;font-weight:800;letter-spacing:.05em;padding:4px 9px;border-radius:999px;color:#fff;z-index:2}
+.badge.late{background:var(--grana);animation:pulse 1.6s infinite}
+.badge.today{background:var(--amber)}
+@keyframes pulse{50%{opacity:.55}}
+@media(prefers-reduced-motion:reduce){.badge.late{animation:none}.modal .sheet{animation:none}}
+
+.empty{text-align:center;padding:48px 20px;color:var(--ink2)}
+.empty .big{font-size:44px}
+.empty h3{font-size:20px;color:var(--ink);margin:10px 0 4px}
+
+/* ---------- FAB ---------- */
+.fab{position:fixed;bottom:22px;right:18px;width:58px;height:58px;border-radius:20px;background:var(--green-deep);color:var(--bg);font-size:30px;font-weight:300;box-shadow:0 8px 24px rgba(23,59,36,.35);display:flex;align-items:center;justify-content:center;z-index:30;transition:transform .1s}
+html.dark .fab{background:var(--leaf);color:#10190f}
+.fab:active{transform:scale(.92)}
+@media(min-width:1140px){.fab{right:calc(50% - 550px + 18px)}}
+
+/* ---------- Modales ---------- */
+.modal{position:fixed;inset:0;background:rgba(18,24,16,.55);backdrop-filter:blur(3px);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;border-radius:26px 26px 0 0;padding:22px 20px 30px;animation:up .28s cubic-bezier(.16,1,.3,1)}
+@media(min-width:640px){.modal{align-items:center;padding:20px}.sheet{border-radius:26px;padding-bottom:22px}}
+@keyframes up{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
+.sheet .mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+.sheet .mhead h2{font-size:23px;font-weight:700}
+.xbtn{width:32px;height:32px;border-radius:50%;background:var(--surface2);font-weight:700;color:var(--ink2);flex-shrink:0}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:14px;font-weight:700;font-size:14.5px;margin-top:14px}
+.btn.primary{background:var(--green-deep);color:var(--bg)}
+html.dark .btn.primary{background:var(--leaf);color:#10190f}
+.btn.soft{background:var(--surface2);border:1.5px solid var(--line)}
+.btn.danger{color:var(--grana)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.photopick{display:flex;align-items:center;gap:14px;margin-top:4px}
+.photopick .prev{width:84px;height:84px;border-radius:20px;background:var(--surface2);border:1.5px dashed var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0}
+.photopick .prev img{width:100%;height:100%;object-fit:cover}
+.lightopts{display:flex;gap:8px}
+.lightopts button{flex:1;padding:10px 4px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-size:12.5px;font-weight:600}
+.lightopts button.on{border-color:var(--green);background:var(--green);color:#fff}
+html.dark .lightopts button.on{color:#10190f}
+
+/* ---------- Detalle ---------- */
+.hero{border-radius:20px;overflow:hidden;height:190px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:56px;margin-bottom:14px}
+.hero img{width:100%;height:100%;object-fit:cover}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.kv:last-child{border:none}
+.kv .k{font-size:11.5px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
+.kv .v{font-weight:600;font-variant-numeric:tabular-nums}
+.desc{background:var(--surface2);border-radius:14px;padding:12px 14px;font-size:14px;margin:10px 0;white-space:pre-wrap}
+.hist{max-height:200px;overflow-y:auto;margin-top:6px}
+.hist .h{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.hist .h .d{margin-left:auto;color:var(--ink2);font-variant-numeric:tabular-nums;font-size:12px}
+.actions2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ---------- Geocoder ---------- */
+.georesults{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.georesults button{text-align:left;padding:10px 12px;border-radius:12px;background:var(--surface2);border:1.5px solid var(--line);font-size:13.5px}
+.georesults button:hover{border-color:var(--green)}
+
+/* ---------- Sync ---------- */
+.syncsteps{counter-reset:s;margin:6px 0 4px}
+.syncsteps p{position:relative;padding:8px 0 8px 36px;font-size:13.5px}
+.syncsteps p::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:8px;width:24px;height:24px;border-radius:50%;background:var(--green-deep);color:var(--bg);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+html.dark .syncsteps p::before{background:var(--leaf);color:#10190f}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:var(--green-deep);color:var(--bg);padding:11px 20px;border-radius:999px;font-weight:600;font-size:13.5px;z-index:80;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s}
+html.dark .toast{background:var(--leaf);color:#10190f}
+.toast.show{opacity:1}
+.themeopts{display:flex;gap:8px}
+.themeopts button{flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-weight:600;font-size:13px}
+.themeopts button.on{border-color:var(--green);background:var(--green);color:#fff}
+html.dark .themeopts button.on{color:#10190f}
+.userpick{display:flex;gap:8px}
+.userpick button{flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-weight:700;font-size:13.5px}
+.userpick button.on{border-color:var(--grana);background:var(--grana);color:#fff}
+.note{font-size:12px;color:var(--ink2);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="headrow">
+      <div class="brand">
+        <h1>Plantómetro<span class="dot">.</span></h1>
+        <span class="who" id="who">El jardín compartido</span>
+      </div>
+      <div class="topbtns">
+        <button class="iconbtn" id="acc-btn" onclick="openModal('account-modal')" title="Cuenta" style="overflow:hidden">👤</button>
+        <button class="iconbtn" onclick="openModal('settings-modal')" title="Ajustes">⚙️</button>
+      </div>
+    </div>
+
+    <div class="weather">
+      <span style="font-size:26px" id="w-icon">🌤️</span>
+      <div>
+        <div class="city" id="w-city">—</div>
+        <div class="data">
+          <span>🌡️ <b id="w-temp">--°</b></span>
+          <span>💧 <b id="w-hum">--%</b></span>
+        </div>
+      </div>
+      <button class="chipbtn" onclick="loadWeather(true)">Actualizar</button>
+      <div class="tip" id="w-tip">Cargando el clima de tu zona…</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="st-total">0</b><span>Plantas</span></div>
+      <div class="stat warn"><b id="st-today">0</b><span>Regar hoy</span></div>
+      <div class="stat bad"><b id="st-late">0</b><span>Atrasadas</span></div>
+    </div>
+  </header>
+
+  <div class="tools">
+    <div class="search"><input type="search" id="q" placeholder="Buscar planta o especie…" oninput="render()"></div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <main class="grid" id="grid"></main>
+</div>
+
+<button class="fab" onclick="openForm()" aria-label="Añadir planta">+</button>
+<div class="toast" id="toast"></div>
+
+<!-- ===== Formulario ===== -->
+<div class="modal" id="form-modal">
+  <form class="sheet" onsubmit="savePlant(event)">
+    <div class="mhead"><h2 id="form-title">Nueva planta</h2><button type="button" class="xbtn" onclick="closeModal('form-modal')">✕</button></div>
+    <input type="hidden" id="f-id">
+
+    <label>Foto</label>
+    <div class="photopick">
+      <div class="prev" id="f-prev">🪴</div>
+      <div style="flex:1">
+        <input type="file" accept="image/*" id="f-photo" onchange="pickPhoto(event)" style="padding:8px;font-size:13px">
+        <p class="note">Se comprime automáticamente para ocupar poco.</p>
+      </div>
+    </div>
+
+    <label for="f-name">Nombre *</label>
+    <input id="f-name" required placeholder="Ej: Monstera del salón">
+    <label for="f-species">Especie / tipo</label>
+    <input id="f-species" placeholder="Ej: Monstera deliciosa">
+    <label for="f-loc">Ubicación</label>
+    <input id="f-loc" list="loclist" placeholder="Ej: Salón, Terraza, Baño…">
+    <datalist id="loclist"></datalist>
+
+    <label>Luz que recibe</label>
+    <div class="lightopts" id="f-light">
+      <button type="button" data-v="sol" onclick="setLight('sol')">☀️ Sol directo</button>
+      <button type="button" data-v="media" onclick="setLight('media')">⛅ Luz media</button>
+      <button type="button" data-v="sombra" onclick="setLight('sombra')">🌑 Sombra</button>
+    </div>
+
+    <div class="row2">
+      <div><label for="f-freq">Riego: cada (días) *</label><input id="f-freq" type="number" min="1" max="120" required value="7"></div>
+      <div><label for="f-last">Último riego *</label><input id="f-last" type="date" required></div>
+    </div>
+    <div class="row2">
+      <div><label for="f-fertfreq">Abono: cada (días)</label><input id="f-fertfreq" type="number" min="0" max="365" value="0" placeholder="0 = sin abono"></div>
+      <div><label for="f-fertlast">Último abonado</label><input id="f-fertlast" type="date"></div>
+    </div>
+
+    <label for="f-desc">Descripción y notas</label>
+    <textarea id="f-desc" rows="3" placeholder="Cuidados, dónde la comprasteis, manías que tenga…"></textarea>
+
+    <button class="btn primary" id="f-save">Guardar planta</button>
+  </form>
+</div>
+
+<!-- ===== Detalle ===== -->
+<div class="modal" id="detail-modal">
+  <div class="sheet">
+    <div class="mhead">
+      <div><h2 id="d-name">—</h2><p style="font-style:italic;color:var(--ink2);font-size:13.5px" id="d-species"></p></div>
+      <button class="xbtn" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="hero" id="d-photo">🪴</div>
+    <div id="d-desc" class="desc" style="display:none"></div>
+    <div class="kv"><span class="k">Ubicación</span><span class="v" id="d-loc">—</span></div>
+    <div class="kv"><span class="k">Luz</span><span class="v" id="d-light">—</span></div>
+    <div class="kv"><span class="k">Riego</span><span class="v" id="d-freq">—</span></div>
+    <div class="kv"><span class="k">Último riego</span><span class="v" id="d-last">—</span></div>
+    <div class="kv"><span class="k">Próximo riego</span><span class="v" id="d-next">—</span></div>
+    <div class="kv" id="d-fertrow"><span class="k">Próximo abono</span><span class="v" id="d-fert">—</span></div>
+    <h3 style="font-size:16px;margin-top:14px">Historial</h3>
+    <div class="hist" id="d-hist"></div>
+    <div class="actions2">
+      <button class="btn primary" id="d-water">💧 Regar ahora</button>
+      <button class="btn soft" id="d-fertbtn">🌱 Abonar</button>
+      <button class="btn soft" id="d-edit">✏️ Editar</button>
+      <button class="btn soft danger" id="d-del">🗑️ Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Cuenta ===== -->
+<div class="modal" id="account-modal">
+  <div class="sheet">
+    <div class="mhead"><h2>Cuenta</h2><button class="xbtn" onclick="closeModal('account-modal')">✕</button></div>
+    <div style="display:flex;align-items:center;gap:14px;background:var(--surface2);border-radius:16px;padding:14px">
+      <img id="acc-photo" src="" alt="" style="width:52px;height:52px;border-radius:50%;background:var(--line)" referrerpolicy="no-referrer">
+      <div style="min-width:0">
+        <div style="font-weight:700" id="acc-name">—</div>
+        <div class="note" id="acc-email" style="margin:0;overflow:hidden;text-overflow:ellipsis">—</div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:10px">✅ Sincronización en tiempo real activa. Las plantas pertenecen a esta cuenta: entra con ella en el otro móvil y veréis lo mismo al instante.</p>
+    <button class="btn soft" onclick="exportDownload()">💾 Descargar copia de seguridad</button>
+    <label class="btn soft" style="cursor:pointer">📥 Restaurar copia
+      <input type="file" accept=".json,application/json" hidden onchange="importData(event)">
+    </label>
+    <button class="btn soft danger" onclick="doSignOut()">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- ===== Puerta de entrada ===== -->
+<div id="gate" style="position:fixed;inset:0;background:var(--bg);z-index:100;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="max-width:420px;width:100%">
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:52px">🪴</div>
+      <h1 style="font-size:32px;color:var(--green-deep)">Plantómetro<span style="color:var(--grana)">.</span></h1>
+      <p style="color:var(--ink2);font-size:14px;margin-top:4px">Vuestro jardín, sincronizado al instante</p>
+    </div>
+
+    <div id="gate-config" style="display:none;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)">
+      <h3 style="font-size:17px;margin-bottom:6px">Primera puesta en marcha</h3>
+      <p style="font-size:13px;color:var(--ink2)">Pega aquí la configuración de tu proyecto Firebase (el bloque <b>firebaseConfig</b>). Está explicado paso a paso en el archivo <b>LEEME.md</b>. Solo se hace una vez por móvil.</p>
+      <textarea id="fb-config" rows="7" style="font-family:monospace;font-size:11.5px;margin-top:10px" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "...", ... }'></textarea>
+      <button class="btn primary" onclick="saveConfig()">Guardar configuración</button>
+    </div>
+
+    <div id="gate-login" style="display:none;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);text-align:center">
+      <p style="font-size:14px;margin-bottom:4px">Entrad <b>los dos con la misma cuenta</b> de Google para compartir el jardín:</p>
+      <button class="btn primary" onclick="doSignIn()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C41.4 34.9 44 30 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
+        Continuar con Google
+      </button>
+      <p class="note" id="gate-error" style="color:var(--grana)"></p>
+      <button style="font-size:12px;color:var(--ink2);text-decoration:underline;margin-top:10px" onclick="resetConfig()">Cambiar configuración de Firebase</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Ajustes ===== -->
+<div class="modal" id="settings-modal">
+  <div class="sheet">
+    <div class="mhead"><h2>Ajustes</h2><button class="xbtn" onclick="closeModal('settings-modal')">✕</button></div>
+
+    <label>¿Quién usa este móvil?</label>
+    <div class="userpick" id="userpick"></div>
+    <div class="row2">
+      <div><label for="s-u1">Nombre 1</label><input id="s-u1" placeholder="Fran"></div>
+      <div><label for="s-u2">Nombre 2</label><input id="s-u2" placeholder="Tu pareja"></div>
+    </div>
+    <p class="note">Los riegos quedan firmados por quien los hace, aunque compartáis cuenta.</p>
+
+    <label for="s-city">Ciudad para el clima</label>
+    <div style="display:flex;gap:8px">
+      <input id="s-city" placeholder="Escribe y busca…">
+      <button class="iconbtn" style="width:46px;height:46px" onclick="searchCity()" title="Buscar">🔍</button>
+      <button class="iconbtn" style="width:46px;height:46px" onclick="useGPS()" title="Usar mi ubicación">📍</button>
+    </div>
+    <div class="georesults" id="georesults"></div>
+
+    <label>Tema</label>
+    <div class="themeopts" id="themeopts">
+      <button data-v="light" onclick="setTheme('light')">☀️ Claro</button>
+      <button data-v="dark" onclick="setTheme('dark')">🌙 Oscuro</button>
+      <button data-v="auto" onclick="setTheme('auto')">🔁 Auto</button>
+    </div>
+
+    <button class="btn soft" onclick="askNotif()">🔔 Activar avisos de riego</button>
+    <p class="note">Los avisos aparecen al abrir la app cuando hay plantas pendientes.</p>
+    <button class="btn primary" onclick="saveSettings()">Guardar ajustes</button>
+  </div>
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ============ Utilidades ============ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const todayStr = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const addDays = (dStr, n) => { const d = new Date(dStr+"T12:00:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const diffDays = (a, b) => Math.round((new Date(b+"T12:00:00") - new Date(a+"T12:00:00")) / 864e5);
+const fmt = dStr => { if(!dStr) return "—"; const d = new Date(dStr+"T12:00:00"); return d.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"}); };
+const LIGHT = {sol:"☀️ Sol directo", media:"⛅ Luz media", sombra:"🌑 Sombra"};
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2600); }
+
+/* ============ Ajustes locales (clima y tema) ============ */
+let settings = { city:"Granada", lat:37.1773, lon:-3.5986, theme:"auto", u1:"Fran", u2:"Pareja", active:1 };
+try { const s = localStorage.getItem("pg3b_settings"); if (s) settings = Object.assign(settings, JSON.parse(s)); } catch(e){}
+function persistSettings(){ try{ localStorage.setItem("pg3b_settings", JSON.stringify(settings)); }catch(e){} }
+
+function applyTheme(){
+  const wantsDark = settings.theme==="dark" || (settings.theme==="auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.classList.toggle("dark", wantsDark);
+  document.querySelectorAll("#themeopts button").forEach(b=>b.classList.toggle("on", b.dataset.v===settings.theme));
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+function setTheme(t){ settings.theme=t; persistSettings(); applyTheme(); }
+function renderSettingsUI(){
+  $("s-city").value = settings.city;
+  $("s-u1").value = settings.u1; $("s-u2").value = settings.u2;
+  const up = $("userpick");
+  up.innerHTML = `<button class="${settings.active===1?'on':''}" data-u="1">${esc(settings.u1)}</button>
+                  <button class="${settings.active===2?'on':''}" data-u="2">${esc(settings.u2)}</button>`;
+  up.querySelectorAll("button").forEach(b=>b.onclick=()=>{settings.active=+b.dataset.u;persistSettings();renderSettingsUI();});
+  $("who").textContent = `El jardín de ${settings.u1} & ${settings.u2}`;
+  applyTheme();
+}
+function saveSettings(){
+  settings.u1 = $("s-u1").value.trim() || "Fran";
+  settings.u2 = $("s-u2").value.trim() || "Pareja";
+  persistSettings(); renderSettingsUI(); closeModal("settings-modal"); toast("Ajustes guardados 🌿");
+}
+
+/* ============ Firebase: configuración ============ */
+let fbConfig = null;
+try { const c = localStorage.getItem("pg3_fbconfig"); if(c) fbConfig = JSON.parse(c); } catch(e){}
+
+function parseConfigText(txt){
+  // Acepta el bloque tal cual se copia de Firebase (JS) o JSON puro
+  const m = txt.match(/\{[\s\S]*\}/); if(!m) throw 0;
+  let s = m[0].replace(/\/\/.*$/gm,"").replace(/'/g,'"').replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:/g,'$1"$2":').replace(/,\s*}/g,"}");
+  const cfg = JSON.parse(s);
+  if(!cfg.apiKey || !cfg.projectId || !cfg.authDomain) throw 0;
+  return cfg;
+}
+function saveConfig(){
+  try{
+    fbConfig = parseConfigText($("fb-config").value);
+    localStorage.setItem("pg3_fbconfig", JSON.stringify(fbConfig));
+    location.reload();
+  }catch(e){ toast("Configuración no válida: revisa que copiaste el bloque completo ❌"); }
+}
+function resetConfig(){
+  if(confirm("¿Borrar la configuración de Firebase de este móvil? Tus plantas siguen a salvo en la nube.")){
+    localStorage.removeItem("pg3_fbconfig"); location.reload();
+  }
+}
+
+/* ============ Firebase: sesión y datos ============ */
+let auth=null, fs=null, user=null, unsub=null, plants=[];
+try { const b = localStorage.getItem("pg3_cache"); if(b) plants = JSON.parse(b); } catch(e){}
+
+function showGate(mode){
+  $("gate").style.display = mode ? "flex" : "none";
+  $("gate-config").style.display = mode==="config" ? "block" : "none";
+  $("gate-login").style.display = mode==="login" ? "block" : "none";
+}
+
+function startFirebase(){
+  const app = initializeApp(fbConfig);
+  auth = getAuth(app);
+  try {
+    fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  } catch(e) { fs = initializeFirestore(app, {}); }
+
+  getRedirectResult(auth).catch(err=>{ $("gate-error").textContent = friendlyAuthError(err); });
+
+  onAuthStateChanged(auth, u => {
+    user = u;
+    if (u) {
+      showGate(null);
+      $("acc-name").textContent = u.displayName || "";
+      $("acc-email").textContent = u.email || "";
+      $("acc-photo").src = u.photoURL || "";
+      if (u.photoURL) $("acc-btn").innerHTML = '<img src="'+u.photoURL+'" alt="Cuenta" style="width:100%;height:100%;object-fit:cover" referrerpolicy="no-referrer">';
+      listenPlants();
+    } else {
+      if (unsub) { unsub(); unsub = null; }
+      showGate("login");
+    }
+  });
+}
+function friendlyAuthError(err){
+  if(!err) return "";
+  const c = err.code || "";
+  if(c.includes("unauthorized-domain")) return "Este dominio no está autorizado en Firebase → Authentication → Settings → Dominios autorizados.";
+  if(c.includes("popup-blocked")) return "El navegador bloqueó la ventana. Vuelve a intentarlo.";
+  if(c.includes("operation-not-allowed")) return "Activa el proveedor Google en Firebase → Authentication.";
+  return "No se pudo iniciar sesión ("+c+")";
+}
+async function doSignIn(){
+  $("gate-error").textContent = "";
+  const prov = new GoogleAuthProvider();
+  try { await signInWithPopup(auth, prov); }
+  catch(err){
+    if((err.code||"").includes("popup")) { try { await signInWithRedirect(auth, prov); } catch(e2){ $("gate-error").textContent = friendlyAuthError(e2); } }
+    else $("gate-error").textContent = friendlyAuthError(err);
+  }
+}
+function doSignOut(){ closeModal("account-modal"); signOut(auth); }
+
+function listenPlants(){
+  if (unsub) unsub();
+  unsub = onSnapshot(collection(fs, "users", user.uid, "plants"),
+    snap => {
+      plants = snap.docs.map(d => d.data());
+      try{ localStorage.setItem("pg3_cache", JSON.stringify(plants)); }catch(e){}
+      render();
+    },
+    err => {
+      if ((err.code||"").includes("permission-denied"))
+        toast("Sin permiso: añade tu email a las reglas de Firestore (ver LEEME) 🔒");
+      else toast("Error de conexión con la nube");
+    }
+  );
+}
+function putPlant(p){
+  // pintado optimista local + escritura en la nube (Firestore reintenta offline)
+  const i = plants.findIndex(x=>x.id===p.id);
+  if(i>=0) plants[i]=p; else plants.push(p);
+  render();
+  setDoc(doc(fs, "users", auth.currentUser.uid, "plants", p.id), p).catch(()=>toast("Se guardará al recuperar conexión 📶"));
+}
+function removePlant(id){
+  plants = plants.filter(x=>x.id!==id);
+  render();
+  deleteDoc(doc(fs, "users", auth.currentUser.uid, "plants", id)).catch(()=>{});
+}
+function whoAmI(){ return settings.active===2 ? settings.u2 : settings.u1; }
+const alive = () => plants;
+
+/* ============ Localización y clima ============ */
+async function searchCity(){
+  const q = $("s-city").value.trim(); if(!q) return;
+  const box = $("georesults"); box.innerHTML = "<p class='note'>Buscando…</p>";
+  try{
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=es&format=json`);
+    const d = await r.json();
+    if(!d.results?.length){ box.innerHTML = "<p class='note'>Sin resultados. Prueba con otro nombre.</p>"; return; }
+    box.innerHTML = d.results.map((c,i)=>`<button onclick="pickCity(${i})">📍 ${esc(c.name)}${c.admin1?", "+esc(c.admin1):""} <span style="color:var(--ink2)">(${esc(c.country||"")})</span></button>`).join("");
+    box._results = d.results;
+  }catch(e){ box.innerHTML = "<p class='note'>No hay conexión ahora mismo.</p>"; }
+}
+function pickCity(i){
+  const c = $("georesults")._results[i];
+  settings.city = c.name; settings.lat = c.latitude; settings.lon = c.longitude;
+  persistSettings(); $("georesults").innerHTML=""; $("s-city").value=c.name;
+  loadWeather(); toast(`Clima fijado en ${c.name} ✅`);
+}
+function useGPS(){
+  if(!navigator.geolocation) return toast("Este navegador no da la ubicación");
+  toast("Localizando…");
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    settings.lat = pos.coords.latitude; settings.lon = pos.coords.longitude;
+    try{
+      const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${settings.lat}&longitude=${settings.lon}&localityLanguage=es`);
+      const d = await r.json();
+      settings.city = d.city || d.locality || "Mi ubicación";
+    }catch(e){ settings.city = "Mi ubicación"; }
+    persistSettings(); $("s-city").value = settings.city; loadWeather(); toast(`Ubicación: ${settings.city} 📍`);
+  }, ()=>toast("No se pudo obtener la ubicación"));
+}
+const WCODE = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",61:"🌧️",63:"🌧️",65:"🌧️",71:"🌨️",80:"🌦️",95:"⛈️"};
+async function loadWeather(){
+  $("w-city").textContent = settings.city;
+  try{
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${settings.lat}&longitude=${settings.lon}&current=temperature_2m,relative_humidity_2m,weather_code`);
+    const d = await r.json(); const c = d.current;
+    $("w-temp").textContent = Math.round(c.temperature_2m)+"°C";
+    $("w-hum").textContent = Math.round(c.relative_humidity_2m)+"%";
+    $("w-icon").textContent = WCODE[c.weather_code] || "🌤️";
+    let tip = "Buen día para revisar tus plantas.";
+    if (c.temperature_2m >= 32) tip = "🥵 Mucho calor: vigila los riegos, la tierra se seca antes. Riega al atardecer.";
+    else if (c.temperature_2m >= 26 && c.relative_humidity_2m < 35) tip = "Ambiente seco y cálido: pulveriza las de interior tropical.";
+    else if (c.temperature_2m <= 8) tip = "🥶 Frío: espacia los riegos y protege las sensibles de la ventana.";
+    else if (c.relative_humidity_2m > 80) tip = "Humedad alta: cuidado con encharcar, comprueba la tierra antes de regar.";
+    $("w-tip").textContent = tip;
+  }catch(e){
+    $("w-temp").textContent = "--°"; $("w-hum").textContent = "--%";
+    $("w-tip").textContent = "Sin conexión: el clima se actualizará cuando la haya.";
+  }
+}
+
+/* ============ Render ============ */
+let filterLoc = "Todas", filterState = "todo";
+function plantState(p){
+  const next = addDays(p.lastWater, p.waterFreq);
+  const d = diffDays(todayStr(), next);
+  return { next, d, state: d<0 ? "late" : d===0 ? "today" : "ok" };
+}
+function ring(p){
+  const {d} = plantState(p);
+  const frac = Math.max(0, Math.min(1, d / p.waterFreq));
+  const R=33, C=2*Math.PI*R;
+  const col = d<0 ? "var(--grana)" : d===0 ? "var(--amber)" : "var(--blue)";
+  return `<svg viewBox="0 0 72 72" width="72" height="72" aria-hidden="true">
+    <circle cx="36" cy="36" r="${R}" fill="none" stroke="var(--line)" stroke-width="5"/>
+    <circle cx="36" cy="36" r="${R}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round"
+      stroke-dasharray="${C}" stroke-dashoffset="${C*(1-frac)}"/></svg>`;
+}
+function render(){
+  const list = alive();
+  let today=0, late=0;
+  list.forEach(p=>{ const s=plantState(p).state; if(s==="today") today++; if(s==="late") late++; });
+  $("st-total").textContent=list.length; $("st-today").textContent=today; $("st-late").textContent=late;
+
+  const locs = ["Todas", ...new Set(list.map(p=>p.loc).filter(Boolean))];
+  const states = [["todo","Todo"],["pend","💧 Pendientes"],["late","⚠️ Atrasadas"]];
+  $("chips").innerHTML =
+    states.map(([v,t])=>`<button class="chip ${filterState===v?'on':''}" data-fs="${v}">${t}</button>`).join("") +
+    locs.map((l,i)=>`<button class="chip ${filterLoc===l?'on':''}" data-fl="${i}">${esc(l)}</button>`).join("");
+  $("chips").querySelectorAll("[data-fs]").forEach(b=>b.onclick=()=>{filterState=b.dataset.fs;render();});
+  $("chips").querySelectorAll("[data-fl]").forEach(b=>b.onclick=()=>{filterLoc=locs[+b.dataset.fl];render();});
+  $("loclist").innerHTML = locs.slice(1).map(l=>`<option value="${esc(l)}">`).join("");
+
+  const q = $("q").value.trim().toLowerCase();
+  const shown = list.filter(p=>{
+    const s = plantState(p).state;
+    if(filterLoc!=="Todas" && p.loc!==filterLoc) return false;
+    if(filterState==="pend" && s==="ok") return false;
+    if(filterState==="late" && s!=="late") return false;
+    if(q && !(p.name+" "+(p.species||"")).toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=> plantState(a).d - plantState(b).d);
+
+  if(!shown.length){
+    $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="big">🪴</div><h3>${list.length? "Nada por aquí" : "Vuestro jardín está vacío"}</h3>
+      <p>${list.length? "Prueba con otro filtro o búsqueda." : "Pulsa el botón + para añadir la primera planta. La verá tu pareja al momento."}</p></div>`;
+    return;
+  }
+  $("grid").innerHTML = shown.map(p=>{
+    const {next,d,state} = plantState(p);
+    const badge = state==="late" ? `<span class="badge late">RIÉGAME · ${Math.abs(d)} d</span>` : state==="today" ? `<span class="badge today">HOY</span>` : "";
+    const nextTxt = state==="late" ? `Debía regarse ${fmt(next)}` : state==="today" ? "Toca regar hoy" : `Próximo riego: ${fmt(next)} (en ${d} d)`;
+    const fert = p.fertFreq>0 && p.lastFert ? diffDays(todayStr(), addDays(p.lastFert, p.fertFreq))<=0 : false;
+    const lastBy = p.history?.[0]?.by ? `· último: ${esc(p.history[0].by)}` : "";
+    return `<article class="card">
+      ${badge}
+      <div class="body" data-open="${p.id}">
+        <div class="ringwrap">${ring(p)}<div class="ph">${p.photo?`<img src="${p.photo}" alt="">`:"🪴"}</div></div>
+        <div class="info">
+          <div class="name">${esc(p.name)}</div>
+          ${p.species?`<div class="species">${esc(p.species)}</div>`:""}
+          <div class="meta">
+            ${p.loc?`<span class="tag">📍 ${esc(p.loc)}</span>`:""}
+            ${p.light?`<span class="tag">${LIGHT[p.light]?.slice(0,2)||""} ${p.light}</span>`:""}
+            ${fert?`<span class="tag" style="color:var(--amber);border-color:var(--amber)">🌱 abonar</span>`:""}
+          </div>
+          <div class="next ${state}">${nextTxt} <span style="color:var(--ink2);font-weight:400">${lastBy}</span></div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="waterbtn" data-water="${p.id}">💧 Regar</button>
+        <button data-open="${p.id}">Ver ficha</button>
+      </div>
+    </article>`;
+  }).join("");
+  $("grid").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>openDetail(el.dataset.open));
+  $("grid").querySelectorAll("[data-water]").forEach(el=>el.onclick=e=>{e.stopPropagation();water(el.dataset.water);});
+}
+
+/* ============ Formulario ============ */
+let formPhoto = null, formLight = "";
+function setLight(v){ formLight = formLight===v ? "" : v; document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight)); }
+function openForm(id){
+  const p = id ? plants.find(x=>x.id===id) : null;
+  $("form-title").textContent = p ? "Editar planta" : "Nueva planta";
+  $("f-id").value = p?.id || "";
+  $("f-name").value = p?.name || ""; $("f-species").value = p?.species || "";
+  $("f-loc").value = p?.loc || ""; $("f-desc").value = p?.desc || "";
+  $("f-freq").value = p?.waterFreq || 7; $("f-last").value = p?.lastWater || todayStr();
+  $("f-fertfreq").value = p?.fertFreq || 0; $("f-fertlast").value = p?.lastFert || "";
+  formPhoto = p?.photo || null; formLight = p?.light || "";
+  $("f-prev").innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : "🪴";
+  $("f-photo").value = "";
+  document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight));
+  openModal("form-modal");
+}
+function pickPhoto(e){
+  const file = e.target.files[0]; if(!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 640, sc = Math.min(1, MAX/Math.max(img.width, img.height));
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    formPhoto = cv.toDataURL("image/jpeg", .68);
+    $("f-prev").innerHTML = `<img src="${formPhoto}" alt="">`;
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+}
+function savePlant(e){
+  e.preventDefault();
+  const id = $("f-id").value || (Date.now().toString(36)+Math.random().toString(36).slice(2,7));
+  const old = plants.find(x=>x.id===id);
+  const p = {
+    id,
+    name: $("f-name").value.trim(),
+    species: $("f-species").value.trim(),
+    loc: $("f-loc").value.trim(),
+    light: formLight,
+    desc: $("f-desc").value.trim(),
+    photo: formPhoto,
+    waterFreq: Math.max(1, +$("f-freq").value || 7),
+    lastWater: $("f-last").value || todayStr(),
+    fertFreq: Math.max(0, +$("f-fertfreq").value || 0),
+    lastFert: $("f-fertlast").value || "",
+    history: old?.history || [],
+    createdAt: old?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    updatedBy: whoAmI()
+  };
+  putPlant(p); closeModal("form-modal"); toast(old ? "Planta actualizada ✏️" : "¡Planta añadida! 🌿");
+}
+
+/* ============ Acciones ============ */
+function water(id){
+  const p = plants.find(x=>x.id===id); if(!p) return;
+  p.lastWater = todayStr();
+  p.history = [{t:"agua", date:todayStr(), by:whoAmI()}, ...(p.history||[])].slice(0,60);
+  p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
+  putPlant(p); toast(`💧 ${p.name} regada por ${whoAmI()}`);
+}
+function fertilize(id){
+  const p = plants.find(x=>x.id===id); if(!p) return;
+  p.lastFert = todayStr();
+  p.history = [{t:"abono", date:todayStr(), by:whoAmI()}, ...(p.history||[])].slice(0,60);
+  p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
+  putPlant(p); openDetail(id); toast(`🌱 ${p.name} abonada`);
+}
+function delPlant(id){
+  const p = plants.find(x=>x.id===id); if(!p) return;
+  if(!confirm(`¿Eliminar "${p.name}"? Desaparecerá también del móvil de tu pareja.`)) return;
+  removePlant(id); closeModal("detail-modal"); toast("Planta eliminada 🗑️");
+}
+function openDetail(id){
+  const p = plants.find(x=>x.id===id); if(!p) return;
+  const {next,d,state} = plantState(p);
+  $("d-name").textContent = p.name; $("d-species").textContent = p.species || "";
+  $("d-photo").innerHTML = p.photo ? `<img src="${p.photo}" alt="${esc(p.name)}">` : "🪴";
+  $("d-desc").style.display = p.desc ? "block" : "none"; $("d-desc").textContent = p.desc || "";
+  $("d-loc").textContent = p.loc || "—";
+  $("d-light").textContent = LIGHT[p.light] || "—";
+  $("d-freq").textContent = `Cada ${p.waterFreq} días`;
+  $("d-last").textContent = fmt(p.lastWater);
+  $("d-next").innerHTML = `<span style="color:${state==='late'?'var(--grana)':state==='today'?'var(--amber)':'var(--blue)'}">${fmt(next)}${state==='late'?` · ${Math.abs(d)} d de retraso`:state==='today'?' · hoy':''}</span>`;
+  if(p.fertFreq>0){
+    $("d-fertrow").style.display="flex";
+    $("d-fert").textContent = p.lastFert ? fmt(addDays(p.lastFert, p.fertFreq)) : "Sin registrar";
+  } else $("d-fertrow").style.display="none";
+  $("d-hist").innerHTML = (p.history?.length)
+    ? p.history.map(h=>`<div class="h">${h.t==="agua"?"💧 Riego":"🌱 Abono"} · <b>${esc(h.by||"")}</b><span class="d">${fmt(h.date)}</span></div>`).join("")
+    : "<p class='note'>Aún sin registros. El primer riego lo estrena.</p>";
+  $("d-water").onclick = ()=>{ water(id); openDetail(id); };
+  $("d-fertbtn").onclick = ()=>fertilize(id);
+  $("d-edit").onclick = ()=>{ closeModal("detail-modal"); openForm(id); };
+  $("d-del").onclick = ()=>delPlant(id);
+  openModal("detail-modal");
+}
+
+/* ============ Copia de seguridad ============ */
+function exportDownload(){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({app:"plantometro",v:3,exported:new Date().toISOString(),plants})],{type:"application/json"}));
+  a.download = `plantometro_${todayStr()}.json`; a.click();
+  toast("Copia descargada 💾");
+}
+function importData(e){
+  const file = e.target.files[0]; e.target.value=""; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try{
+      const d = JSON.parse(ev.target.result);
+      const list = Array.isArray(d) ? d : d.plants;
+      if(!Array.isArray(list)) throw 0;
+      let n=0;
+      list.forEach(np=>{
+        const local = plants.find(x=>x.id===np.id);
+        if(!local || (np.updatedAt||"") > (local.updatedAt||"")){ delete np.deleted; putPlant(np); n++; }
+      });
+      closeModal("account-modal");
+      toast(`Restauradas ${n} plantas ✅`);
+    }catch(err){ toast("Ese archivo no es un jardín válido ❌"); }
+  };
+  r.readAsText(file);
+}
+
+/* ============ Avisos ============ */
+function askNotif(){
+  if(!("Notification" in window)) return toast("Este navegador no soporta avisos");
+  Notification.requestPermission().then(p=>{
+    toast(p==="granted" ? "Avisos activados 🔔" : "Avisos no permitidos");
+    if(p==="granted") notifyDue();
+  });
+}
+function notifyDue(){
+  if(!("Notification" in window) || Notification.permission!=="granted") return;
+  const hoy=[], tarde=[];
+  alive().forEach(p=>{ const s=plantState(p).state; if(s==="today") hoy.push(p.name); if(s==="late") tarde.push(p.name); });
+  if(tarde.length) new Notification("⚠️ Riegos atrasados", {body:tarde.join(", ")});
+  else if(hoy.length) new Notification("💧 Toca regar hoy", {body:hoy.join(", ")});
+}
+
+/* ============ Modales e inicio ============ */
+function openModal(id){ $(id).classList.add("open"); if(id==="settings-modal") renderSettingsUI(); }
+function closeModal(id){ $(id).classList.remove("open"); }
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) m.classList.remove("open"); }));
+
+// Exponer funciones usadas en atributos onclick del HTML
+Object.assign(window, { openModal, closeModal, openForm, savePlant, pickPhoto, setLight, setTheme, saveSettings, searchCity, pickCity, useGPS, loadWeather, askNotif, saveConfig, resetConfig, doSignIn, doSignOut, exportDownload, importData, render });
+
+if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
+
+(function init(){
+  renderSettingsUI();
+  render();
+  loadWeather();
+  if (!fbConfig) { showGate("config"); return; }
+  try { startFirebase(); } catch(e){ showGate("config"); toast("La configuración guardada no es válida"); }
+  setTimeout(notifyDue, 2500);
+})();
+</script>
+
+</body>
+</html>

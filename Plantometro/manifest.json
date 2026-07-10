@@ -1,0 +1,16 @@
+{
+  "name": "Plantómetro · Jardín compartido",
+  "short_name": "Plantómetro",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#EDF1E3",
+  "theme_color": "#173B24",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/892/892926.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
