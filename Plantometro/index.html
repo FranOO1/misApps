@@ -170,9 +170,6 @@ html.dark .toast{background:var(--leaf);color:#10190f}
 .themeopts button{flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-weight:600;font-size:13px}
 .themeopts button.on{border-color:var(--green);background:var(--green);color:#fff}
 html.dark .themeopts button.on{color:#10190f}
-.userpick{display:flex;gap:8px}
-.userpick button{flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-weight:700;font-size:13.5px}
-.userpick button.on{border-color:var(--grana);background:var(--grana);color:#fff}
 .note{font-size:12px;color:var(--ink2);margin-top:6px}
 </style>
 </head>
@@ -209,6 +206,8 @@ html.dark .themeopts button.on{color:#10190f}
       <div class="stat warn"><b id="st-today">0</b><span>Regar hoy</span></div>
       <div class="stat bad"><b id="st-late">0</b><span>Atrasadas</span></div>
     </div>
+
+    <div id="due-banner" style="display:none;margin-top:10px;border-radius:var(--r);padding:12px 16px;box-shadow:var(--shadow)"></div>
   </header>
 
   <div class="tools">
@@ -339,13 +338,9 @@ html.dark .themeopts button.on{color:#10190f}
   <div class="sheet">
     <div class="mhead"><h2>Ajustes</h2><button class="xbtn" onclick="closeModal('settings-modal')">✕</button></div>
 
-    <label>¿Quién usa este móvil?</label>
-    <div class="userpick" id="userpick"></div>
-    <div class="row2">
-      <div><label for="s-u1">Nombre 1</label><input id="s-u1" placeholder="Fran"></div>
-      <div><label for="s-u2">Nombre 2</label><input id="s-u2" placeholder="Tu pareja"></div>
-    </div>
-    <p class="note">Los riegos quedan firmados por quien los hace, aunque compartáis cuenta.</p>
+    <label for="s-name">Tu apodo</label>
+    <input id="s-name" placeholder="Ej: Fran" maxlength="20">
+    <p class="note">Los riegos y abonos quedan firmados con este apodo en el historial.</p>
 
     <label for="s-city">Ciudad para el clima</label>
     <div style="display:flex;gap:8px">
@@ -362,8 +357,7 @@ html.dark .themeopts button.on{color:#10190f}
       <button data-v="auto" onclick="setTheme('auto')">🔁 Auto</button>
     </div>
 
-    <button class="btn soft" onclick="askNotif()">🔔 Activar avisos de riego</button>
-    <p class="note">Los avisos aparecen al abrir la app cuando hay plantas pendientes.</p>
+    <p class="note">Al abrir la app verás arriba un aviso con las plantas pendientes de riego.</p>
     <button class="btn primary" onclick="saveSettings()">Guardar ajustes</button>
   </div>
 </div>
@@ -383,8 +377,15 @@ const LIGHT = {sol:"☀️ Sol directo", media:"⛅ Luz media", sombra:"🌑 Som
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2600); }
 
 /* ============ Ajustes locales (clima y tema) ============ */
-let settings = { city:"Granada", lat:37.1773, lon:-3.5986, theme:"auto", u1:"Fran", u2:"Pareja", active:1 };
-try { const s = localStorage.getItem("pg3b_settings"); if (s) settings = Object.assign(settings, JSON.parse(s)); } catch(e){}
+let settings = { city:"Granada", lat:37.1773, lon:-3.5986, theme:"auto", name:"" };
+try {
+  const s = localStorage.getItem("pg3b_settings");
+  if (s) {
+    const o = JSON.parse(s);
+    if (!o.name && (o.u1 || o.u2)) o.name = (o.active===2 ? o.u2 : o.u1) || ""; // migración del formato antiguo
+    settings = Object.assign(settings, o);
+  }
+} catch(e){}
 function persistSettings(){ try{ localStorage.setItem("pg3b_settings", JSON.stringify(settings)); }catch(e){} }
 
 function applyTheme(){
@@ -396,17 +397,12 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme
 function setTheme(t){ settings.theme=t; persistSettings(); applyTheme(); }
 function renderSettingsUI(){
   $("s-city").value = settings.city;
-  $("s-u1").value = settings.u1; $("s-u2").value = settings.u2;
-  const up = $("userpick");
-  up.innerHTML = `<button class="${settings.active===1?'on':''}" data-u="1">${esc(settings.u1)}</button>
-                  <button class="${settings.active===2?'on':''}" data-u="2">${esc(settings.u2)}</button>`;
-  up.querySelectorAll("button").forEach(b=>b.onclick=()=>{settings.active=+b.dataset.u;persistSettings();renderSettingsUI();});
-  $("who").textContent = `El jardín de ${settings.u1} & ${settings.u2}`;
+  $("s-name").value = settings.name || "";
+  $("who").textContent = "El jardín compartido";
   applyTheme();
 }
 function saveSettings(){
-  settings.u1 = $("s-u1").value.trim() || "Fran";
-  settings.u2 = $("s-u2").value.trim() || "Pareja";
+  settings.name = $("s-name").value.trim();
   persistSettings(); renderSettingsUI(); closeModal("settings-modal"); toast("Ajustes guardados 🌿");
 }
 
@@ -500,7 +496,7 @@ function removePlant(id){
   render();
   deleteDoc(doc(fs, "users", auth.currentUser.uid, "plants", id)).catch(()=>{});
 }
-function whoAmI(){ return settings.active===2 ? settings.u2 : settings.u1; }
+function whoAmI(){ return (settings.name || "").trim() || "Alguien"; }
 const alive = () => plants;
 
 /* ============ Localización y clima ============ */
@@ -577,6 +573,7 @@ function render(){
   let today=0, late=0;
   list.forEach(p=>{ const s=plantState(p).state; if(s==="today") today++; if(s==="late") late++; });
   $("st-total").textContent=list.length; $("st-today").textContent=today; $("st-late").textContent=late;
+  notifyDue();
 
   const locs = ["Todas", ...new Set(list.map(p=>p.loc).filter(Boolean))];
   const states = [["todo","Todo"],["pend","💧 Pendientes"],["late","⚠️ Atrasadas"]];
@@ -761,20 +758,21 @@ function importData(e){
   r.readAsText(file);
 }
 
-/* ============ Avisos ============ */
-function askNotif(){
-  if(!("Notification" in window)) return toast("Este navegador no soporta avisos");
-  Notification.requestPermission().then(p=>{
-    toast(p==="granted" ? "Avisos activados 🔔" : "Avisos no permitidos");
-    if(p==="granted") notifyDue();
-  });
-}
+/* ============ Aviso interno de riegos pendientes ============ */
 function notifyDue(){
-  if(!("Notification" in window) || Notification.permission!=="granted") return;
+  const el = $("due-banner");
   const hoy=[], tarde=[];
   alive().forEach(p=>{ const s=plantState(p).state; if(s==="today") hoy.push(p.name); if(s==="late") tarde.push(p.name); });
-  if(tarde.length) new Notification("⚠️ Riegos atrasados", {body:tarde.join(", ")});
-  else if(hoy.length) new Notification("💧 Toca regar hoy", {body:hoy.join(", ")});
+  if(!hoy.length && !tarde.length){ el.style.display="none"; return; }
+  const partes = [];
+  if(tarde.length) partes.push(`<b>${tarde.length}</b> atrasada${tarde.length>1?"s":""}: ${esc(tarde.join(", "))}`);
+  if(hoy.length) partes.push(`<b>${hoy.length}</b> para hoy: ${esc(hoy.join(", "))}`);
+  el.innerHTML = (tarde.length ? "⚠️ " : "💧 ") + partes.join(" · ");
+  el.style.background = tarde.length ? "color-mix(in srgb, var(--grana) 14%, var(--surface))" : "color-mix(in srgb, var(--amber) 14%, var(--surface))";
+  el.style.border = "1.5px solid " + (tarde.length ? "var(--grana)" : "var(--amber)");
+  el.style.color = "var(--ink)";
+  el.style.fontSize = "13.5px";
+  el.style.display = "block";
 }
 
 /* ============ Modales e inicio ============ */
@@ -783,7 +781,7 @@ function closeModal(id){ $(id).classList.remove("open"); }
 document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) m.classList.remove("open"); }));
 
 // Exponer funciones usadas en atributos onclick del HTML
-Object.assign(window, { openModal, closeModal, openForm, savePlant, pickPhoto, setLight, setTheme, saveSettings, searchCity, pickCity, useGPS, loadWeather, askNotif, doSignIn, doSignOut, exportDownload, importData, render });
+Object.assign(window, { openModal, closeModal, openForm, savePlant, pickPhoto, setLight, setTheme, saveSettings, searchCity, pickCity, useGPS, loadWeather, doSignIn, doSignOut, exportDownload, importData, render });
 
 if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
 
@@ -792,7 +790,6 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").cat
   render();
   loadWeather();
   try { startFirebase(); } catch(e){ showGate("login"); $("gate-error").textContent = "Error al iniciar Firebase. Recarga la página."; }
-  setTimeout(notifyDue, 2500);
 })();
 </script>
 
