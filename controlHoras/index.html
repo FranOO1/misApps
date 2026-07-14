@@ -11,11 +11,48 @@
 <meta name="apple-mobile-web-app-title" content="Control Horas">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/react-is@18.3.1/umd/react-is.production.min.js"></script>
-<script src="https://unpkg.com/recharts@2.15.4/umd/Recharts.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>
+// ── Diagnóstico visible: si algo falla, lo muestra en pantalla ──
+window.__showFatal = function(msg){
+  var d = document.getElementById('fatal-overlay');
+  if(!d){
+    d = document.createElement('div');
+    d.id = 'fatal-overlay';
+    d.style.cssText = 'position:fixed;inset:0;background:#11151F;color:#FF8B8B;font:14px/1.5 monospace;padding:24px;z-index:99999;overflow:auto;white-space:pre-wrap';
+    document.body ? document.body.appendChild(d) : document.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(d); });
+  }
+  d.textContent += '⚠️ ' + msg + '\n\n';
+};
+window.addEventListener('error', function(e){
+  window.__showFatal((e.message||'Error') + (e.filename ? '\n  en: ' + e.filename + ':' + (e.lineno||'?') : ''));
+});
+window.addEventListener('unhandledrejection', function(e){
+  window.__showFatal('Promesa rechazada: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+});
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    var missing = [];
+    if(!window.React) missing.push('React');
+    if(!window.ReactDOM) missing.push('ReactDOM');
+    if(!window.Recharts) missing.push('Recharts');
+    if(!window.Babel) missing.push('Babel');
+    if(missing.length){
+      window.__showFatal('No se pudieron cargar estas librerías desde el CDN: ' + missing.join(', ') +
+        '\n\nPosibles causas:\n  • Sin conexión a internet\n  • El CDN (cdn.jsdelivr.net) está bloqueado en esta red\n  • Un bloqueador de contenido lo impide\n\nPrueba a recargar con Ctrl+Shift+R o desde otra red.');
+    } else {
+      var root = document.getElementById('root');
+      if(root && root.innerHTML.length === 0 && !document.getElementById('fatal-overlay')){
+        window.__showFatal('Las librerías cargaron pero la app no se montó. Revisa la consola (F12).');
+      }
+    }
+  }, 3000);
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-is@18.3.1/umd/react-is.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.15.4/umd/Recharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
 body{background:#11151F;overflow-x:hidden}
