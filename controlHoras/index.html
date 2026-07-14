@@ -1,1007 +1,1047 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Control de Horas</title>
-<meta name="theme-color" content="#11151F">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Control Horas">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-<script>
-// ── Diagnóstico visible: si algo falla, lo muestra en pantalla ──
-window.__showFatal = function(msg){
-  var d = document.getElementById('fatal-overlay');
-  if(!d){
-    d = document.createElement('div');
-    d.id = 'fatal-overlay';
-    d.style.cssText = 'position:fixed;inset:0;background:#11151F;color:#FF8B8B;font:14px/1.5 monospace;padding:24px;z-index:99999;overflow:auto;white-space:pre-wrap';
-    document.body ? document.body.appendChild(d) : document.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(d); });
-  }
-  d.textContent += '⚠️ ' + msg + '\n\n';
-};
-window.addEventListener('error', function(e){
-  window.__showFatal((e.message||'Error') + (e.filename ? '\n  en: ' + e.filename + ':' + (e.lineno||'?') : ''));
-});
-window.addEventListener('unhandledrejection', function(e){
-  window.__showFatal('Promesa rechazada: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
-});
-window.addEventListener('load', function(){
-  setTimeout(function(){
-    var missing = [];
-    if(!window.React) missing.push('React');
-    if(!window.ReactDOM) missing.push('ReactDOM');
-    if(!window.Recharts) missing.push('Recharts');
-    if(!window.Babel) missing.push('Babel');
-    if(missing.length){
-      window.__showFatal('No se pudieron cargar estas librerías desde el CDN: ' + missing.join(', ') +
-        '\n\nPosibles causas:\n  • Sin conexión a internet\n  • El CDN (cdn.jsdelivr.net) está bloqueado en esta red\n  • Un bloqueador de contenido lo impide\n\nPrueba a recargar con Ctrl+Shift+R o desde otra red.');
-    } else {
-      var root = document.getElementById('root');
-      if(root && root.innerHTML.length === 0 && !document.getElementById('fatal-overlay')){
-        window.__showFatal('Las librerías cargaron pero la app no se montó. Revisa la consola (F12).');
-      }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#11151F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Control de Horas</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
+    
+    :root {
+      --bg: #11151F; --card: #171C2A; --text: #E8EDF7; --muted: #8B93A7;
+      --border: #2A3247; --border-light: #1E2434;
+      --accent: #4FA3FF; --success: #7BE8A8; --warning: #FFB04F; --danger: #FF8B8B;
     }
-  }, 3000);
-});
-</script>
-<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/react-is@18.3.1/umd/react-is.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/recharts@2.15.4/umd/Recharts.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
-<style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
-body{background:#11151F;overflow-x:hidden}
-button,input,select{font-family:inherit;cursor:pointer}
-::-webkit-scrollbar{width:5px}
-::-webkit-scrollbar-thumb{background:#2A3247;border-radius:3px}
-</style>
-<script>
-// ── PWA Manifest (inline) ──────────────────────────────────
-try {
-  const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%2311151F'/%3E%3Ccircle cx='96' cy='96' r='60' stroke='%237BE8A8' stroke-width='8' fill='none'/%3E%3Cline x1='96' y1='96' x2='96' y2='48' stroke='%237BE8A8' stroke-width='8' stroke-linecap='round'/%3E%3Cline x1='96' y1='96' x2='130' y2='96' stroke='%234FA3FF' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='96' cy='96' r='6' fill='%237BE8A8'/%3E%3C/svg%3E";
-  const manifest = {name:"Control de Horas",short_name:"Horas FOlea",description:"Control de horas y cálculo de nómina. Diseñado por FOlea.",start_url:"./",display:"standalone",background_color:"#11151F",theme_color:"#11151F",orientation:"any",icons:[{src:icon,sizes:"192x192",type:"image/svg+xml",purpose:"any maskable"}]};
-  const blob = new Blob([JSON.stringify(manifest)],{type:"application/manifest+json"});
-  const link = document.createElement("link");
-  link.rel="manifest"; link.href=URL.createObjectURL(blob);
-  document.head.appendChild(link);
-} catch(e){}
-</script>
+    
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; display: flex; flex-direction: column; min-height: 100vh; }
+    button { cursor: pointer; border: none; background: none; color: inherit; font-family: inherit; }
+    input, select { font-family: inherit; outline: none; }
+    
+    .app-root { max-width: 480px; margin: 0 auto; padding: 12px 14px 12px; display: flex; flex-direction: column; flex: 1; width: 100%; }
+    
+    .tabs-bar { display: flex; gap: 6px; background: rgba(255,255,255,0.04); border-radius: 14px; padding: 4px; margin-bottom: 14px; flex: 0 0 auto;}
+    .tab-btn { flex: 1; padding: 9px 0; border-radius: 11px; color: var(--muted); font-size: 14px; font-weight: 600; transition: all 0.15s; }
+    .tab-btn.active { background: var(--border-light); color: var(--text); }
+    .eye-btn { width: 42px; border-radius: 11px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .eye-btn.active { background: rgba(255,176,79,0.12); color: var(--warning); }
+    
+    .tab-content { flex: 1; display: flex; flex-direction: column; animation: fadeIn 0.2s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .two-col, .ajustes-grid { display: block; }
+    
+    .card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+    .card-title { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; margin-bottom: 10px; }
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+    .big-btn { width: 100%; padding: 12px 10px; border-radius: 14px; border: 1.5px solid var(--border); background: rgba(255,255,255,0.03); color: #C9D2E3; font-size: 14px; font-weight: 600; text-align: center; }
+    .config-input { width: 90px; padding: 7px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+    
+    .neto-block { text-align: center; padding: 18px 12px; border-radius: 16px; background: linear-gradient(160deg, rgba(79,163,255,0.1), rgba(123,232,168,0.07)); border: 1px solid var(--border); margin-bottom: 14px;}
+    .neto-value { font-family: 'Space Grotesk', system-ui; font-weight: 700; font-size: 38px; color: var(--success); margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+    .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 12px; }
+    .day-cell { aspect-ratio: 1; border-radius: 10px; border: 1.5px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); padding:0; transition: border-color 0.15s; }
+    .day-cell.today { border-color: var(--accent); }
+    .day-cell span:first-child { font-size: 13px; font-weight: 600; }
+    .day-cell span:last-child { font-size: 10px; }
+    
+    .editor { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+    .type-btn { flex: 1; padding: 10px 0; border-radius: 12px; border: 1.5px solid var(--border); font-size: 13px; font-weight: 600; background: transparent; color: var(--muted); }
+    .hours-input { width: 80px; padding: 10px 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 20px; font-weight: 700; text-align: center; font-family: 'Space Grotesk', system-ui; }
+    .step-btn { width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 22px; }
+    .add-btn { width: 100%; padding: 13px 0; border-radius: 14px; background: linear-gradient(100deg, #3FD68C, #7BE8A8); color: #0E1420; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', system-ui; }
+    .day-earn-box { text-align: center; padding: 14px 12px; border-radius: 14px; background: linear-gradient(160deg, rgba(123,232,168,0.08), rgba(63,214,140,0.03)); border: 1px solid rgba(123,232,168,0.2); }
+    
+    .bubble { max-width: 85%; border-radius: 14px; border: 1px solid; padding: 9px 13px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+    .bubble.user { background: rgba(79,163,255,0.18); border-color: rgba(79,163,255,0.35); margin-left: auto; color: var(--text); }
+    .bubble.bot { background: var(--border-light); border-color: var(--border); margin-right: auto; color: var(--text); }
+    
+    .modal-overlay { position: fixed; inset: 0; background: rgba(8,10,16,0.72); z-index: 50; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 20px; width: 100%; max-width: 380px; box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
+    
+    .watermark { text-align: center; padding: 20px 0 10px; color: #5C6477; font-size: 11px; letter-spacing: 0.5px; opacity: 0.8; font-family: 'Space Grotesk', system-ui; text-transform: uppercase; font-weight: 600; margin-top: auto; }
+
+    @media (min-width: 840px) and (min-height: 540px) {
+      .app-root { max-width: 1240px; height: 100vh; overflow: hidden; padding-bottom: 0; }
+      .tabs-bar { max-width: 620px; width: 100%; margin: 0 auto 14px auto; }
+      .tab-content { overflow: hidden; }
+      .two-col, .ajustes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; height: 100%; min-height: 0; align-items: stretch; }
+      .col-scroll { overflow-y: auto; height: 100%; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+      .col-scroll::-webkit-scrollbar { width: 6px; }
+      .col-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+      .ia-wrap { height: 100%; max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; min-height: 0; width: 100%; }
+      .watermark { padding: 10px 0; }
+    }
+  </style>
 </head>
 <body>
-<div id="root"></div>
-<script type="text/babel">
-const {useState,useEffect,useMemo,useRef} = React;
-const {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,Cell} = Recharts;
 
-// ── Configuración por defecto ──────────────────────────────
-const DEFAULT_CONFIG = {
-  rateNormal:9.6696, plusFestivo:7.25, profile:"ett",
-  sintaxUnlocked:false, rateExtra:0, hideMoney:false,
-  apiKey:"", // Clave Anthropic para el chat IA
-  deductions:[
-    {id:"d1",name:"Retención IRPF",pct:2.0},
-    {id:"d2",name:"Contingencias comunes",pct:4.7},
-    {id:"d3",name:"Desempleo",pct:1.6},
-    {id:"d4",name:"Formación profesional",pct:0.1},
-    {id:"d5",name:"MEI",pct:0.15},
-  ]
-};
+  <div id="app" class="app-root"></div>
+  
+  <div id="modal-export" class="modal-overlay" onclick="closeExport()">
+    <div class="modal" onclick="event.stopPropagation()" id="modal-export-content"></div>
+  </div>
 
-const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const MESES_C=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-const DIAS=["L","M","X","J","V","S","D"];
-const TYPES={normal:{label:"Normal",color:"#4FA3FF",bg:"rgba(79,163,255,0.18)"},festivo:{label:"Festivo",color:"#FFB04F",bg:"rgba(255,176,79,0.20)"},descanso:{label:"Descanso",color:"#FF6B6B",bg:"rgba(255,107,107,0.18)"}};
-const eur=n=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR"}).format(n||0);
-const MASK="•••• €";
-const mk=(y,m)=>`${y}-${String(m+1).padStart(2,"0")}`;
-const extraActive=cfg=>cfg.profile==="sintax"&&cfg.sintaxUnlocked;
-const SINTAX_PASS="Sintax_Granada";
+  <input type="file" id="nomina-upload" accept="application/pdf" style="display:none" onchange="handleNominaUpload(event)">
+  <input type="file" id="backup-upload" accept="application/json,.json" style="display:none" onchange="importBackup(event)">
 
-function hoursColor(h){
-  if(h<9.5)return"#C9D2E3";
-  const t=Math.min(1,(h-9.5)/2.5);
-  const c=[255,176,79].map((v,i)=>Math.round(v+([255,56,56][i]-v)*t));
-  return`rgb(${c[0]},${c[1]},${c[2]})`;
-}
-
-function getEntry(allData,date){
-  const rec=allData[mk(date.getFullYear(),date.getMonth())];
-  return rec?.days?.[date.getDate()]||null;
-}
-
-function calcExtraMap(allData,year,month,dim){
-  const map={};
-  const first=new Date(year,month,1);
-  let mon=new Date(year,month,1-((first.getDay()+6)%7));
-  const end=new Date(year,month,dim);
-  while(mon<=end){
-    const wk=[];let tot=0;
-    for(let i=0;i<7;i++){
-      const d=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i);
-      const e=getEntry(allData,d);
-      const h=e&&e.type!=="descanso"?Number(e.hours)||0:0;
-      tot+=h;wk.push({date:d,e,h});
-    }
-    let extra=Math.max(0,tot-40);
-    if(extra>0){
-      for(let i=6;i>=0&&extra>0;i--){
-        const{date,e,h}=wk[i];
-        if(!e||e.type!=="normal"||h<=0)continue;
-        const take=Math.min(h,extra);extra-=take;
-        if(date.getFullYear()===year&&date.getMonth()===month)
-          map[date.getDate()]=(map[date.getDate()]||0)+take;
+  <script>
+    // ============================================================
+    // MOTOR DE VIBRACIÓN HÁPTICA
+    // ============================================================
+    const vibrate = (ms) => {
+      if (navigator.vibrate) {
+        try { navigator.vibrate(ms); } catch (e) {}
       }
+    };
+
+    // ============================================================
+    // ESTADO GLOBAL Y CONFIGURACIÓN
+    // ============================================================
+    const DEFAULT_CONFIG = {
+      userName: "",
+      rateNormal: 9.6696, plusFestivo: 7.25, profile: "ett", sintaxUnlocked: false, rateExtra: 0, hideMoney: false,
+      deductions: [
+        { id: "d1", name: "Retención IRPF", pct: 2.0 },
+        { id: "d2", name: "Contingencias comunes", pct: 4.7 },
+        { id: "d3", name: "Desempleo", pct: 1.6 },
+        { id: "d4", name: "Formación profesional", pct: 0.1 },
+        { id: "d5", name: "MEI", pct: 0.15 },
+      ]
+    };
+
+    const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    const DIAS_SEMANA = ["L","M","X","J","V","S","D"];
+    const TYPES = {
+      normal:   { label: "Normal",   color: "#4FA3FF", bg: "rgba(79,163,255,0.18)" },
+      festivo:  { label: "Festivo",  color: "#FFB04F", bg: "rgba(255,176,79,0.20)" },
+      descanso: { label: "Descanso", color: "#FF6B6B", bg: "rgba(255,107,107,0.18)" },
+    };
+
+    const state = {
+      year: new Date().getFullYear(), month: new Date().getMonth(),
+      config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
+      allData: {},
+      tab: "mes", selectedDay: null, draft: null, dayConfirmed: false,
+      chatMsgs: [], chatInput: "", chatLoading: false,
+      nomina: { status: "idle", result: null, error: null },
+      pdfReady: null
+    };
+
+    const eur = (n) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n || 0);
+    const fmt = (n) => state.config.hideMoney ? "•••• €" : eur(n);
+    const monthKey = (y, m) => `${y}-${String(m + 1).padStart(2, "0")}`;
+    const extraActive = (cfg) => cfg.profile === "sintax" && cfg.sintaxUnlocked;
+    const saveState = () => { localStorage.setItem("horas-app-v2", JSON.stringify({ config: state.config, data: state.allData })); cloudSave(); };
+
+    // ============================================================
+    // NUBE: FIREBASE (LOGIN GOOGLE + FIRESTORE)
+    // ============================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyBkQ4NcoxU0V_R3jXnkH5Eu9WRDpr9eKXo",
+      authDomain: "mishoras-bb0cc.firebaseapp.com",
+      projectId: "mishoras-bb0cc",
+      storageBucket: "mishoras-bb0cc.firebasestorage.app",
+      messagingSenderId: "282064047722",
+      appId: "1:282064047722:web:24a04aabeecb4a67394413"
+    };
+
+    const cloud = { ready: false, user: null, status: "off", unsub: null, applyingRemote: false, saveTimer: null };
+
+    try {
+      firebase.initializeApp(firebaseConfig);
+      cloud.db = firebase.firestore();
+      cloud.ready = true;
+    } catch (e) { console.error("Firebase no disponible:", e); }
+
+    function userDocRef() { return cloud.db.collection("users").doc(cloud.user.uid); }
+
+    // Fusiona datos locales y remotos (unión de meses y días; en conflicto gana lo local)
+    function mergeData(remoteData, localData) {
+      const out = JSON.parse(JSON.stringify(remoteData || {}));
+      for (const mk of Object.keys(localData || {})) {
+        if (!out[mk]) { out[mk] = JSON.parse(JSON.stringify(localData[mk])); continue; }
+        out[mk].days = { ...(out[mk].days || {}), ...(localData[mk].days || {}) };
+      }
+      return out;
     }
-    mon=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+7);
-  }
-  return map;
-}
 
-function calcExtraInfo(allData,year,month,dim){
-  const gen=calcExtraMap(allData,year,month,dim);
-  const pDate=new Date(year,month-1,1);
-  const py=pDate.getFullYear(),pm=pDate.getMonth();
-  const pdim=new Date(py,pm+1,0).getDate();
-  const prev=calcExtraMap(allData,py,pm,pdim);
-  const sum=m=>Object.values(m).reduce((s,h)=>s+h,0);
-  return{hGen:sum(gen),hPrev:sum(prev)};
-}
-
-function calcMonth(days,cfg,dim,ei=null){
-  let hN=0,hF=0,dT=0,dD=0;
-  for(let d=1;d<=dim;d++){
-    const e=days?.[d];if(!e)continue;
-    if(e.type==="descanso"){dD++;continue;}
-    const h=Number(e.hours)||0;
-    if(h>0)dT++;
-    if(e.type==="festivo")hF+=h;else hN+=h;
-  }
-  const useX=ei&&extraActive(cfg);
-  const hXG=useX?ei.hGen:0,hX=useX?ei.hPrev:0;
-  const hNP=hN-hXG;
-  const bN=hNP*cfg.rateNormal,bX=hX*cfg.rateExtra;
-  const bF=hF*(cfg.rateNormal+cfg.plusFestivo);
-  const bruto=bN+bF+bX;
-  const dets=cfg.deductions.map(d=>({...d,amount:(bruto*d.pct)/100}));
-  const totDed=dets.reduce((s,d)=>s+d.amount,0);
-  return{hNormal:hN,hNormalPaid:hNP,hFestivo:hF,hExtra:hX,hExtraGen:hXG,diasTrab:dT,diasDesc:dD,bruto,brutoNormal:bN,brutoFestivo:bF,brutoExtra:bX,dets,totalDed:totDed,neto:bruto-totDed};
-}
-
-// ── Exportar informe como texto ────────────────────────────
-const eurT=n=>(n||0).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
-
-function textMonth(allData,cfg,yy,mm){
-  const k=mk(yy,mm);
-  const rec=allData[k]||{days:{}};
-  const dim=new Date(yy,mm+1,0).getDate();
-  const ei=extraActive(cfg)?calcExtraInfo(allData,yy,mm,dim):null;
-  const c=calcMonth(rec.days||{},cfg,dim,ei);
-  const L=[];
-  L.push(`RESUMEN DE HORAS — ${MESES[mm].toUpperCase()} ${yy}${rec.closed?" (CERRADO)":""}`);
-  L.push(`Tarifa normal ${cfg.rateNormal.toFixed(4)} €/h  ·  Festivo ${(cfg.rateNormal+cfg.plusFestivo).toFixed(4)} €/h`);
-  L.push("");
-  let any=false;
-  for(let d=1;d<=dim;d++){
-    const e=(rec.days||{})[d];if(!e)continue;any=true;
-    const h=Number(e.hours)||0;
-    const imp=e.type==="descanso"?0:h*(cfg.rateNormal+(e.type==="festivo"?cfg.plusFestivo:0));
-    L.push(e.type==="descanso"?`${d} ${MESES_C[mm]}  Descanso`:`${d} ${MESES_C[mm]}  ${TYPES[e.type].label}  ${h} h  ${eur(imp)}`);
-  }
-  if(!any)L.push("Sin días registrados este mes.");
-  L.push("");
-  L.push(`Días trabajados: ${c.diasTrab}  ·  Descansos: ${c.diasDesc}  ·  H. normales: ${c.hNormalPaid}  ·  H. festivas: ${c.hFestivo}`);
-  if(extraActive(cfg))L.push(`Extras cobradas de ${MESES[(mm+11)%12].toLowerCase()}: ${c.hExtra} h (${eur(c.brutoExtra)})  ·  Generadas: ${c.hExtraGen} h`);
-  L.push(`Total bruto: ${eur(c.bruto)}`);
-  c.dets.forEach(d=>L.push(`  ${d.name} (${d.pct}%): -${eur(d.amount)}`));
-  L.push(`NETO ESTIMADO: ${eur(c.neto)}`);
-  L.push("");L.push(`Diseñado por FOlea © ${yy}`);
-  return L.join("\n");
-}
-
-function textYear(allData,cfg,yy){
-  const L=[`RESUMEN ANUAL — ${yy}`,""];
-  let tB=0,tN=0,tD=0,tH=0;const withData=[];
-  for(let m=0;m<12;m++){
-    const rec=allData[mk(yy,m)];
-    if(!rec||!Object.keys(rec.days||{}).length)continue;
-    const dim=new Date(yy,m+1,0).getDate();
-    const c=calcMonth(rec.days,cfg,dim,extraActive(cfg)?calcExtraInfo(allData,yy,m,dim):null);
-    L.push(`${MESES[m]}: ${c.diasTrab} días  ${c.hNormal+c.hFestivo} h  Bruto ${eur(c.bruto)}  Neto ${eur(c.neto)}`);
-    tB+=c.bruto;tN+=c.neto;tD+=c.diasTrab;tH+=c.hNormal+c.hFestivo;withData.push(m);
-  }
-  L.push("",`TOTAL ${yy}: ${tD} días  ${tH} h  Bruto ${eur(tB)}  NETO ${eur(tN)}`);
-  withData.forEach(m=>{L.push("","──────────────────","",textMonth(allData,cfg,yy,m));});
-  return L.join("\n");
-}
-
-async function shareReport(title,text){
-  if(navigator.share){
-    try{await navigator.share({title,text});return true;}
-    catch(e){if(e?.name==="AbortError")return true;}
-  }
-  return false;
-}
-async function copyReport(text){
-  try{await navigator.clipboard.writeText(text);return true;}catch(e){}
-  try{
-    const ta=document.createElement("textarea");ta.value=text;
-    document.body.appendChild(ta);ta.select();
-    document.execCommand("copy");ta.remove();return true;
-  }catch(e){return false;}
-}
-
-// ── PIN: hash con Web Crypto ───────────────────────────────
-const PIN_KEY = "horas-pin-hash";
-async function hashPin(pin) {
-  const data = new TextEncoder().encode(pin + ":folea:horas");
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return btoa(String.fromCharCode(...new Uint8Array(buf)));
-}
-async function verifyPin(pin) {
-  const stored = localStorage.getItem(PIN_KEY);
-  if (!stored) return true; // sin PIN configurado = desbloqueado
-  return (await hashPin(pin)) === stored;
-}
-
-// ── Pantalla de bloqueo ────────────────────────────────────
-function LockScreen({ onUnlock, hasPin }) {
-  const [digits, setDigits] = useState("");
-  const [error, setError] = useState(false);
-  const [step, setStep] = useState(1); // 1=intro, 2=confirmar (solo setup)
-  const [temp, setTemp] = useState("");
-  const isSetup = !hasPin;
-
-  const add = async (d) => {
-    const next = digits + d;
-    setDigits(next);
-    setError(false);
-    if (next.length < 4) return;
-    // 4+ dígitos: procesar
-    if (isSetup) {
-      if (step === 1) { setTemp(next); setDigits(""); setStep(2); return; }
-      // paso 2: confirmar
-      if (next !== temp) { setError(true); setDigits(""); setStep(1); setTemp(""); return; }
-      const h = await hashPin(next);
-      localStorage.setItem(PIN_KEY, h);
-      onUnlock();
-    } else {
-      if (await verifyPin(next)) { onUnlock(); }
-      else { setError(true); setDigits(""); }
+    function applyRemote(p) {
+      cloud.applyingRemote = true;
+      state.config = { ...DEFAULT_CONFIG, ...(p.config || {}) };
+      state.allData = p.data || {};
+      localStorage.setItem("horas-app-v2", JSON.stringify({ config: state.config, data: state.allData }));
+      cloud.applyingRemote = false;
+      render();
     }
-  };
-  const del = () => { setError(false); setDigits(d => d.slice(0, -1)); };
 
-  return (
-    <div style={{ minHeight:"100vh", background:"#11151F", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
-      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#7BE8A8" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom:20 }}>
-        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-      </svg>
-      <div style={{ fontFamily:"'Space Grotesk',system-ui", fontWeight:700, fontSize:22, color:"#E8EDF7", marginBottom:6 }}>
-        {isSetup ? (step===1 ? "Elige un PIN" : "Confirma el PIN") : "Introduce tu PIN"}
-      </div>
-      <div style={{ color:"#8B93A7", fontSize:13, marginBottom:28, textAlign:"center", lineHeight:1.5 }}>
-        {isSetup ? (step===1 ? "Mínimo 4 dígitos para proteger tus datos" : "Repite el PIN para confirmar") : "Control de Horas · Diseñado por FOlea"}
-      </div>
+    function cloudSave() {
+      if (!cloud.ready || !cloud.user || cloud.applyingRemote) return;
+      cloud.status = "syncing";
+      clearTimeout(cloud.saveTimer);
+      cloud.saveTimer = setTimeout(() => {
+        userDocRef().set({ config: state.config, data: state.allData, updatedAt: Date.now() })
+          .then(() => { cloud.status = "ok"; const el = document.getElementById("cloud-status"); if (el) el.textContent = "☁️ Sincronizado"; })
+          .catch((e) => { console.error(e); cloud.status = "error"; const el = document.getElementById("cloud-status"); if (el) el.textContent = "⚠️ Error al sincronizar"; });
+      }, 800);
+    }
 
-      {/* Puntos indicadores */}
-      <div style={{ display:"flex", gap:12, marginBottom:28 }}>
-        {Array.from({length: Math.max(4, digits.length)}).map((_,i) => (
-          <div key={i} style={{ width:14, height:14, borderRadius:"50%", background: i < digits.length ? "#7BE8A8" : "#2A3247", border:"2px solid", borderColor: i < digits.length ? "#7BE8A8" : "#3A4257", transition:"all .15s" }}/>
-        ))}
-      </div>
+    async function startSync(user) {
+      cloud.user = user;
+      cloud.status = "syncing";
+      try {
+        const snap = await userDocRef().get();
+        if (snap.exists) {
+          const remote = snap.data();
+          const merged = mergeData(remote.data, state.allData);
+          state.config = { ...DEFAULT_CONFIG, ...(remote.config || {}), ...( // conserva config local si el remoto está vacío
+            Object.keys(remote.config || {}).length ? {} : state.config) };
+          state.allData = merged;
+          localStorage.setItem("horas-app-v2", JSON.stringify({ config: state.config, data: state.allData }));
+          await userDocRef().set({ config: state.config, data: state.allData, updatedAt: Date.now() });
+        } else {
+          await userDocRef().set({ config: state.config, data: state.allData, updatedAt: Date.now() });
+        }
+        cloud.status = "ok";
+        // Escucha cambios en tiempo real desde otros dispositivos
+        cloud.unsub = userDocRef().onSnapshot((doc) => {
+          if (!doc.exists || doc.metadata.hasPendingWrites) return;
+          applyRemote(doc.data());
+        });
+      } catch (e) {
+        console.error(e);
+        cloud.status = "error";
+      }
+      render();
+    }
 
-      {error && <div style={{ color:"#FF8B8B", fontSize:13, marginBottom:16 }}>{isSetup ? "Los PINs no coinciden. Inténtalo de nuevo." : "PIN incorrecto. Inténtalo de nuevo."}</div>}
-
-      {/* Teclado numérico */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, width:"100%", maxWidth:280 }}>
-        {[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map((k,i) => (
-          <button key={i} onClick={() => k === "⌫" ? del() : k !== "" ? add(String(k)) : null}
-            style={{ height:64, borderRadius:16, border:"1px solid #2A3247", background: k==="⌫" ? "rgba(255,107,107,0.1)" : "rgba(255,255,255,0.04)", color: k==="⌫" ? "#FF8B8B" : "#E8EDF7", fontSize: k==="⌫" ? 20 : 24, fontWeight:600, opacity: k===""?0:1, cursor: k===""?"default":"pointer" }}>
-            {k}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Componente principal ───────────────────────────────────
-function ControlHoras(){
-  const today=new Date();
-  const [year,setYear]=useState(today.getFullYear());
-  const [month,setMonth]=useState(today.getMonth());
-  const [config,setConfig]=useState(DEFAULT_CONFIG);
-  const [allData,setAllData]=useState({});
-  const [sel,setSel]=useState(null);
-  const [draft,setDraft]=useState(null);
-  const [confirmed,setConfirmed]=useState(false);
-  const [tab,setTab]=useState("mes");
-  const [loading,setLoading]=useState(true);
-  const [saveState,setSaveState]=useState("idle");
-  const [pwInput,setPwInput]=useState("");
-  const [pwError,setPwError]=useState(false);
-  const [nomina,setNomina]=useState({status:"idle",result:null,error:null});
-  const fileRef=useRef(null);
-  const backupRef=useRef(null);
-  const [chat,setChat]=useState([]);
-  const [chatIn,setChatIn]=useState("");
-  const [chatLoad,setChatLoad]=useState(false);
-  const chatEnd=useRef(null);
-  const [expOpen,setExpOpen]=useState(false);
-  const [expReady,setExpReady]=useState(null);
-  const [showApiKey,setShowApiKey]=useState(false);
-  // ── Seguridad: PIN lock ──────────────────────────────────
-  const [locked, setLocked] = useState(true);
-  const [hasPin, setHasPin] = useState(!!localStorage.getItem(PIN_KEY));
-  const [changingPin, setChangingPin] = useState(false);
-
-  // Bloquear al minimizar / cambiar pestaña
-  useEffect(() => {
-    const onHide = () => { if (localStorage.getItem(PIN_KEY)) setLocked(true); };
-    document.addEventListener("visibilitychange", () => { if (document.hidden) onHide(); });
-    window.addEventListener("blur", onHide);
-    return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("blur", onHide); };
-  }, []);
-
-  const lockApp = () => { if (localStorage.getItem(PIN_KEY)) setLocked(true); else alert("Configura un PIN primero en Ajustes → Seguridad."); };
-  const removePin = () => { if (window.confirm("¿Eliminar el PIN? La app quedará sin protección.")) { localStorage.removeItem(PIN_KEY); setHasPin(false); } };
-
-
-  const hide=!!config.hideMoney;
-  const fmt=n=>hide?MASK:eur(n);
-  const toggleHide=()=>setConfig(c=>({...c,hideMoney:!c.hideMoney}));
-
-  const expYears=useMemo(()=>{
-    const ys=new Set(Object.keys(allData).filter(k=>Object.keys(allData[k]?.days||{}).length).map(k=>Number(k.slice(0,4))));
-    ys.add(year);ys.add(today.getFullYear());
-    return[...ys].sort((a,b)=>b-a);
-  },[allData,year]);
-
-  // ── localStorage ──────────────────────────────────────────
-  useEffect(()=>{
-    try{
-      const s=localStorage.getItem("horas-app-v2");
-      if(s){
-        const p=JSON.parse(s);
-        if(p.config){const cfg={...DEFAULT_CONFIG,...p.config};cfg.deductions=(p.config.deductions||DEFAULT_CONFIG.deductions).map((d,i)=>({id:d.id||"d"+(i+1),...d}));setConfig(cfg);}
-        if(p.data)setAllData(p.data);
-      } else {
-        const old=localStorage.getItem("horas-app");
-        if(old){
-          const po=JSON.parse(old);
-          if(po.config)setConfig(c=>({...c,...po.config,deductions:(po.config.deductions||c.deductions).map((d,i)=>({id:"d"+(i+1),...d}))}));
-          if(po.data){const m={};for(const[k,v]of Object.entries(po.data))m[k]={days:v,closed:false};setAllData(m);}
+    window.loginGoogle = async () => {
+      vibrate(20);
+      if (!cloud.ready) { alert("Firebase no está disponible. Revisa tu conexión."); return; }
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await firebase.auth().signInWithPopup(provider);
+      } catch (e) {
+        // Fallback para navegadores que bloquean el popup
+        if (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") {
+          try { await firebase.auth().signInWithRedirect(provider); } catch (e2) { alert("No se pudo iniciar sesión: " + e2.message); }
+        } else {
+          alert("No se pudo iniciar sesión: " + e.message);
         }
       }
-    }catch(e){}
-    setLoading(false);
-  },[]);
-
-  useEffect(()=>{
-    if(loading)return;
-    setSaveState("saving");
-    const t=setTimeout(()=>{
-      try{localStorage.setItem("horas-app-v2",JSON.stringify({config,data:allData}));setSaveState("saved");setTimeout(()=>setSaveState("idle"),1500);}
-      catch(e){setSaveState("error");}
-    },600);
-    return()=>clearTimeout(t);
-  },[config,allData,loading]);
-
-  // ── Derived ───────────────────────────────────────────────
-  const key=mk(year,month);
-  const rec=allData[key]||{days:{},closed:false};
-  const monthData=rec.days||{};
-  const isClosed=!!rec.closed;
-  const dim=new Date(year,month+1,0).getDate();
-  const fw=(new Date(year,month,1).getDay()+6)%7;
-  const isCurrent=month===today.getMonth()&&year===today.getFullYear();
-  const ei=useMemo(()=>extraActive(config)?calcExtraInfo(allData,year,month,dim):null,[allData,year,month,dim,config]);
-  const calc=useMemo(()=>calcMonth(monthData,config,dim,ei),[monthData,config,dim,ei]);
-
-  const projection=useMemo(()=>{
-    if(!isCurrent)return null;
-    const el=today.getDate(),rem=dim-el;
-    if(rem<=0)return null;
-    let wH=0,wD=0;
-    for(let d=1;d<=el;d++){const e=monthData[d];if(!e||e.type==="descanso")continue;const h=Number(e.hours)||0;if(h>0){wD++;wH+=h;}}
-    if(wD<3)return null;
-    const avg=wH/wD;
-    const wIdx=d=>{const date=new Date(year,month,d);const mon=new Date(date);mon.setDate(d-((date.getDay()+6)%7));return mon.getTime();};
-    const rByW={};
-    for(let d=1;d<=el;d++){const w=wIdx(d);if(!(w in rByW))rByW[w]=0;if(monthData[d]?.type==="descanso")rByW[w]++;}
-    const cW=wIdx(el);
-    const done=Object.entries(rByW).filter(([w])=>Number(w)!==cW);
-    const rpw=done.length?Math.max(1,Math.round(done.reduce((s,[,r])=>s+r,0)/done.length)):1;
-    let pRD=0;const fR={};fR[cW]=rByW[cW]||0;
-    for(let d=el+1;d<=dim;d++){
-      const w=wIdx(d);if(!(w in fR))fR[w]=0;
-      if(fR[w]<rpw){const date=new Date(year,month,d);const dow=(date.getDay()+6)%7;const dlw=Math.min(6-dow,dim-d);if(dlw<rpw-fR[w]){fR[w]++;pRD++;continue;}}
-    }
-    const pWD=rem-pRD,pBruto=calc.bruto+pWD*avg*config.rateNormal;
-    const pDed=config.deductions.reduce((s,d)=>s+(pBruto*d.pct)/100,0);
-    return{avg,pWD,pRD,rpw,pBruto,pNeto:pBruto-pDed,rem};
-  },[isCurrent,monthData,calc,config,dim,year,month]);
-
-  const annual=useMemo(()=>{
-    const rows=[];
-    for(let m=0;m<12;m++){
-      const k=mk(year,m);const r=allData[k];
-      const d=new Date(year,m+1,0).getDate();
-      const c=r?calcMonth(r.days,config,d,extraActive(config)?calcExtraInfo(allData,year,m,d):null):null;
-      rows.push({m,name:MESES_C[m],neto:c?Math.round(c.neto*100)/100:0,bruto:c?.bruto||0,horas:c?c.hNormal+c.hFestivo:0,dias:c?.diasTrab||0,closed:!!r?.closed,hasData:!!(r&&Object.keys(r.days||{}).length)});
-    }
-    const tN=rows.reduce((s,r)=>s+r.neto,0),tB=rows.reduce((s,r)=>s+r.bruto,0);
-    const tH=rows.reduce((s,r)=>s+r.horas,0),tD=rows.reduce((s,r)=>s+r.dias,0);
-    return{rows,tN,tB,tH,tD};
-  },[allData,config,year]);
-
-  // ── Acciones ──────────────────────────────────────────────
-  const setDay=(d,patch)=>{
-    if(isClosed)return;
-    setAllData(prev=>{const r=prev[key]||{days:{},closed:false};const days={...r.days};days[d]={...(days[d]||{type:"normal",hours:8}),...patch};return{...prev,[key]:{...r,days}};});
-  };
-  const clearDay=d=>{
-    if(isClosed)return;
-    setAllData(prev=>{const r=prev[key]||{days:{},closed:false};const days={...r.days};delete days[d];return{...prev,[key]:{...r,days}};});
-    setSel(null);
-  };
-  const toggleClosed=()=>{setAllData(prev=>{const r=prev[key]||{days:{},closed:false};return{...prev,[key]:{...r,closed:!r.closed}};});setSel(null);};
-  const nav=dir=>{setSel(null);let m=month+dir,y=year;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setMonth(m);setYear(y);};
-
-  // ── Chat IA ───────────────────────────────────────────────
-  function chatCtx(){
-    const compact={};
-    for(const[k,r]of Object.entries(allData)){const days={};for(const[d,e]of Object.entries(r.days||{}))days[d]=e.type==="descanso"?"D":(e.type==="festivo"?"F":"N")+(Number(e.hours)||0);if(Object.keys(days).length)compact[k]={cerrado:!!r.closed,dias:days};}
-    const tp=config.deductions.reduce((s,d)=>s+(Number(d.pct)||0),0);
-    return`Eres el asistente de una app de control de horas español. Responde en español, directo, sin markdown. Haz cálculos precisos.\nFECHA: ${today.toLocaleDateString("es-ES")}\nTARIFAS: normal ${config.rateNormal}€/h, festivo ${(config.rateNormal+config.plusFestivo).toFixed(4)}€/h, perfil ${config.profile==="sintax"?"Sintax":"ETT"}\nRETENCIONES: ${config.deductions.map(d=>`${d.name} ${d.pct}%`).join(", ")} (total ${tp.toFixed(2)}%)\nREGISTROS: ${JSON.stringify(compact)}\nSi no hay datos suficientes, dilo claramente.`;
-  }
-
-  async function sendChat(txt){
-    const q=(txt??chatIn).trim();if(!q||chatLoad)return;
-    if(!config.apiKey){setChat([...chat,{r:"user",c:q},{r:"assistant",c:"⚠ Para usar el chat IA necesitas introducir tu API Key de Anthropic en Ajustes → IA (API Key)."}]);setChatIn("");return;}
-    const msgs=[...chat,{r:"user",c:q}];setChat(msgs);setChatIn("");setChatLoad(true);
-    try{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":config.apiKey,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:chatCtx()},{role:"assistant",content:"Entendido."},{...msgs.map(m=>({role:m.r,content:m.c}))}].flat()})});
-      const data=await res.json();
-      if(data.error)throw new Error(data.error.message);
-      const reply=(data.content||[]).map(i=>i.type==="text"?i.text:"").join("").trim();
-      setChat([...msgs,{r:"assistant",c:reply||"Sin respuesta, inténtalo de nuevo."}]);
-    }catch(e){setChat([...msgs,{r:"assistant",c:"⚠ Error: "+(e.message||"Fallo de conexión.")}]);}
-    setChatLoad(false);
-  }
-
-  useEffect(()=>{chatEnd.current?.scrollIntoView({behavior:"smooth"});},[chat,chatLoad]);
-
-  // ── Comprobar nómina ──────────────────────────────────────
-  async function checkNomina(file){
-    if(!file)return;
-    if(!config.apiKey){setNomina({status:"done",result:{estado:"ilegible",resumen:"Necesitas introducir tu API Key de Anthropic en Ajustes para usar esta función.",diferencias:[],observaciones:[]},error:null});return;}
-    setNomina({status:"loading",result:null,error:null});
-    try{
-      const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej(new Error("No se pudo leer"));r.readAsDataURL(file);});
-      const appData={mes:`${MESES[month]} ${year}`,tarifas:{horaNormal:config.rateNormal,horaFestiva:config.rateNormal+config.plusFestivo},horas:{normales:calc.hNormalPaid,festivas:calc.hFestivo},diasTrabajados:calc.diasTrab,diasDescanso:calc.diasDesc,brutoCalculado:Math.round(calc.bruto*100)/100,retencionesCalculadas:calc.dets.map(d=>({concepto:d.name,porcentaje:d.pct,importe:Math.round(d.amount*100)/100})),netoCalculado:Math.round(calc.neto*100)/100};
-      const prompt=`Eres un experto en nóminas españolas. Compara el PDF con estos datos y devuelve SOLO JSON: {"estado":"cuadra"|"no_cuadra"|"ilegible","resumen":"...","diferencias":[{"concepto":"...","nomina":"...","app":"...","comentario":"..."}],"observaciones":["..."]}\nDATOS APP: ${JSON.stringify(appData)}`;
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":config.apiKey,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:[{type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}},{type:"text",text:prompt}]}]})});
-      const data=await res.json();
-      if(data.error)throw new Error(data.error.message);
-      const text=(data.content||[]).map(i=>i.type==="text"?i.text:"").join("");
-      setNomina({status:"done",result:JSON.parse(text.replace(/```json|```/g,"").trim()),error:null});
-    }catch(e){setNomina({status:"error",result:null,error:e.message||"Error"});}
-  }
-
-  // ── Exportar ──────────────────────────────────────────────
-  const doExportMonth=async()=>{
-    const text=textMonth(allData,config,year,month);
-    const title=`Horas_${MESES[month]}_${year}`;
-    setExpReady({text,title});
-    await shareReport(title,text);
-  };
-  const doExportYear=async(yy=year)=>{
-    const text=textYear(allData,config,yy);
-    const title=`Horas_${yy}_completo`;
-    setExpReady({text,title});
-    await shareReport(title,text);
-  };
-
-  const doExportBackup=async()=>{
-    const text=JSON.stringify({app:"control-horas",version:2,exportado:new Date().toISOString(),config,data:allData},null,2);
-    const title=`CopiaHoras_${new Date().toISOString().slice(0,10)}`;
-    if(!(await shareReport(title+".json",text))){
-      if(await copyReport(text))alert("✓ Copia copiada al portapapeles. Pégala en Notas o un email.");
-    }
-  };
-
-  const doImport=file=>{
-    if(!file)return;
-    const r=new FileReader();
-    r.onload=()=>{
-      try{
-        const p=JSON.parse(r.result);
-        const fixed={};
-        for(const[k,v]of Object.entries(p.data||{}))fixed[k]=v&&v.days?v:{days:v||{},closed:false};
-        if(p.config){const cfg={...DEFAULT_CONFIG,...p.config};cfg.deductions=(p.config.deductions||DEFAULT_CONFIG.deductions).map((d,i)=>({id:d.id||"d"+(i+1),...d}));setConfig(cfg);}
-        setAllData(fixed);
-        alert("✓ Datos importados correctamente.");
-      }catch(e){alert("Archivo no válido.");}
     };
-    r.readAsText(file);
-  };
 
-  const closeExp=()=>{setExpOpen(false);setExpReady(null);};
+    window.logoutGoogle = async () => {
+      vibrate(20);
+      if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; }
+      cloud.user = null; cloud.status = "off";
+      try { await firebase.auth().signOut(); } catch (e) {}
+      render();
+    };
 
-  if(loading)return<div style={{minHeight:"100vh",background:"#11151F",color:"#8B93A7",display:"flex",alignItems:"center",justifyContent:"center"}}>Cargando…</div>;
-
-  // Pantalla de bloqueo / setup de PIN
-  if (locked || (!hasPin && !localStorage.getItem(PIN_KEY) === false) || changingPin) {
-    if (locked || changingPin) {
-      return <LockScreen hasPin={hasPin && !changingPin} onUnlock={() => {
-        setLocked(false);
-        if (changingPin) { setHasPin(true); setChangingPin(false); }
-        else if (!hasPin) { setHasPin(true); }
-      }} />;
+    if (cloud.ready) {
+      firebase.auth().getRedirectResult().catch(() => {});
+      firebase.auth().onAuthStateChanged((user) => {
+        if (user) { startSync(user); }
+        else { if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; } cloud.user = null; cloud.status = "off"; render(); }
+      });
     }
-  }
 
-  return(
-<div className="app-root" style={S.app}>
-<style>{`
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .app-root{max-width:480px;margin:0 auto}
-  .two-col,.aj-grid{display:block}
-  .ia-w{width:100%}
-  .col-s{min-width:0}
-  @media(min-width:600px){.app-root{max-width:660px}}
-  @media(min-width:840px) and (min-height:540px){
-    html,body{height:100%;overflow:hidden}
-    .app-root{max-width:1200px;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:8px!important}
-    .app-scr{flex:1;display:flex;flex-direction:column;min-height:0}
-    .tab-c{flex:1;min-height:0;overflow:hidden}
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;height:100%;min-height:0;align-items:stretch}
-    .aj-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;height:100%;min-height:0}
-    .col-s{overflow-y:auto;min-height:0;height:100%;padding-right:5px;scrollbar-width:thin;scrollbar-color:#2A3247 transparent}
-    .ia-w{height:100%;max-width:800px;margin:0 auto;display:flex;flex-direction:column;min-height:0}
-    .ia-card{flex:1;min-height:0!important}
-    .fix-bot{flex:0 0 auto}
-  }
-  @media(min-width:1400px) and (min-height:540px){.app-root{max-width:1360px}}
-`}</style>
+    function hoursColor(h) {
+      if (h < 9.5) return "#C9D2E3";
+      const t = Math.min(1, (h - 9.5) / 2.5);
+      const a = [255, 176, 79], b = [255, 56, 56];
+      const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
 
-{/* ── Nav ── */}
-<nav style={S.tabs}>
-  {[["mes","Mes"],["anual","Año"],["ia","💬 IA"],["ajustes","Ajustes"]].map(([k,l])=>(
-    <button key={k} onClick={()=>setTab(k)} style={{...S.tabBtn,...(tab===k?S.tabAct:{})}}>{l}</button>
-  ))}
-  {/* Botón cerrar sesión / bloquear */}
-  <button onClick={lockApp} title="Bloquear app" style={{...S.eyeBtn}} aria-label="Bloquear app">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-  </button>
-  <button onClick={toggleHide} style={{...S.eyeBtn,...(hide?S.eyeAct:{})}} aria-label={hide?"Mostrar":"Ocultar"}>
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/>
-      <circle cx="12" cy="12" r="3.1"/>
-      {hide&&<line x1="4.2" y1="20" x2="19.8" y2="4"/>}
-    </svg>
-  </button>
-</nav>
+    // ============================================================
+    // LÓGICA DE NEGOCIO Y CÁLCULOS
+    // ============================================================
+    function getEntry(allData, date) {
+      const rec = allData[monthKey(date.getFullYear(), date.getMonth())];
+      return rec?.days?.[date.getDate()] || null;
+    }
 
-{/* ── MES ── */}
-{tab==="mes"&&<div className="tab-c"><div className="two-col">
-  <div className="col-s">
-    <div style={S.monthRow}>
-      <button style={S.navBtn} onClick={()=>nav(-1)}>‹</button>
-      <div style={{textAlign:"center"}}>
-        <div style={S.monthName}>{MESES[month]}</div>
-        <div style={S.yearLbl}>{year}{isClosed&&<span style={S.closedBadge}>● Cerrado</span>}</div>
-      </div>
-      <button style={S.navBtn} onClick={()=>nav(1)}>›</button>
-    </div>
+    function calcExtraMap(allData, year, month, daysInMonth) {
+      const extraMap = {};
+      const first = new Date(year, month, 1);
+      let monday = new Date(year, month, 1 - ((first.getDay() + 6) % 7));
+      const monthEnd = new Date(year, month, daysInMonth);
+      while (monday <= monthEnd) {
+        const week = []; let totalH = 0;
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+          const e = getEntry(allData, date);
+          const h = e && e.type !== "descanso" ? Number(e.hours) || 0 : 0;
+          totalH += h; week.push({ date, e, h });
+        }
+        let extra = Math.max(0, totalH - 40);
+        if (extra > 0) {
+          for (let i = 6; i >= 0 && extra > 0; i--) {
+            const { date, e, h } = week[i];
+            if (!e || e.type !== "normal" || h <= 0) continue;
+            const take = Math.min(h, extra); extra -= take;
+            if (date.getFullYear() === year && date.getMonth() === month) {
+              extraMap[date.getDate()] = (extraMap[date.getDate()] || 0) + take;
+            }
+          }
+        }
+        monday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7);
+      }
+      return extraMap;
+    }
 
-    <div style={S.netoBlock}>
-      <div style={S.netoLbl}>Neto estimado</div>
-      <div style={S.netoVal}>{fmt(calc.neto)}</div>
-      <div style={S.brutoLine}>{hide?"Modo privado · pulsa el ojo":<>Bruto {eur(calc.bruto)} · Ret. −{eur(calc.totalDed)}</>}</div>
-    </div>
+    function calcExtraInfo(allData, year, month, daysInMonth) {
+      const genMap = calcExtraMap(allData, year, month, daysInMonth);
+      const prevDate = new Date(year, month - 1, 1);
+      const prevDim = new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 0).getDate();
+      const prevMap = calcExtraMap(allData, prevDate.getFullYear(), prevDate.getMonth(), prevDim);
+      const sum = (m) => Object.values(m).reduce((s, h) => s + h, 0);
+      return { hGen: sum(genMap), hPrev: sum(prevMap) };
+    }
 
-    <div style={S.statRow}>
-      {[["Días trab.",calc.diasTrab],["Descanso",calc.diasDesc],["H. norm.",calc.hNormal],["H. fest.",calc.hFestivo]].map(([l,v])=>(
-        <div key={l} style={S.stat}><div style={S.statV}>{v}</div><div style={S.statL}>{l}</div></div>
-      ))}
-    </div>
+    function calcMonth(days, config, daysInMonth, extraInfo = null) {
+      let hNormal = 0, hFestivo = 0, diasTrab = 0, diasDesc = 0;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const e = days?.[d];
+        if (!e) continue;
+        if (e.type === "descanso") { diasDesc++; continue; }
+        const h = Number(e.hours) || 0;
+        if (h > 0) diasTrab++;
+        if (e.type === "festivo") hFestivo += h; else hNormal += h;
+      }
+      const useExtra = extraInfo && extraActive(config);
+      const hExtraGen = useExtra ? extraInfo.hGen : 0;
+      const hExtra = useExtra ? extraInfo.hPrev : 0;
+      const hNormalPaid = hNormal - hExtraGen;
+      const brutoNormal = hNormalPaid * config.rateNormal;
+      const brutoExtra = hExtra * config.rateExtra;
+      const brutoFestivo = hFestivo * (config.rateNormal + config.plusFestivo);
+      const bruto = brutoNormal + brutoFestivo + brutoExtra;
+      const dets = config.deductions.map((d) => ({ ...d, amount: (bruto * d.pct) / 100 }));
+      const totalDed = dets.reduce((s, d) => s + d.amount, 0);
+      return { hNormal, hNormalPaid, hFestivo, hExtra, hExtraGen, diasTrab, diasDesc, bruto, brutoNormal, brutoFestivo, brutoExtra, dets, totalDed, neto: bruto - totalDed };
+    }
 
-    <div style={{marginBottom:12,opacity:isClosed?0.65:1}}>
-      <div style={S.weekHead}>{DIAS.map(d=><div key={d} style={S.weekDay}>{d}</div>)}</div>
-      <div style={S.grid}>
-        {Array.from({length:fw}).map((_,i)=><div key={"e"+i}/>)}
-        {Array.from({length:dim}).map((_,i)=>{
-          const d=i+1,e=monthData[d],t=e?TYPES[e.type]:null;
-          const isT=isCurrent&&d===today.getDate(),isSel=sel===d;
-          return<button key={d} onClick={()=>{if(isSel){setSel(null);return;}setSel(d);const ex=monthData[d];setDraft(ex?{type:ex.type,hours:ex.hours}:{type:"normal",hours:8});setConfirmed(!!ex);}}
-            style={{...S.dayCell,background:t?t.bg:"rgba(255,255,255,0.04)",borderColor:isSel?"#E8EDF7":isT?"#4FA3FF":"transparent"}}>
-            <span style={{fontSize:13,fontWeight:600,color:t?t.color:"#5C6477"}}>{d}</span>
-            {e&&e.type!=="descanso"&&<span style={{fontSize:10,color:hoursColor(Number(e.hours)||0)}}>{e.hours}h</span>}
-            {e&&e.type==="descanso"&&<span style={{fontSize:9,color:"#FF6B6B",fontWeight:700}}>zZ</span>}
-          </button>;
-        })}
-      </div>
-    </div>
+    function calcProjection(monthData, calcResult, config, year, month, daysInMonth) {
+      const today = new Date();
+      if (month !== today.getMonth() || year !== today.getFullYear()) return null;
+      
+      const elapsed = today.getDate();
+      const remaining = daysInMonth - elapsed;
+      if (remaining <= 0) return null;
 
-    {sel&&!isClosed&&draft&&<div style={S.editor}>
-      <div style={S.editorT}>{sel} de {MESES[month].toLowerCase()}</div>
-      <div style={S.typeRow}>
-        {Object.entries(TYPES).map(([k,t])=><button key={k}
-          onClick={()=>{setDraft({type:k,hours:k==="descanso"?0:(draft.hours||8)});setConfirmed(false);}}
-          style={{...S.typeBtn,background:draft.type===k?t.bg:"transparent",borderColor:draft.type===k?t.color:"#2A3247",color:draft.type===k?t.color:"#8B93A7"}}>{t.label}</button>)}
-      </div>
-      {draft.type!=="descanso"&&<div style={S.hoursRow}>
-        <button style={S.stepBtn} onClick={()=>{setDraft({...draft,hours:Math.max(0,(Number(draft.hours)||0)-.5)});setConfirmed(false);}}>−</button>
-        <input type="number" inputMode="decimal" step="0.5" min="0" max="24" value={draft.hours}
-          onChange={ev=>{setDraft({...draft,hours:ev.target.value===""?"":(Math.min(24,Math.max(0,Number(ev.target.value))))});setConfirmed(false);}}
-          style={{...S.hoursInput,color:hoursColor(Number(draft.hours)||0)}}/>
-        <span style={{color:"#8B93A7",fontSize:14}}>horas</span>
-        <button style={S.stepBtn} onClick={()=>{setDraft({...draft,hours:Math.min(24,(Number(draft.hours)||0)+.5)});setConfirmed(false);}}>+</button>
-      </div>}
-      {!confirmed&&<button onClick={()=>{setDay(sel,{type:draft.type,hours:draft.type==="descanso"?0:Number(draft.hours)||0});setConfirmed(true);}}
-        disabled={draft.type!=="descanso"&&!(Number(draft.hours)>0)}
-        style={{...S.addBtn,opacity:draft.type!=="descanso"&&!(Number(draft.hours)>0)?0.4:1}}>✓ Añadir</button>}
-      {confirmed&&draft.type!=="descanso"&&(Number(draft.hours)||0)>0&&<div style={S.earnBox}>
-        <div style={S.earnLbl}>💶 Facturado este día</div>
-        <div style={S.earnVal}>{fmt((Number(draft.hours)||0)*(config.rateNormal+(draft.type==="festivo"?config.plusFestivo:0)))}</div>
-        <div style={S.earnSub}>{hide?"Cantidades ocultas":<>{draft.hours} h × {(config.rateNormal+(draft.type==="festivo"?config.plusFestivo:0)).toFixed(4)} €/h{draft.type==="festivo"?" ✨ festivo":""}</>}</div>
-      </div>}
-      {confirmed&&draft.type==="descanso"&&<div style={S.earnBox}><div style={{fontSize:26}}>😌</div><div style={{color:"#8B93A7",fontSize:13}}>Día de descanso, bien merecido</div></div>}
-      {monthData[sel]&&<button style={S.clearBtn} onClick={()=>{clearDay(sel);setDraft(null);setConfirmed(false);}}>Borrar este día</button>}
-    </div>}
-    {sel&&isClosed&&<div style={S.editor}><div style={{color:"#8B93A7",fontSize:13,textAlign:"center"}}>Mes cerrado. Reabre para editar.</div></div>}
-  </div>
+      let workedH = 0, workedDays = 0;
+      for (let d = 1; d <= elapsed; d++) {
+        const e = monthData[d];
+        if (!e || e.type === "descanso") continue;
+        const h = Number(e.hours) || 0;
+        if (h > 0) { workedDays++; workedH += h; }
+      }
+      
+      if (workedDays < 3) return null;
+      
+      const avgH = workedH / workedDays;
+      const projWorkDays = remaining * (workedDays / elapsed); 
+      const projExtraH = projWorkDays * avgH;
+      const projBruto = calcResult.bruto + projExtraH * config.rateNormal;
+      const projDed = config.deductions.reduce((s, d) => s + (projBruto * d.pct) / 100, 0);
+      
+      return { projBruto, projNeto: projBruto - projDed, avgH, remaining };
+    }
 
-  <div className="col-s">
-    {projection&&<div style={{...S.card,borderColor:"rgba(123,232,168,0.25)"}}>
-      <div style={S.cardT}>Proyección a fin de mes</div>
-      <div style={{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap"}}>
-        <span style={{fontFamily:"'Space Grotesk',system-ui",fontWeight:700,fontSize:26,color:"#7BE8A8",fontVariantNumeric:"tabular-nums"}}>≈ {fmt(projection.pNeto)}</span>
-        <span style={{color:"#8B93A7",fontSize:12}}>{hide?"neto":<>neto · bruto ≈ {eur(projection.pBruto)}</>}</span>
-      </div>
-      <div style={{color:"#8B93A7",fontSize:12,marginTop:6,lineHeight:1.5}}>A tu ritmo ({projection.avg.toFixed(1)} h/día): {projection.pWD} días de trabajo y {projection.pRD} de descanso en los {projection.rem} que quedan.</div>
-    </div>}
+    function getAnnualData() {
+      const rows = [];
+      for (let m = 0; m < 12; m++) {
+        const k = monthKey(state.year, m);
+        const rec = state.allData[k];
+        const dim = new Date(state.year, m + 1, 0).getDate();
+        const c = rec ? calcMonth(rec.days, state.config, dim, extraActive(state.config) ? calcExtraInfo(state.allData, state.year, m, dim) : null) : null;
+        rows.push({ m, name: MESES_CORTO[m], neto: c ? c.neto : 0, bruto: c?.bruto||0, horas: c ? c.hNormal + c.hFestivo : 0, dias: c?.diasTrab||0, diasDesc: c?.diasDesc||0, hasData: !!(rec && Object.keys(rec.days||{}).length) });
+      }
+      return rows;
+    }
 
-    <div style={S.card}>
-      <div style={S.cardT}>Desglose del mes</div>
-      <MRow label={hide?`H. normales (${calc.hNormalPaid} h)`:`H. normales (${calc.hNormalPaid} h × ${config.rateNormal.toFixed(2)} €)`} val={fmt(calc.brutoNormal)}/>
-      <MRow label={hide?`H. festivas (${calc.hFestivo} h)`:`H. festivas (${calc.hFestivo} h × ${(config.rateNormal+config.plusFestivo).toFixed(2)} €)`} val={fmt(calc.brutoFestivo)}/>
-      {extraActive(config)&&<><MRow label={hide?`Extras de ${MESES[(month+11)%12].toLowerCase()} (${calc.hExtra} h)`:`Extras de ${MESES[(month+11)%12].toLowerCase()} (${calc.hExtra} h × ${config.rateExtra.toFixed(2)} €)`} val={fmt(calc.brutoExtra)} accent={calc.hExtra>0}/>
-        {calc.hExtraGen>0&&<p style={{color:"#FFB04F",fontSize:12,margin:"4px 0",lineHeight:1.5}}>⏭ Has generado {calc.hExtraGen} h extra{hide?"":" ("+eur(calc.hExtraGen*config.rateExtra)+")"} que cobrarás en {MESES[(month+1)%12].toLowerCase()}.</p>}</>}
-      <MRow label="Total bruto" val={fmt(calc.bruto)} bold/>
-      <div style={S.divider}/>
-      {calc.dets.map(d=><MRow key={d.id} label={`${d.name} (${d.pct}%)`} val={hide?MASK:"−"+eur(d.amount)} muted/>)}
-      <MRow label="Total retenciones" val={hide?MASK:"−"+eur(calc.totalDed)} muted bold/>
-      <div style={S.divider}/>
-      <MRow label="Neto estimado" val={fmt(calc.neto)} bold accent/>
-    </div>
+    // ============================================================
+    // GENERADOR PDF NATIVO VANILLA JS + DESCARGA BASE64
+    // ============================================================
+    const eurPdf = (n) => (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+    
+    const BS = String.fromCharCode(92);
+    
+    function pdfEsc(s) {
+      let out = "";
+      for (const ch of String(s)) {
+        const c = ch.codePointAt(0);
+        if (c === 0x20AC) out += String.fromCharCode(128); else if (c === 0x2014 || c === 0x2013) out += "-";
+        else if (c === 0x00B7) out += String.fromCharCode(183); else if (c > 255) out += "?"; else out += ch;
+      }
+      return out.split(BS).join(BS+BS).split("(").join(BS+"(").split(")").join(BS+")");
+    }
 
-    <div style={S.card}>
-      <div style={S.cardT}>Comprobar tu nómina</div>
-      <p style={{color:"#8B93A7",fontSize:12,margin:"0 0 10px",lineHeight:1.5}}>Sube el PDF de tu nómina y la IA lo compara con tus registros.{!config.apiKey&&<span style={{color:"#FF8B8B"}}> (Necesitas API Key en Ajustes → IA)</span>}</p>
-      <input ref={fileRef} type="file" accept="application/pdf" style={{display:"none"}} onChange={e=>{checkNomina(e.target.files?.[0]);e.target.value="";}}/>
-      <button onClick={()=>fileRef.current?.click()} disabled={nomina.status==="loading"} style={{...S.bigBtn,width:"100%",borderColor:"#7BE8A8",color:"#7BE8A8",opacity:nomina.status==="loading"?0.6:1}}>
-        {nomina.status==="loading"?"⏳ Analizando…":"📑 Subir nómina (PDF)"}
-      </button>
-      {nomina.status==="error"&&<p style={{color:"#FF8B8B",fontSize:12,marginTop:8}}>⚠ {nomina.error}</p>}
-      {nomina.status==="done"&&nomina.result&&<div style={{marginTop:12}}>
-        {nomina.result.estado==="cuadra"&&<div style={{...S.verdBox,borderColor:"rgba(123,232,168,0.4)",background:"rgba(123,232,168,0.08)"}}><div style={{color:"#7BE8A8",fontWeight:700,marginBottom:4}}>✓ Tu nómina cuadra</div><div style={{color:"#C9D2E3",fontSize:13,lineHeight:1.5}}>{nomina.result.resumen}</div></div>}
-        {nomina.result.estado==="no_cuadra"&&<div style={{...S.verdBox,borderColor:"rgba(255,176,79,0.4)",background:"rgba(255,176,79,0.08)"}}><div style={{color:"#FFB04F",fontWeight:700,marginBottom:4}}>⚠ Hay diferencias</div><div style={{color:"#C9D2E3",fontSize:13,lineHeight:1.5}}>{nomina.result.resumen}</div></div>}
-        {nomina.result.estado==="ilegible"&&<div style={{...S.verdBox,borderColor:"#2A3247"}}><div style={{color:"#8B93A7",fontWeight:700,marginBottom:4}}>No he podido leer el PDF</div><div style={{color:"#C9D2E3",fontSize:13,lineHeight:1.5}}>{nomina.result.resumen}</div></div>}
-        {(nomina.result.diferencias||[]).map((d,i)=><div key={i} style={{borderBottom:"1px solid #1E2434",padding:"8px 0"}}>
-          <div style={{color:"#E8EDF7",fontSize:13,fontWeight:600}}>{d.concepto}</div>
-          <div style={{display:"flex",gap:12,marginTop:3,fontSize:12}}><span style={{color:"#FFB04F"}}>Nómina: {hide?"••••":d.nomina}</span><span style={{color:"#4FA3FF"}}>App: {hide?"••••":d.app}</span></div>
-          {d.comentario&&!hide&&<div style={{color:"#8B93A7",fontSize:12,marginTop:3}}>{d.comentario}</div>}
-        </div>)}
-      </div>}
-    </div>
+    function createPdfDoc() {
+      const pages = [[]]; let y = 786;
+      const cur = () => pages[pages.length - 1];
+      const addPage = () => { pages.push([]); y = 786; };
+      const need = (h) => { if (y - h < 56) addPage(); };
+      const txt = (x, s, o = {}) => {
+        const size = o.size || 10; const tx = o.right ? x - (String(s).length * size * 0.5) : x;
+        const col = o.color || (o.gray ? "0.45 0.48 0.55" : "0.08 0.1 0.14");
+        cur().push(`BT /${o.bold ? "F2" : "F1"} ${size} Tf ${col} rg 1 0 0 1 ${tx.toFixed(1)} ${y.toFixed(1)} Tm (${pdfEsc(s)}) Tj ET`);
+      };
+      const hr = () => { cur().push(`0.8 0.82 0.86 RG 0.6 w 40 ${(y + 3).toFixed(1)} m 555 ${(y + 3).toFixed(1)} l S`); };
+      const down = (h) => { y -= h; };
+      return { pages, txt, hr, down, need, addPage };
+    }
 
-    <div style={{display:"flex",gap:10,marginBottom:10}}>
-      <button style={{...S.bigBtn,borderColor:isClosed?"#FFB04F":"#2A3247",color:isClosed?"#FFB04F":"#C9D2E3"}} onClick={toggleClosed}>{isClosed?"🔓 Reabrir mes":"🔒 Cerrar mes"}</button>
-      <button style={{...S.bigBtn,borderColor:"#4FA3FF",color:"#4FA3FF"}} onClick={()=>setExpOpen(true)}>📄 Exportar</button>
-    </div>
-  </div>
-</div></div>}
+    function assemblePdf(pages) {
+      let out = "%PDF-1.4\n"; const offsets = []; const push = (s) => { offsets.push(out.length); out += s; };
+      const n = pages.length; const kids = pages.map((_, i) => `${5 + i * 2} 0 R`).join(" ");
+      push(`1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n`);
+      push(`2 0 obj << /Type /Pages /Kids [${kids}] /Count ${n} >> endobj\n`);
+      push(`3 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> endobj\n`);
+      push(`4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> endobj\n`);
+      pages.forEach((opsArr, i) => {
+        const content = opsArr.join("\n");
+        push(`${5 + i * 2} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${6 + i * 2} 0 R >> endobj\n`);
+        push(`${6 + i * 2} 0 obj << /Length ${content.length} >> stream\n${content}\nendstream endobj\n`);
+      });
+      const xrefPos = out.length; const total = 5 + n * 2;
+      out += `xref\n0 ${total}\n0000000000 65535 f \n`;
+      offsets.forEach((o) => { out += String(o).padStart(10, "0") + " 00000 n \n"; });
+      out += `trailer << /Size ${total} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;
+      return out;
+    }
 
-{/* ── AÑO ── */}
-{tab==="anual"&&<div className="tab-content"><div className="two-col">
-  <div className="col-s">
-    <div style={{...S.monthRow,marginBottom:14}}>
-      <button style={S.navBtn} onClick={()=>setYear(year-1)}>‹</button>
-      <div style={S.monthName}>{year}</div>
-      <button style={S.navBtn} onClick={()=>setYear(year+1)}>›</button>
-    </div>
-    <div style={S.netoBlock}>
-      <div style={S.netoLbl}>Neto acumulado en {year}</div>
-      <div style={S.netoVal}>{fmt(annual.tN)}</div>
-      <div style={S.brutoLine}>{hide?`${annual.tH} h · ${annual.tD} días`:<>Bruto {eur(annual.tB)} · {annual.tH} h · {annual.tD} días</>}</div>
-    </div>
-    <button onClick={()=>setExpOpen(true)} style={{...S.bigBtn,width:"100%",marginTop:12,borderColor:"#4FA3FF",color:"#4FA3FF"}}>📄 Exportar PDF</button>
-    <div style={{...S.card,marginTop:12,paddingBottom:4}}>
-      <div style={S.cardT}>Neto por mes</div>
-      <div style={{width:"100%",height:190}}>
-        <ResponsiveContainer>
-          <BarChart data={annual.rows} margin={{top:5,right:0,left:-18,bottom:0}}>
-            <XAxis dataKey="name" tick={{fill:"#8B93A7",fontSize:10}} axisLine={false} tickLine={false}/>
-            <YAxis tick={hide?false:{fill:"#5C6477",fontSize:10}} axisLine={false} tickLine={false}/>
-            <Tooltip formatter={v=>[hide?MASK:eur(v),"Neto"]} contentStyle={{background:"#171C2A",border:"1px solid #2A3247",borderRadius:10,color:"#E8EDF7",fontSize:12}} labelStyle={{color:"#8B93A7"}} cursor={{fill:"rgba(255,255,255,0.04)"}}/>
-            <Bar dataKey="neto" radius={[5,5,0,0]}>
-              {annual.rows.map(r=><Cell key={r.m} fill={r.m===month?"#7BE8A8":"#4FA3FF"} opacity={r.hasData?1:0.25}/>)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  </div>
-  <div className="col-s">
-    <div style={S.card}>
-      <div style={S.cardT}>Meses de {year}</div>
-      {annual.rows.map(r=><button key={r.m} onClick={()=>{setMonth(r.m);setTab("mes");}}
-        style={{...S.rowSt,width:"100%",background:"none",border:"none",padding:"9px 0",borderBottom:"1px solid #1E2434"}}>
-        <span style={{color:r.hasData?"#E8EDF7":"#5C6477",fontSize:14,display:"flex",alignItems:"center",gap:7}}>{MESES[r.m]}{r.closed&&<span style={{fontSize:10,color:"#FFB04F"}}>🔒</span>}</span>
-        <span style={{color:r.hasData?"#7BE8A8":"#5C6477",fontWeight:600,fontSize:14,fontVariantNumeric:"tabular-nums"}}>{r.hasData?fmt(r.neto):"—"}</span>
-      </button>)}
-    </div>
-  </div>
-</div></div>}
+    function buildMonthReport(doc, yy, mm) {
+      const k = monthKey(yy, mm); const rec = state.allData[k] || { days: {} };
+      const dim = new Date(yy, mm + 1, 0).getDate();
+      const ei = extraActive(state.config) ? calcExtraInfo(state.allData, yy, mm, dim) : null;
+      const c = calcMonth(rec.days || {}, state.config, dim, ei);
+      
+      doc.need(60); 
+      doc.txt(40, `Resumen de horas - ${MESES[mm]} ${yy}`, { size: 16, bold: true }); doc.down(16);
+      
+      if(state.config.userName) {
+        doc.txt(40, `Trabajador: ${state.config.userName}`, { size: 10, gray: false, bold: true }); doc.down(16);
+      }
 
-{/* ── IA ── */}
-{tab==="ia"&&<div className="tab-c"><div className="ia-w">
-  <div className="ia-card" style={{...S.card,display:"flex",flexDirection:"column",minHeight:"60vh"}}>
-    <div style={S.cardT}>Chat IA — tus horas</div>
-    {!config.apiKey&&<div style={{background:"rgba(255,176,79,0.1)",border:"1px solid rgba(255,176,79,0.3)",borderRadius:12,padding:"12px 14px",marginBottom:12,color:"#FFB04F",fontSize:13,lineHeight:1.5}}>
-      Para usar el chat necesitas tu API Key de Anthropic. Añádela en <b>Ajustes → IA (API Key)</b>. Es gratuita para pruebas en <b>console.anthropic.com</b>
-    </div>}
-    <div style={{flex:1,overflowY:"auto",marginBottom:12,minHeight:0}}>
-      {chat.length===0&&<div>
-        <p style={{color:"#8B93A7",fontSize:13,lineHeight:1.6,margin:"0 0 12px"}}>Pregúntale lo que quieras sobre tus horas, por ejemplo:</p>
-        {["¿Cuántos días he trabajado este mes?","¿Cuántas horas necesito para ganar 2.500 € netos?","¿Qué mes del año he cobrado más?","¿Cuántos festivos llevo este año?"].map(s=>(
-          <button key={s} onClick={()=>sendChat(s)} style={S.suggBtn}>{s}</button>
-        ))}
-      </div>}
-      {chat.map((m,i)=><div key={i} style={{display:"flex",justifyContent:m.r==="user"?"flex-end":"flex-start",marginBottom:8}}>
-        <div style={{...S.bubble,background:m.r==="user"?"rgba(79,163,255,0.18)":"#1E2434",borderColor:m.r==="user"?"rgba(79,163,255,0.35)":"#2A3247"}}>{m.c}</div>
-      </div>)}
-      {chatLoad&&<div style={{display:"flex",justifyContent:"flex-start",marginBottom:8}}><div style={{...S.bubble,background:"#1E2434",borderColor:"#2A3247",color:"#8B93A7"}}>Calculando…</div></div>}
-      <div ref={chatEnd}/>
-    </div>
-    <div style={{display:"flex",gap:8}}>
-      <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendChat();}}
-        placeholder="Escribe tu pregunta…" style={{...S.cfgInput,flex:1,width:"auto",textAlign:"left",padding:"11px 12px"}}/>
-      <button onClick={()=>sendChat()} disabled={chatLoad||!chatIn.trim()} style={{...S.bigBtn,flex:"0 0 auto",padding:"10px 16px",borderColor:"#4FA3FF",color:"#4FA3FF",opacity:chatLoad||!chatIn.trim()?0.5:1}}>Enviar</button>
-    </div>
-    {chat.length>0&&<button onClick={()=>setChat([])} style={{background:"none",border:"none",color:"#5C6477",fontSize:11,marginTop:8,padding:0,textAlign:"center"}}>Borrar conversación</button>}
-  </div>
-</div></div>}
+      doc.txt(40, `Tarifa normal ${state.config.rateNormal.toFixed(4)} EUR/h  ·  Festivo ${(state.config.rateNormal + state.config.plusFestivo).toFixed(4)} EUR/h`, { size: 9, gray: true }); doc.down(22);
+      doc.need(20); doc.txt(40, "DIA", { size: 8.5, bold: true, gray: true }); doc.txt(170, "TIPO", { size: 8.5, bold: true, gray: true }); doc.txt(390, "HORAS", { size: 8.5, bold: true, gray: true, right: true }); doc.txt(555, "IMPORTE", { size: 8.5, bold: true, gray: true, right: true }); doc.down(5); doc.hr(); doc.down(13);
 
-{/* ── AJUSTES ── */}
-{tab==="ajustes"&&<div className="tab-c"><div className="aj-grid">
-  <div className="col-s">
-    <div style={S.card}>
-      <div style={S.cardT}>Privacidad</div>
-      <div style={{...S.rowSt,gap:12}}>
-        <span style={{color:"#C9D2E3",fontSize:13,flex:1,lineHeight:1.4}}>Ocultar cantidades
-          <span style={{display:"block",color:"#5C6477",fontSize:11,marginTop:2}}>Como en el banco: muestra •••• por si enseñas la app a alguien.</span>
-        </span>
-        <button onClick={toggleHide} style={{...S.toggle,background:hide?"#3FD68C":"#2A3247",justifyContent:hide?"flex-end":"flex-start"}}>
-          <span style={S.toggleKnob}/>
-        </button>
-      </div>
-    </div>
+      for (let d = 1; d <= dim; d++) {
+        const e = (rec.days||{})[d]; if (!e) continue;
+        const h = Number(e.hours) || 0; const imp = e.type === "descanso" ? 0 : h * (state.config.rateNormal + (e.type === "festivo" ? state.config.plusFestivo : 0));
+        doc.need(13); doc.txt(40, `${d} ${MESES_CORTO[mm]}`, { size: 9.5 }); doc.txt(170, TYPES[e.type].label, { size: 9.5, gray: e.type === "descanso" }); doc.txt(390, e.type === "descanso" ? "-" : String(h), { size: 9.5, right: true }); doc.txt(555, e.type === "descanso" ? "-" : eurPdf(imp), { size: 9.5, right: true }); doc.down(13);
+      }
+      doc.down(2); doc.hr(); doc.down(16); doc.need(15);
+      doc.txt(40, `Dias: ${c.diasTrab} trab. / ${c.diasDesc} desc.   ·   H: ${c.hNormalPaid} norm. / ${c.hFestivo} fest.`, { size: 9.5 }); doc.down(14);
+      doc.need(15); doc.txt(40, "Total bruto", { size: 10.5, bold: true }); doc.txt(555, eurPdf(c.bruto), { size: 10.5, bold: true, right: true }); doc.down(15);
+      c.dets.forEach((dd) => { doc.need(12); doc.txt(40, `${dd.name} (${dd.pct}%)`, { size: 9, gray: true }); doc.txt(555, "-" + eurPdf(dd.amount), { size: 9, gray: true, right: true }); doc.down(12); });
+      doc.down(2); doc.hr(); doc.down(17); doc.need(18);
+      doc.txt(40, "NETO ESTIMADO", { size: 11, bold: true }); doc.txt(555, eurPdf(c.neto), { size: 13, bold: true, right: true }); doc.down(20);
+    }
 
-    <div style={S.card}>
-      <div style={S.cardT}>Seguridad — PIN de acceso</div>
-      <p style={{color:"#8B93A7",fontSize:12,margin:"0 0 12px",lineHeight:1.5}}>
-        {hasPin ? "Tu app está protegida con PIN. Se bloquea automáticamente al minimizar." : "Sin PIN configurado: cualquiera con acceso al dispositivo puede ver tus datos."}
-      </p>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-        <button onClick={() => setChangingPin(true)} style={{...S.bigBtn, borderColor: hasPin?"#FFB04F":"#7BE8A8", color: hasPin?"#FFB04F":"#7BE8A8"}}>
-          {hasPin ? "🔑 Cambiar PIN" : "🔒 Configurar PIN"}
-        </button>
-        {hasPin && <button onClick={lockApp} style={{...S.bigBtn, borderColor:"#4FA3FF", color:"#4FA3FF"}}>🔐 Bloquear ahora</button>}
-        {hasPin && <button onClick={removePin} style={{...S.bigBtn, borderColor:"rgba(255,107,107,0.4)", color:"#FF8B8B"}}>Eliminar PIN</button>}
-      </div>
-    </div>
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
 
-    <div style={S.card}>
-      <div style={S.cardT}>IA — API Key de Anthropic</div>
-      <p style={{color:"#8B93A7",fontSize:12,margin:"0 0 8px",lineHeight:1.5}}>Necesaria para el chat IA y comprobar nóminas. Consíguela gratis en <b style={{color:"#4FA3FF"}}>console.anthropic.com</b></p>
-      <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        <input type={showApiKey?"text":"password"} value={config.apiKey||""} placeholder="sk-ant-…"
-          onChange={e=>setConfig({...config,apiKey:e.target.value})}
-          style={{...S.cfgInput,flex:1,width:"auto",textAlign:"left"}}/>
-        <button onClick={()=>setShowApiKey(!showApiKey)} style={{...S.bigBtn,flex:"0 0 auto",padding:"8px 14px"}}>
-          {showApiKey?"Ocultar":"Ver"}
-        </button>
-      </div>
-      {config.apiKey&&<p style={{color:"#7BE8A8",fontSize:11,marginTop:6}}>✓ API Key configurada</p>}
-    </div>
+    async function processDownload(blob, filename) {
+      try {
+        const file = new File([blob], filename, { type: blob.type });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename }); return;
+        }
+      } catch(e) {}
+      
+      try {
+        const base64 = await blobToBase64(blob);
+        const a = document.createElement("a");
+        a.href = base64;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => document.body.removeChild(a), 500);
+      } catch(err) {
+        alert("No se pudo descargar el archivo.");
+      }
+    }
 
-    <div style={S.card}>
-      <div style={S.cardT}>Perfil de empleado</div>
-      <select value={config.profile} onChange={e=>{const p=e.target.value;setConfig({...config,profile:p,sintaxUnlocked:p==="sintax"?config.sintaxUnlocked:false});setPwInput("");setPwError(false);}} style={S.select}>
-        <option value="ett">Empleado de ETT</option>
-        <option value="sintax">Empleado de Sintax</option>
-      </select>
-      {config.profile==="ett"&&<p style={{color:"#5C6477",fontSize:11,marginTop:10,lineHeight:1.5}}>En ETT las horas extra se pagan al precio de la hora normal.</p>}
-      {config.profile==="sintax"&&!config.sintaxUnlocked&&<div style={{marginTop:12}}>
-        <p style={{color:"#8B93A7",fontSize:12,margin:"0 0 8px"}}>Perfil protegido. Introduce la contraseña:</p>
-        <div style={{display:"flex",gap:8}}>
-          <input type="password" value={pwInput} placeholder="Contraseña" onChange={e=>{setPwInput(e.target.value);setPwError(false);}} style={{...S.cfgInput,flex:1,width:"auto",textAlign:"left"}}/>
-          <button onClick={()=>{if(pwInput===SINTAX_PASS){setConfig({...config,sintaxUnlocked:true});setPwInput("");setPwError(false);}else setPwError(true);}} style={{...S.bigBtn,flex:"0 0 auto",padding:"8px 16px",borderColor:"#4FA3FF",color:"#4FA3FF"}}>Desbloquear</button>
+    window.doExportMonth = () => {
+      const doc = createPdfDoc(); buildMonthReport(doc, state.year, state.month);
+      const blob = new Blob([new Uint8Array([...assemblePdf(doc.pages)].map(c=>c.charCodeAt(0)))], { type: "application/pdf" });
+      const fname = `Horas_${MESES[state.month]}_${state.year}.pdf`;
+      state.pdfReady = { blob, filename: fname };
+      processDownload(blob, fname); render();
+    };
+
+    window.doExportYear = (yy) => {
+      const doc = createPdfDoc(); doc.txt(40, `Resumen anual - ${yy}`, { size: 16, bold: true }); doc.down(30);
+      if(state.config.userName) { doc.txt(40, `Trabajador: ${state.config.userName}`, { size: 10, bold: true }); doc.down(16); }
+      for(let m=0;m<12;m++) if(state.allData[monthKey(yy,m)]) buildMonthReport(doc, yy, m);
+      const blob = new Blob([new Uint8Array([...assemblePdf(doc.pages)].map(c=>c.charCodeAt(0)))], { type: "application/pdf" });
+      const fname = `Horas_${yy}_completo.pdf`;
+      state.pdfReady = { blob, filename: fname };
+      processDownload(blob, fname); render();
+    };
+
+    // ============================================================
+    // SISTEMA DE IA -> POLLINATIONS (PÚBLICO Y SIN API KEY)
+    // ============================================================
+    
+    async function extractTextFromPDF(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      let fullText = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        fullText += content.items.map(item => item.str).join(" ") + "\n";
+      }
+      return fullText;
+    }
+
+    async function apiCallPublic(messagesArray, isChat = true) {
+      const nmb = state.config.userName || "el trabajador";
+      
+      let sysCtx = `Eres un experto laboral. Responde de forma natural y breve. Te diriges a ${nmb}. Datos: Tarifa normal ${state.config.rateNormal}€, Festiva ${state.config.rateNormal+state.config.plusFestivo}€. Retenciones: ${state.config.deductions.reduce((s,d)=>s+d.pct,0)}%. IMPORTANTE: ESTRICTAMENTE PROHIBIDO devolver JSON o razonamientos internos. Responde solo con el texto final para el usuario.`;
+
+      if(isChat) {
+        const compact = {};
+        for (const [k, rec] of Object.entries(state.allData)) {
+          const days = {};
+          for (const [d, e] of Object.entries(rec.days || {})) {
+            days[d] = e.type === "descanso" ? "D" : (e.type === "festivo" ? "F" : "N") + (Number(e.hours) || 0);
+          }
+          if (Object.keys(days).length) compact[k] = { cerrado: !!rec.closed, dias: days };
+        }
+        sysCtx += `\n\nREGISTROS DE HORAS (N=Normal, F=Festivo, D=Descanso):\n${JSON.stringify(compact)}\nUsa estos datos exactos para contestar sus preguntas de horas y días.`;
+      }
+
+      const payload = [
+        { role: 'system', content: sysCtx },
+        ...messagesArray
+      ];
+
+      let lastErr;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch('https://text.pollinations.ai/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: payload, model: 'openai' })
+          });
+          if (!res.ok) throw new Error("Servidor saturado");
+          return await res.text();
+        } catch(e) {
+          lastErr = e;
+          await new Promise(r => setTimeout(r, 1500)); 
+        }
+      }
+      throw lastErr;
+    }
+
+    window.sendChat = async (forceText) => {
+      const q = forceText || state.chatInput; if(!q) return;
+      state.chatInput = ""; state.chatMsgs.push({role:'user', text: q}); state.chatLoading = true; render();
+      try {
+        const contextMessages = state.chatMsgs.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+        let reply = await apiCallPublic(contextMessages, true);
+        
+        try {
+          const parsed = JSON.parse(reply);
+          if (parsed.content) reply = parsed.content;
+          else if (parsed.response) reply = parsed.response;
+        } catch(e) {}
+        
+        reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        reply = reply.split("```json").join("").split("```").join("").trim();
+        
+        if(reply.includes('"reasoning"')) {
+           reply = "El motor interno se ha saturado intentando procesar datos complejos. Por favor, formúlame la pregunta de una forma más sencilla.";
+        }
+        
+        state.chatMsgs.push({role:'bot', text: reply});
+      } catch (e) { state.chatMsgs.push({role:'bot', text: "⚠ Error de red tras varios intentos: " + e.message }); }
+      state.chatLoading = false; render();
+    };
+
+    window.handleNominaUpload = async (e) => {
+      const file = e.target.files[0]; if(!file) return;
+      e.target.value = ""; 
+      state.nomina.status = "loading"; render();
+      try {
+        const rawText = await extractTextFromPDF(file);
+        const safeText = rawText.substring(0, 3000); 
+        
+        const prompt = `Revisa este texto extraído de una nómina: "${safeText}". Analiza si cuadra el salario sabiendo que la tarifa normal es ${state.config.rateNormal}€/h. Devuelve SOLO un objeto JSON válido con este formato exacto: {"estado":"cuadra"|"no_cuadra", "resumen":"Explicación corta"}. No añadas ni markdown ni comillas fuera del JSON.`;
+        
+        const rawReply = await apiCallPublic([{ role: 'user', content: prompt }], false);
+        
+        const cleanJson = rawReply.split("```json").join("").split("```").join("").trim();
+        state.nomina.result = JSON.parse(cleanJson);
+        state.nomina.status = "done";
+      } catch(err) { state.nomina.status = "error"; state.nomina.error = "Error al analizar nómina: " + err.message; }
+      render();
+    };
+
+    // ============================================================
+    // AISLAMIENTO DOM (CERO PARPADEOS)
+    // ============================================================
+    const getEl = (id) => document.getElementById(id);
+    let chartInst = null;
+
+    function renderCalendarGrid() {
+      const grid = getEl('calendar-grid');
+      if(!grid) return;
+      const mk = monthKey(state.year, state.month);
+      const monthRec = state.allData[mk] || { days: {} };
+      const dim = new Date(state.year, state.month + 1, 0).getDate();
+      const fwd = (new Date(state.year, state.month, 1).getDay() + 6) % 7;
+      
+      let gridHtml = Array(fwd).fill('<div></div>').join('');
+      for(let d=1; d<=dim; d++) {
+        const e = monthRec.days[d]; const t = e ? TYPES[e.type] : null;
+        const isT = state.month === new Date().getMonth() && state.year === new Date().getFullYear() && d === new Date().getDate();
+        const isSel = state.selectedDay === d;
+        
+        let borderColor = "transparent";
+        if (isSel) borderColor = "#E8EDF7";
+        else if (isT) borderColor = "var(--accent)";
+        
+        gridHtml += `
+          <button id="day-btn-${d}" class="day-cell" 
+                  style="border-color:${borderColor}; ${t ? `background:${t.bg}` : ''}" 
+                  onclick="selectDay(${d})">
+            <span style="color:${t?t.color:'#5C6477'}">${d}</span>
+            ${e && e.type !== 'descanso' ? `<span style="color:${hoursColor(Number(e.hours))}">${e.hours}h</span>` : e && e.type==='descanso' ? `<span style="color:#FF6B6B">zZ</span>` : ''}
+          </button>`;
+      }
+      grid.innerHTML = DIAS_SEMANA.map(d=>`<div style="text-align:center;color:var(--muted);font-size:11px;font-weight:600">${d}</div>`).join('') + gridHtml;
+    }
+
+    function renderEditor() {
+      const container = getEl('editor-container');
+      if(!container) return;
+      
+      if (!state.selectedDay) { container.innerHTML = ''; return; }
+      
+      const mk = monthKey(state.year, state.month);
+      const monthRec = state.allData[mk] || { days: {} };
+      const s = state.draft || { type: "normal", hours: 8 };
+      const imp = s.type === "descanso" ? 0 : (Number(s.hours)||0) * (state.config.rateNormal + (s.type === "festivo" ? state.config.plusFestivo : 0));
+      
+      container.innerHTML = `
+        <div class="editor">
+          <div style="font-weight:700; font-size:16px; margin-bottom:12px">${state.selectedDay} de ${MESES[state.month].toLowerCase()}</div>
+          <div style="display:flex; gap:8px; margin-bottom:12px">
+            ${Object.entries(TYPES).map(([k, t]) => `<button class="type-btn" style="${s.type === k ? `background:${t.bg}; border-color:${t.color}; color:${t.color}` : ''}" onclick="updateDraftType('${k}')">${t.label}</button>`).join('')}
+          </div>
+          ${s.type !== 'descanso' ? `
+          <div style="display:flex; align-items:center; gap:10px; justify-content:center">
+            <button class="step-btn" onclick="stepHours(-0.5)">−</button>
+            <input type="number" id="draft-hours" class="hours-input" value="${s.hours}" style="color:${hoursColor(Number(s.hours))}" oninput="stepHours(0, this.value)">
+            <span style="color:var(--muted); font-size:14px">h</span>
+            <button class="step-btn" onclick="stepHours(0.5)">+</button>
+          </div>` : ''}
+          
+          <button id="btn-add-day" class="add-btn" style="display:${!state.dayConfirmed ? 'block' : 'none'}; margin-top:14px" onclick="saveDay()">✓ Añadir</button>
+          
+          <div id="day-earn-box" class="day-earn-box" style="display:${state.dayConfirmed ? 'block' : 'none'}; margin-top:14px">
+            ${s.type !== 'descanso' ? `
+              <div style="color:var(--muted); font-size:11px; text-transform:uppercase; font-weight:600; letter-spacing:1px">💶 Facturado este día</div>
+              <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:36px; color:var(--success); margin:4px 0">${fmt(imp)}</div>
+              <div style="color:var(--muted); font-size:12px">${s.hours} h × ${(state.config.rateNormal + (s.type==='festivo'?state.config.plusFestivo:0)).toFixed(2)} €/h</div>
+            ` : `
+              <div style="font-size:26px; margin-bottom:2px">😌</div>
+              <div style="color:var(--muted); font-size:13px">Día de descanso, bien merecido</div>
+            `}
+          </div>
+          ${monthRec.days[state.selectedDay] ? `<button class="big-btn" style="margin-top:10px; border-color:var(--danger); color:var(--danger)" onclick="clearDay()">Borrar este día</button>` : ''}
+        </div>`;
+    }
+
+    // ============================================================
+    // MOTOR PRINCIPAL DE RENDERIZADO
+    // ============================================================
+    window.switchTab = (t) => {
+      vibrate(20);
+      if (state.tab === 'anual' && t !== 'anual' && chartInst) { chartInst.destroy(); chartInst = null; }
+      state.tab = t; render();
+    };
+    
+    function render() {
+      const app = getEl("app");
+      const renderTabs = `
+        <nav class="tabs-bar">
+          ${[["mes", "Mes"], ["anual", "Año"], ["ia", "💬 IA"], ["ajustes", "Ajustes"]].map(([k, l]) => `
+            <button class="tab-btn ${state.tab === k ? 'active' : ''}" onclick="switchTab('${k}')">${l}</button>
+          `).join('')}
+          <button class="eye-btn ${state.config.hideMoney ? 'active' : ''}" onclick="vibrate(20); state.config.hideMoney = !state.config.hideMoney; saveState(); render()">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>${state.config.hideMoney ? '<line x1="4.2" y1="20" x2="19.8" y2="4"/>' : ''}</svg>
+          </button>
+        </nav>`;
+
+      let content = "";
+      
+      if (state.tab === "mes") {
+        const mk = monthKey(state.year, state.month);
+        const monthRec = state.allData[mk] || { days: {} };
+        const dim = new Date(state.year, state.month + 1, 0).getDate();
+        const ei = extraActive(state.config) ? calcExtraInfo(state.allData, state.year, state.month, dim) : null;
+        const c = calcMonth(monthRec.days, state.config, dim, ei);
+        const proj = calcProjection(monthRec.days, c, state.config, state.year, state.month, dim);
+
+        content = `
+          <div class="tab-content"><div class="two-col">
+            <div class="col-scroll">
+              <div class="row" style="margin-bottom:14px">
+                <button class="big-btn" style="width:42px" onclick="navMonth(-1)">‹</button>
+                <div style="text-align:center"><div style="font-size:22px; font-weight:700; font-family:'Space Grotesk', system-ui">${MESES[state.month]}</div><div style="font-size:12px; color:var(--muted)">${state.year}</div></div>
+                <button class="big-btn" style="width:42px" onclick="navMonth(1)">›</button>
+              </div>
+              <div class="neto-block">
+                <div style="color:var(--muted); font-size:12px; font-weight:600; letter-spacing:1px">Neto estimado a recibir</div>
+                <div class="neto-value">${fmt(c.neto)}</div>
+                <div style="color:var(--muted); font-size:12px">Bruto ${eur(c.bruto)} · Retenciones −${eur(c.totalDed)}</div>
+              </div>
+              
+              <div id="calendar-grid" class="grid"></div>
+              <div id="editor-container"></div>
+            </div>
+            
+            <div class="col-scroll">
+              ${proj ? `
+                <div class="card" style="border-color: rgba(123,232,168,0.25);">
+                  <div class="card-title">Proyección a fin de mes</div>
+                  <div style="display:flex; align-items:baseline; gap:10px">
+                    <span style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:26px; color:#7BE8A8;">≈ ${fmt(proj.projNeto)}</span>
+                    <span style="color:#8B93A7; font-size:12px">neto · bruto ≈ ${eur(proj.projBruto)}</span>
+                  </div>
+                  <div style="color:#8B93A7; font-size:12px; margin-top:6px; line-height:1.5;">A tu ritmo (${proj.avgH.toFixed(1)} h/día trab.): en los ${proj.remaining} días que quedan, esta es tu estimación.</div>
+                </div>
+              ` : ''}
+
+              <div class="card">
+                <div class="card-title">Desglose del Mes</div>
+                <div class="row"><span>H. normales (${c.hNormalPaid}h)</span> <span>${fmt(c.brutoNormal)}</span></div>
+                <div class="row"><span>H. festivas (${c.hFestivo}h)</span> <span>${fmt(c.brutoFestivo)}</span></div>
+                ${ei && c.hExtra > 0 ? `<div class="row"><span>H. extra (${c.hExtra}h)</span> <span style="color:var(--success)">${fmt(c.brutoExtra)}</span></div>` : ''}
+                <div style="height:1px; background:var(--border-light); margin:8px 0"></div>
+                <div class="row" style="font-weight:600"><span>Total bruto</span> <span>${fmt(c.bruto)}</span></div>
+                ${c.dets.map(d => `<div class="row" style="color:var(--muted); font-size:13px"><span>${d.name}</span> <span>-${fmt(d.amount)}</span></div>`).join('')}
+                <div style="height:1px; background:var(--border-light); margin:8px 0"></div>
+                <div class="row" style="font-weight:700; color:var(--success); font-size:15px"><span>Neto estimado</span> <span>${fmt(c.neto)}</span></div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">Comprobar Nómina (IA)</div>
+                <button class="big-btn" style="border-color:var(--success); color:var(--success)" onclick="vibrate(20); getEl('nomina-upload').click()">
+                  ${state.nomina.status==='loading' ? '⏳ Analizando PDF internamente...' : '📑 Subir nómina (PDF)'}
+                </button>
+                ${state.nomina.result ? `<div style="margin-top:10px; font-size:13px; color:var(--text); background:rgba(255,255,255,0.05); padding:10px; border-radius:8px">${state.nomina.result.resumen}</div>` : ''}
+                ${state.nomina.error ? `<div style="color:var(--danger); font-size:12px; margin-top:8px">${state.nomina.error}</div>` : ''}
+              </div>
+
+              <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:10px" onclick="openExportModal()">📄 Exportar PDF</button>
+            </div>
+          </div></div>`;
+      }
+      
+      else if (state.tab === "anual") {
+        const rows = getAnnualData();
+        const totalNeto = rows.reduce((s,r)=>s+r.neto, 0);
+        const totalBruto = rows.reduce((s,r)=>s+r.bruto, 0);
+        const totalHoras = rows.reduce((s,r)=>s+r.horas, 0);
+        const totalDescansos = rows.reduce((s,r)=>s+r.diasDesc, 0);
+        
+        content = `
+          <div class="tab-content"><div class="two-col">
+            <div class="col-scroll">
+              <div class="row" style="margin-bottom:14px; justify-content:center; gap:20px">
+                <button class="big-btn" style="width:42px" onclick="vibrate(20); state.year--; render()">‹</button>
+                <div style="font-size:22px; font-weight:700; font-family:'Space Grotesk', system-ui">${state.year}</div>
+                <button class="big-btn" style="width:42px" onclick="vibrate(20); state.year++; render()">›</button>
+              </div>
+              <div class="neto-block">
+                <div style="color:var(--muted); font-size:12px; font-weight:600; letter-spacing:1px">Neto acumulado ${state.year}</div>
+                <div class="neto-value">${fmt(totalNeto)}</div>
+                <div style="color:var(--success); font-size:13px; font-weight:600; margin-bottom:8px">Bruto total ≈ ${fmt(totalBruto)}</div>
+                <div style="color:var(--muted); font-size:12px">${totalHoras} horas trabajadas · ${totalDescansos} días de descanso</div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">Neto por Mes</div>
+                <div style="position: relative; height: 220px; width: 100%;">
+                  <canvas id="chart-anual"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-scroll">
+              <div class="card"><div class="card-title">Meses de ${state.year}</div>
+                ${rows.map(r => `
+                  <div class="row" style="border-bottom:1px solid var(--border-light); padding:10px 0; opacity:${r.hasData?1:0.4}">
+                    <span>${MESES[r.m]}</span><span style="font-weight:600; font-variant-numeric:tabular-nums; color:${r.hasData?'var(--success)':'var(--muted)'}">${fmt(r.neto)}</span>
+                  </div>`).join('')}
+              </div>
+            </div>
+          </div></div>`;
+        setTimeout(renderChart, 100);
+      }
+
+      else if (state.tab === "ia") {
+        content = `
+          <div class="tab-content"><div class="ia-wrap">
+            <div class="card" style="display:flex; flex-direction:column; flex:1; max-height: 70vh; min-height: 50vh;">
+              <div class="card-title">Asistente IA (Público)</div>
+              
+              <div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
+                ${state.chatMsgs.length === 0 ? `<p style="color:var(--muted); font-size:13px">Conectado. Sabe tus tarifas, horas y nóminas. Pregunta lo que quieras.</p>` : ''}
+                ${state.chatMsgs.map(m => `<div class="bubble ${m.role === 'user' ? 'user' : 'bot'}">${m.text}</div>`).join('')}
+                ${state.chatLoading ? `<div class="bubble bot">Escribiendo...</div>` : ''}
+              </div>
+              
+              <div style="display:flex; gap:8px">
+                <input class="config-input" style="flex:1; text-align:left" placeholder="Pregunta algo..." value="${state.chatInput}" oninput="state.chatInput=this.value" onkeydown="if(event.key==='Enter') sendChat()">
+                <button class="big-btn" style="flex:0 0 auto; width:auto; border-color:var(--accent); color:var(--accent)" onclick="sendChat()">Enviar</button>
+              </div>
+            </div>
+          </div></div>`;
+      }
+
+      else if (state.tab === "ajustes") {
+        content = `
+          <div class="tab-content"><div class="ajustes-grid">
+            <div class="col-scroll">
+              <div class="card" style="border-color: ${cloud.user ? 'rgba(123,232,168,0.35)' : 'var(--border)'}">
+                <div class="card-title">☁️ Cuenta y Nube</div>
+                ${cloud.user ? `
+                  <div class="row">
+                    <span style="color:var(--text); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%">${cloud.user.email}</span>
+                    <span id="cloud-status" style="color:var(--success); font-size:12px; font-weight:600">${cloud.status === 'ok' ? '☁️ Sincronizado' : cloud.status === 'syncing' ? '⏳ Sincronizando...' : '⚠️ Error'}</span>
+                  </div>
+                  <p style="color:var(--muted); font-size:11px; margin:6px 0 10px">Tus horas se guardan en la nube y se comparten entre tus dispositivos.</p>
+                  <button class="big-btn" style="border-color:var(--danger); color:var(--danger)" onclick="logoutGoogle()">Cerrar sesión</button>
+                ` : `
+                  <p style="color:var(--muted); font-size:12px; margin:0 0 10px">Inicia sesión para sincronizar tus datos entre el móvil y la tablet y no perderlos nunca.</p>
+                  <button class="big-btn" style="border-color:var(--accent); color:var(--accent)" onclick="loginGoogle()">🔐 Iniciar sesión con Google</button>
+                `}
+              </div>
+
+              <div class="card">
+                <div class="card-title">Tu Perfil</div>
+                <div class="row">
+                  <span style="color:var(--muted); font-size:13px">Nombre completo</span> 
+                  <input type="text" class="config-input" style="width:140px; text-align:left;" placeholder="Ej. Fran" value="${state.config.userName || ''}" onchange="updateConfig('userName', this.value)">
+                </div>
+                <p style="color:var(--muted); font-size:11px; margin-top:6px;">Saldrá impreso en los PDFs generados.</p>
+              </div>
+
+              <div class="card">
+                <div class="card-title">Tarifas</div>
+                <div class="row"><span>Hora normal (€)</span> <input type="number" step="0.01" class="config-input" value="${state.config.rateNormal}" onchange="updateConfig('rateNormal', this.value)"></div>
+                <div class="row"><span>Plus festivo (€)</span> <input type="number" step="0.01" class="config-input" value="${state.config.plusFestivo}" onchange="updateConfig('plusFestivo', this.value)"></div>
+                ${state.config.profile==='sintax' && state.config.sintaxUnlocked ? `<div class="row"><span>Hora Extra (€)</span> <input type="number" step="0.01" class="config-input" value="${state.config.rateExtra}" onchange="updateConfig('rateExtra', this.value)"></div>` : ''}
+              </div>
+              
+              <div class="card">
+                <div class="card-title">Retenciones</div>
+                ${state.config.deductions.map((d,i) => `
+                  <div style="display:flex; gap:8px; margin-bottom:8px">
+                    <input class="config-input" style="flex:1; text-align:left" value="${d.name}" onchange="updateDed(${i},'name',this.value)">
+                    <input type="number" step="0.1" class="config-input" style="width:70px" value="${d.pct}" onchange="updateDed(${i},'pct',this.value)">
+                    <button style="color:var(--danger)" onclick="delDed(${i})">✕</button>
+                  </div>`).join('')}
+                <button class="big-btn" onclick="vibrate(20); addDed()" style="margin-top:4px">+ Añadir</button>
+              </div>
+            </div>
+            <div class="col-scroll">
+              <div class="card">
+                <div class="card-title">Perfil de Empresa</div>
+                <select class="config-input" style="width:100%; text-align:left" onchange="updateConfig('profile', this.value)">
+                  <option value="ett" ${state.config.profile==='ett'?'selected':''}>ETT (Estándar)</option>
+                  <option value="sintax" ${state.config.profile==='sintax'?'selected':''}>Sintax (Extras vencidas)</option>
+                </select>
+                ${state.config.profile==='sintax' && !state.config.sintaxUnlocked ? `<div style="margin-top:10px; display:flex; gap:8px"><input type="password" id="pw-sintax" class="config-input" style="flex:1; text-align:left" placeholder="Contraseña"><button class="big-btn" style="flex:0; width:auto" onclick="unlockSintax()">Desbloquear</button></div>` : ''}
+              </div>
+              
+              <div class="card">
+                <div class="card-title">Copias de Seguridad</div>
+                <div style="display:flex; gap:8px">
+                  <button class="big-btn" style="border-color:var(--success); color:var(--success)" onclick="vibrate(20); exportBackup()">⬇ Exportar</button>
+                  <button class="big-btn" style="border-color:var(--accent); color:var(--accent)" onclick="vibrate(20); getEl('backup-upload').click()">⬆ Importar</button>
+                </div>
+              </div>
+            </div>
+          </div></div>`;
+      }
+
+      app.innerHTML = renderTabs + content + `
+        <div class="watermark">
+          &copy; ${new Date().getFullYear()} Propiedad de FranOlea. Todos los derechos reservados.
         </div>
-        {pwError&&<p style={{color:"#FF8B8B",fontSize:12,marginTop:8}}>Contraseña incorrecta.</p>}
-      </div>}
-      {extraActive(config)&&<div style={{marginTop:12}}>
-        <div style={{color:"#7BE8A8",fontSize:12,fontWeight:600,marginBottom:8}}>✓ Perfil Sintax desbloqueado</div>
-        <CfgInput label="Hora extra (€)" val={config.rateExtra} onChange={v=>setConfig({...config,rateExtra:v})}/>
-        <p style={{color:"#5C6477",fontSize:11,marginTop:6,lineHeight:1.5}}>Todo lo que pase de 40 h/semana se paga a este precio, a mes vencido.</p>
-      </div>}
-    </div>
+      `;
+      renderModalExport();
+      
+      if (state.tab === "mes") {
+        renderCalendarGrid();
+        renderEditor();
+      }
+      
+      if (state.tab === "ia") {
+        const scrollBox = getEl("chat-scroll-box");
+        if (scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
+      }
+    }
 
-    <div style={S.card}>
-      <div style={S.cardT}>Tarifas</div>
-      <CfgInput label="Hora normal (€)" val={config.rateNormal} onChange={v=>setConfig({...config,rateNormal:v})}/>
-      <CfgInput label="Plus festivo (€)" val={config.plusFestivo} onChange={v=>setConfig({...config,plusFestivo:v})}/>
-      <p style={{color:"#5C6477",fontSize:11,marginTop:6}}>Hora festiva = normal + plus = {(config.rateNormal+config.plusFestivo).toFixed(4)} €/h</p>
-    </div>
-  </div>
+    // ============================================================
+    // EVENTOS Y NAVEGACIÓN MODULAR
+    // ============================================================
+    window.navMonth = (dir) => { 
+      vibrate(20);
+      state.month += dir; state.selectedDay = null;
+      if (state.month < 0) { state.month = 11; state.year--; }
+      if (state.month > 11) { state.month = 0; state.year++; }
+      render(); 
+    };
+    
+    window.selectDay = (d) => {
+      vibrate(20);
+      state.selectedDay = state.selectedDay === d ? null : d;
+      const mk = monthKey(state.year, state.month);
+      const ex = (state.allData[mk]?.days || {})[state.selectedDay];
+      state.draft = ex ? { ...ex } : { type: "normal", hours: 8 };
+      state.dayConfirmed = !!ex;
+      
+      renderCalendarGrid();
+      renderEditor();
+    };
 
-  <div className="col-s">
-    <div style={S.card}>
-      <div style={S.cardT}>Retenciones</div>
-      {config.deductions.map((d,i)=><div key={d.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-        <input value={d.name} onChange={e=>{const ds=[...config.deductions];ds[i]={...ds[i],name:e.target.value};setConfig({...config,deductions:ds});}} style={{...S.cfgInput,flex:1,width:"auto",textAlign:"left"}}/>
-        <input type="number" inputMode="decimal" step="0.01" value={d.pct} onChange={e=>{const ds=[...config.deductions];ds[i]={...ds[i],pct:e.target.value===""?0:Number(e.target.value)};setConfig({...config,deductions:ds});}} style={{...S.cfgInput,width:72}}/>
-        <span style={{color:"#8B93A7",fontSize:13}}>%</span>
-        <button onClick={()=>setConfig({...config,deductions:config.deductions.filter(x=>x.id!==d.id)})} style={S.delBtn}>✕</button>
-      </div>)}
-      <button onClick={()=>setConfig({...config,deductions:[...config.deductions,{id:"d"+Date.now(),name:"Nueva retención",pct:0}]})} style={{...S.bigBtn,width:"100%",marginTop:4}}>+ Añadir retención</button>
-      <div style={{...S.rowSt,marginTop:10}}>
-        <span style={{color:"#8B93A7",fontSize:13,fontWeight:600}}>Total retenido</span>
-        <span style={{color:"#FFB04F",fontWeight:700,fontSize:14}}>{config.deductions.reduce((s,d)=>s+(Number(d.pct)||0),0).toFixed(2)}%</span>
-      </div>
-    </div>
+    window.updateDraftType = (type) => {
+      vibrate(20);
+      state.draft.type = type;
+      if (type === 'descanso') state.draft.hours = 0;
+      state.dayConfirmed = false;
+      renderEditor();
+    };
 
-    <div style={S.card}>
-      <div style={S.cardT}>Copia de seguridad</div>
-      <p style={{color:"#8B93A7",fontSize:12,margin:"0 0 10px",lineHeight:1.5}}>Exporta tus datos para transferirlos entre dispositivos o hacer copia de seguridad.</p>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={doExportBackup} style={{...S.bigBtn,borderColor:"#7BE8A8",color:"#7BE8A8"}}>⬇ Exportar datos</button>
-        <button onClick={()=>backupRef.current?.click()} style={{...S.bigBtn,borderColor:"#4FA3FF",color:"#4FA3FF"}}>⬆ Importar datos</button>
-      </div>
-      <input ref={backupRef} type="file" accept="application/json,.json" style={{display:"none"}} onChange={e=>{doImport(e.target.files?.[0]);e.target.value="";}}/>
-    </div>
+    window.stepHours = (diff, val) => {
+      vibrate(20);
+      let current = Number(state.draft.hours) || 0;
+      let h = val !== undefined ? Number(val) : current + diff;
+      h = Math.max(0, Math.min(24, h));
+      
+      state.draft.hours = h;
+      state.dayConfirmed = false;
 
-    <div style={S.card}>
-      <div style={S.cardT}>Sobre esta app</div>
-      <p style={{color:"#8B93A7",fontSize:12,lineHeight:1.6}}>Tus datos se guardan en este dispositivo, solo tú los ves. Esta es la versión autónoma, instalable en Android.</p>
-    </div>
-  </div>
-</div></div>}
+      const inp = getEl('draft-hours');
+      if (inp) {
+        if (val === undefined) inp.value = h;
+        inp.style.color = hoursColor(h);
+      }
 
-{/* ── DIÁLOGO EXPORTAR ── */}
-{expOpen&&<div onClick={closeExp} style={{position:"fixed",inset:0,background:"rgba(8,10,16,0.75)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-  <div onClick={e=>e.stopPropagation()} style={{background:"#171C2A",border:"1px solid #2A3247",borderRadius:18,padding:20,width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,0.6)"}}>
-    {!expReady&&<>
-      <div style={{fontFamily:"'Space Grotesk',system-ui",fontWeight:700,fontSize:17,marginBottom:4,color:"#E8EDF7"}}>Exportar informe</div>
-      <p style={{color:"#8B93A7",fontSize:12,margin:"0 0 14px"}}>¿Qué quieres exportar?</p>
-      <button onClick={doExportMonth} style={{...S.bigBtn,width:"100%",borderColor:"#4FA3FF",color:"#4FA3FF",marginBottom:14}}>📄 Este mes · {MESES[month]} {year}</button>
-      <div style={{color:"#8B93A7",fontSize:11,textTransform:"uppercase",letterSpacing:1.2,fontWeight:600,marginBottom:8}}>O un año completo</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-        {expYears.map(yy=><button key={yy} onClick={()=>doExportYear(yy)}
-          style={{flex:"1 0 30%",padding:"11px 0",borderRadius:12,border:"1.5px solid #2A3247",background:"rgba(255,255,255,0.03)",color:"#C9D2E3",fontSize:14,fontWeight:600}}>🗓 {yy}</button>)}
-      </div>
-      <button onClick={closeExp} style={{background:"none",border:"none",color:"#5C6477",fontSize:12,marginTop:14,width:"100%",textAlign:"center"}}>Cancelar</button>
-    </>}
-    {expReady&&<>
-      <div style={{fontFamily:"'Space Grotesk',system-ui",fontWeight:700,fontSize:16,color:"#7BE8A8",marginBottom:4}}>✓ Informe generado</div>
-      <p style={{color:"#8B93A7",fontSize:12,margin:"0 0 10px",lineHeight:1.5}}>Si no se ha abierto el menú de compartir, usa los botones:</p>
-      <div style={{background:"#11151F",border:"1px solid #2A3247",borderRadius:10,padding:12,maxHeight:180,overflowY:"auto",marginBottom:12}}>
-        <pre style={{margin:0,fontSize:10.5,color:"#C9D2E3",whiteSpace:"pre-wrap",wordBreak:"break-word",fontFamily:"monospace",lineHeight:1.6}}>{expReady.text}</pre>
-      </div>
-      <button onClick={async()=>{if(!(await shareReport(expReady.title,expReady.text)))alert("Tu dispositivo no soporta compartir directamente.");}}
-        style={{...S.bigBtn,width:"100%",borderColor:"#7BE8A8",color:"#7BE8A8",marginBottom:8}}>📤 Compartir (WhatsApp, Gmail, Drive…)</button>
-      <button onClick={async()=>{if(await copyReport(expReady.text))alert("✓ Copiado. Pégalo donde quieras.");else alert("No se pudo copiar.");}}
-        style={{...S.bigBtn,width:"100%",borderColor:"#4FA3FF",color:"#4FA3FF",marginBottom:8}}>📋 Copiar al portapapeles</button>
-      <div style={{display:"flex",gap:8,marginTop:4}}>
-        <button onClick={()=>setExpReady(null)} style={{flex:1,background:"none",border:"none",color:"#8B93A7",fontSize:12,padding:"6px 0"}}>← Otro</button>
-        <button onClick={closeExp} style={{flex:1,background:"none",border:"none",color:"#5C6477",fontSize:12,padding:"6px 0"}}>Cerrar</button>
-      </div>
-    </>}
-  </div>
-</div>}
+      const addBtn = getEl('btn-add-day');
+      if (addBtn) addBtn.style.display = 'block';
 
-<div className="fix-bot" style={{textAlign:"center",color:"#5C6477",fontSize:12,marginTop:4,minHeight:16}}>
-  {saveState==="saving"&&"Guardando…"}
-  {saveState==="saved"&&"✓ Guardado"}
-  {saveState==="error"&&"⚠ No se pudo guardar"}
-  {saveState==="idle"&&"Tus datos se guardan automáticamente"}
-</div>
-<div className="fix-bot" style={{display:"flex",alignItems:"center",gap:10,marginTop:14,opacity:0.8,userSelect:"none"}}>
-  <span style={{flex:1,height:1,background:"linear-gradient(90deg,transparent,#2A3247)",display:"block"}}/>
-  <span style={{color:"#5C6477",fontSize:11,letterSpacing:0.5,fontFamily:"'Space Grotesk',system-ui"}}>Diseñado por <b style={{color:"#8B93A7"}}>FOlea</b> © {today.getFullYear()}</span>
-  <span style={{flex:1,height:1,background:"linear-gradient(90deg,#2A3247,transparent)",display:"block"}}/>
-</div>
-</div>
-  );
-}
+      const earnBox = getEl('day-earn-box');
+      if (earnBox) earnBox.style.display = 'none';
+    };
 
-// ── Componentes pequeños ──────────────────────────────────
-function MRow({label,val,bold,muted,accent}){
-  return<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0"}}>
-    <span style={{color:muted?"#8B93A7":"#C9D2E3",fontSize:13,fontWeight:bold?600:400}}>{label}</span>
-    <span style={{color:accent?"#7BE8A8":muted?"#8B93A7":"#E8EDF7",fontWeight:bold?700:500,fontSize:bold?15:13,fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{val}</span>
-  </div>;
-}
-function CfgInput({label,val,onChange}){
-  return<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",gap:12}}>
-    <span style={{color:"#8B93A7",fontSize:13,flex:1}}>{label}</span>
-    <input type="number" inputMode="decimal" step="0.01" value={val} onChange={e=>onChange(e.target.value===""?0:Number(e.target.value))} style={S.cfgInput}/>
-  </div>;
-}
+    window.saveDay = () => {
+      vibrate(100);
+      const mk = monthKey(state.year, state.month);
+      if(!state.allData[mk]) state.allData[mk] = { days: {} };
+      state.allData[mk].days[state.selectedDay] = { type: state.draft.type, hours: state.draft.type === "descanso" ? 0 : Number(state.draft.hours) };
+      state.dayConfirmed = true; 
+      saveState(); 
+      render(); 
+    };
+    
+    window.clearDay = () => {
+      vibrate(20);
+      const mk = monthKey(state.year, state.month);
+      if(state.allData[mk] && state.allData[mk].days) delete state.allData[mk].days[state.selectedDay];
+      state.selectedDay = null; saveState(); render();
+    }
 
-// ── Estilos ───────────────────────────────────────────────
-const S={
-  app:{minHeight:"100vh",background:"#11151F",color:"#E8EDF7",fontFamily:"system-ui,-apple-system,sans-serif",padding:"12px 14px 24px"},
-  tabs:{display:"flex",gap:6,background:"rgba(255,255,255,0.04)",borderRadius:14,padding:4,marginBottom:14,alignItems:"stretch"},
-  tabBtn:{flex:1,padding:"9px 0",borderRadius:11,border:"none",background:"transparent",color:"#8B93A7",fontSize:14,fontWeight:600},
-  tabAct:{background:"#1E2434",color:"#E8EDF7"},
-  eyeBtn:{flex:"0 0 auto",width:42,borderRadius:11,border:"none",background:"transparent",color:"#8B93A7",display:"flex",alignItems:"center",justifyContent:"center"},
-  eyeAct:{background:"rgba(255,176,79,0.12)",color:"#FFB04F"},
-  monthRow:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14},
-  navBtn:{width:42,height:42,borderRadius:12,border:"1px solid #2A3247",background:"rgba(255,255,255,0.04)",color:"#C9D2E3",fontSize:22,lineHeight:1},
-  monthName:{fontFamily:"'Space Grotesk',system-ui",fontWeight:700,fontSize:22,letterSpacing:0.3},
-  yearLbl:{color:"#8B93A7",fontSize:12,marginTop:2},
-  closedBadge:{color:"#FFB04F",marginLeft:8,fontSize:11,fontWeight:600},
-  netoBlock:{textAlign:"center",padding:"16px 12px",borderRadius:16,background:"linear-gradient(160deg,rgba(79,163,255,0.10),rgba(123,232,168,0.07))",border:"1px solid #2A3247",marginBottom:10},
-  netoLbl:{color:"#8B93A7",fontSize:12,textTransform:"uppercase",letterSpacing:1},
-  netoVal:{fontFamily:"'Space Grotesk',system-ui",fontWeight:700,fontSize:36,color:"#7BE8A8",margin:"4px 0",fontVariantNumeric:"tabular-nums"},
-  brutoLine:{color:"#8B93A7",fontSize:12,fontVariantNumeric:"tabular-nums"},
-  statRow:{display:"flex",gap:8,marginBottom:12},
-  stat:{flex:1,textAlign:"center",padding:"8px 4px",borderRadius:12,background:"rgba(255,255,255,0.04)",border:"1px solid #1E2434"},
-  statV:{fontFamily:"'Space Grotesk',system-ui",fontWeight:700,fontSize:17,fontVariantNumeric:"tabular-nums"},
-  statL:{color:"#8B93A7",fontSize:10,marginTop:2},
-  weekHead:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5,marginBottom:5},
-  weekDay:{textAlign:"center",color:"#5C6477",fontSize:11,fontWeight:600},
-  grid:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5},
-  dayCell:{aspectRatio:"1",borderRadius:10,border:"1.5px solid transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:0},
-  editor:{background:"#171C2A",border:"1px solid #2A3247",borderRadius:16,padding:16,marginBottom:12},
-  editorT:{fontFamily:"'Space Grotesk',system-ui",fontWeight:700,fontSize:16,marginBottom:12},
-  typeRow:{display:"flex",gap:8,marginBottom:12},
-  typeBtn:{flex:1,padding:"10px 0",borderRadius:12,border:"1.5px solid",fontSize:13,fontWeight:600,background:"transparent"},
-  hoursRow:{display:"flex",alignItems:"center",gap:10,justifyContent:"center"},
-  stepBtn:{width:46,height:46,borderRadius:12,border:"1px solid #2A3247",background:"rgba(255,255,255,0.05)",color:"#E8EDF7",fontSize:22,lineHeight:1},
-  hoursInput:{width:80,padding:"10px 8px",borderRadius:12,border:"1px solid #2A3247",background:"#11151F",color:"#E8EDF7",fontSize:20,fontWeight:700,textAlign:"center",fontFamily:"'Space Grotesk',system-ui"},
-  addBtn:{marginTop:14,width:"100%",padding:"13px 0",borderRadius:14,border:"none",background:"linear-gradient(100deg,#3FD68C,#7BE8A8)",color:"#0E1420",fontSize:15,fontWeight:700,fontFamily:"'Space Grotesk',system-ui"},
-  earnBox:{marginTop:14,textAlign:"center",padding:"14px 12px",borderRadius:14,background:"linear-gradient(160deg,rgba(123,232,168,0.08),rgba(63,214,140,0.03))",border:"1px solid rgba(123,232,168,0.2)"},
-  earnLbl:{color:"#8B93A7",fontSize:11,textTransform:"uppercase",letterSpacing:1.2,fontWeight:600},
-  earnVal:{fontFamily:"'Space Grotesk',system-ui",fontWeight:700,fontSize:34,margin:"4px 0 2px",fontVariantNumeric:"tabular-nums",background:"linear-gradient(100deg,#A8F5C9,#7BE8A8,#3FD68C)",WebkitBackgroundClip:"text",backgroundClip:"text",WebkitTextFillColor:"transparent",color:"transparent"},
-  earnSub:{color:"#8B93A7",fontSize:12},
-  clearBtn:{marginTop:12,width:"100%",padding:"9px 0",borderRadius:12,border:"1px solid rgba(255,107,107,0.3)",background:"transparent",color:"#FF8B8B",fontSize:13},
-  card:{background:"#171C2A",border:"1px solid #1E2434",borderRadius:16,padding:16,marginBottom:12},
-  cardT:{color:"#8B93A7",fontSize:11,textTransform:"uppercase",letterSpacing:1.2,fontWeight:600,marginBottom:10},
-  rowSt:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0"},
-  divider:{height:1,background:"#1E2434",margin:"8px 0"},
-  bigBtn:{flex:1,padding:"12px 10px",borderRadius:14,border:"1.5px solid #2A3247",background:"rgba(255,255,255,0.03)",color:"#C9D2E3",fontSize:14,fontWeight:600},
-  delBtn:{width:32,height:32,borderRadius:9,border:"1px solid rgba(255,107,107,0.3)",background:"transparent",color:"#FF8B8B",fontSize:13,flexShrink:0},
-  cfgInput:{width:90,padding:"7px 8px",borderRadius:10,border:"1px solid #2A3247",background:"#11151F",color:"#E8EDF7",fontSize:14,textAlign:"right",fontVariantNumeric:"tabular-nums"},
-  select:{width:"100%",padding:"10px 12px",borderRadius:12,border:"1px solid #2A3247",background:"#11151F",color:"#E8EDF7",fontSize:14,fontWeight:600},
-  verdBox:{borderRadius:12,border:"1.5px solid",padding:"12px 14px",marginBottom:4},
-  bubble:{maxWidth:"85%",borderRadius:14,border:"1px solid",padding:"9px 13px",fontSize:13.5,lineHeight:1.55,color:"#E8EDF7",whiteSpace:"pre-wrap",wordBreak:"break-word"},
-  suggBtn:{display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:7,borderRadius:12,border:"1px solid #2A3247",background:"rgba(79,163,255,0.07)",color:"#9FC4F2",fontSize:13},
-  toggle:{width:52,height:30,borderRadius:15,border:"none",display:"flex",alignItems:"center",padding:3,flexShrink:0},
-  toggleKnob:{width:24,height:24,borderRadius:"50%",background:"#E8EDF7",display:"block",boxShadow:"0 1px 4px rgba(0,0,0,0.4)"},
-};
+    window.updateConfig = (k, v) => { 
+      vibrate(100);
+      state.config[k] = (k==='profile' || k==='userName') ? v : Number(v); 
+      if (k === 'profile' && v !== 'sintax') state.config.sintaxUnlocked = false; 
+      saveState(); render(); 
+    };
+    window.updateDed = (i, k, v) => { state.config.deductions[i][k] = k==='pct'?Number(v):v; saveState(); render(); };
+    window.delDed = (i) => { vibrate(20); state.config.deductions.splice(i,1); saveState(); render(); };
+    window.addDed = () => { vibrate(20); state.config.deductions.push({id:Date.now(), name:"Nueva", pct:0}); saveState(); render(); };
+    window.unlockSintax = () => { vibrate(100); if(getEl('pw-sintax').value === 'Sintax_Granada') { state.config.sintaxUnlocked = true; saveState(); render(); } else alert("Error"); };
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ControlHoras));
-</script>
+    window.exportBackup = () => {
+      const b = new Blob([JSON.stringify({ config: state.config, data: state.allData })], {type:"application/json"});
+      processDownload(b, `Backup_Horas_${new Date().toISOString().slice(0,10)}.json`);
+    };
+    window.importBackup = (e) => {
+      const r = new FileReader(); r.onload = () => {
+        try { const p = JSON.parse(r.result); state.config = {...DEFAULT_CONFIG, ...p.config}; state.allData = p.data||{}; saveState(); render(); alert("Importado con éxito"); } catch(e){ alert("Error"); }
+      }; r.readAsText(e.target.files[0]);
+    };
+
+    window.renderChart = () => {
+      const ctx = getEl('chart-anual'); if(!ctx) return;
+      if(chartInst) chartInst.destroy();
+      const rows = getAnnualData();
+      chartInst = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: rows.map(r=>r.name), datasets: [{ label: 'Neto', data: rows.map(r=>r.neto), backgroundColor: '#4FA3FF', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: !state.config.hideMoney, grid: { color: '#1E2434' } }, x: { grid: { display: false } } } }
+      });
+    };
+
+    window.openExportModal = () => { vibrate(20); state.pdfReady = null; getEl('modal-export').style.display = 'flex'; renderModalExport(); };
+    window.closeExport = () => { vibrate(20); getEl('modal-export').style.display = 'none'; };
+    window.renderModalExport = () => {
+      const m = getEl('modal-export-content'); if(!m) return;
+      if (!state.pdfReady) {
+        m.innerHTML = `
+          <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:17px; margin-bottom:14px">Exportar PDF</div>
+          <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:16px" onclick="doExportMonth()">📄 Este mes · ${MESES[state.month]} ${state.year}</button>
+          <div style="color:var(--muted); font-size:11px; font-weight:600; margin-bottom:8px">O AÑO COMPLETO</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            ${[state.year, state.year-1].map(y => `<button class="big-btn" style="flex:1 0 45%; padding:10px 0" onclick="doExportYear(${y})">🗓 ${y}</button>`).join('')}
+          </div>
+          <button style="width:100%; text-align:center; color:var(--muted); margin-top:16px; font-size:13px" onclick="closeExport()">Cancelar</button>
+        `;
+      } else {
+        m.innerHTML = `
+          <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:17px; margin-bottom:14px; color:var(--success)">✓ PDF Generado</div>
+          <p style="color:var(--text); font-size:13px; word-break:break-all; margin-bottom:16px">${state.pdfReady.filename}</p>
+          <button class="big-btn" style="border-color:var(--success); color:var(--success); margin-bottom:8px" onclick="processDownload(state.pdfReady.blob, state.pdfReady.filename)">⬇ Descargar / Compartir</button>
+          <button style="width:100%; text-align:center; color:var(--muted); margin-top:8px; font-size:13px" onclick="closeExport()">Cerrar</button>
+        `;
+      }
+    };
+
+    try { const raw = localStorage.getItem("horas-app-v2"); if (raw) { const p = JSON.parse(raw); state.config = { ...DEFAULT_CONFIG, ...(p.config||{}) }; state.allData = p.data||{}; } } catch(e){}
+    render();
+  </script>
 </body>
 </html>
