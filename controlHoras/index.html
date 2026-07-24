@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Control de Horas</title>
+  <link rel="manifest" href="manifest.json">
 
   
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -1043,6 +1044,9 @@
     };
 
     try { const raw = localStorage.getItem("horas-app-v2"); if (raw) { const p = JSON.parse(raw); state.config = { ...DEFAULT_CONFIG, ...(p.config||{}) }; state.allData = p.data||{}; } } catch(e){}
+    if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
     render();
   </script>
 </body>
