@@ -7,9 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Control de Horas</title>
-  <link rel="manifest" href="manifest.json">
 
-  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -163,7 +165,7 @@
       appId: "1:282064047722:web:24a04aabeecb4a67394413"
     };
 
-    const cloud = { ready: false, user: null, status: "off", unsub: null, applyingRemote: false, saveTimer: null };
+    const cloud = { ready: false, user: null, status: "off", unsub: null, applyingRemote: false, saveTimer: null, synced: false, errorMsg: "" };
 
     try {
       firebase.initializeApp(firebaseConfig);
@@ -193,19 +195,21 @@
     }
 
     function cloudSave() {
-      if (!cloud.ready || !cloud.user || cloud.applyingRemote) return;
+      if (!cloud.ready || !cloud.user || cloud.applyingRemote || !cloud.synced) return;
       cloud.status = "syncing";
       clearTimeout(cloud.saveTimer);
       cloud.saveTimer = setTimeout(() => {
         userDocRef().set({ config: state.config, data: state.allData, updatedAt: Date.now() })
           .then(() => { cloud.status = "ok"; const el = document.getElementById("cloud-status"); if (el) el.textContent = "☁️ Sincronizado"; })
-          .catch((e) => { console.error(e); cloud.status = "error"; const el = document.getElementById("cloud-status"); if (el) el.textContent = "⚠️ Error al sincronizar"; });
+          .catch((e) => { console.error(e); cloud.status = "error"; cloud.errorMsg = e.message || String(e); const el = document.getElementById("cloud-status"); if (el) el.textContent = "⚠️ Error al sincronizar"; });
       }, 800);
     }
 
     async function startSync(user) {
       cloud.user = user;
       cloud.status = "syncing";
+      cloud.errorMsg = "";
+      render();
       try {
         const snap = await userDocRef().get();
         if (snap.exists) {
@@ -220,6 +224,7 @@
           await userDocRef().set({ config: state.config, data: state.allData, updatedAt: Date.now() });
         }
         cloud.status = "ok";
+        cloud.synced = true;
         // Escucha cambios en tiempo real desde otros dispositivos
         cloud.unsub = userDocRef().onSnapshot((doc) => {
           if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -228,9 +233,32 @@
       } catch (e) {
         console.error(e);
         cloud.status = "error";
+        cloud.errorMsg = e.message || String(e);
       }
       render();
     }
+
+    // Descarga forzada: trae lo que hay en la nube y sobrescribe lo local
+    window.forceCloudPull = async () => {
+      vibrate(20);
+      if (!cloud.ready || !cloud.user) { alert("Inicia sesión primero."); return; }
+      if (!confirm("Se descargarán los datos de la nube y sustituirán a los de este dispositivo. ¿Continuar?")) return;
+      cloud.status = "syncing";
+      render();
+      try {
+        const snap = await userDocRef().get();
+        if (!snap.exists) { alert("No hay datos guardados en la nube todavía."); cloud.status = "ok"; render(); return; }
+        applyRemote(snap.data());
+        cloud.status = "ok";
+        cloud.synced = true;
+        alert("✓ Datos descargados de la nube.");
+      } catch (e) {
+        cloud.status = "error";
+        cloud.errorMsg = e.message || String(e);
+        alert("Error al descargar: " + cloud.errorMsg);
+      }
+      render();
+    };
 
     window.loginGoogle = async () => {
       vibrate(20);
@@ -251,7 +279,7 @@
     window.logoutGoogle = async () => {
       vibrate(20);
       if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; }
-      cloud.user = null; cloud.status = "off";
+      cloud.user = null; cloud.status = "off"; cloud.synced = false;
       try { await firebase.auth().signOut(); } catch (e) {}
       render();
     };
@@ -260,7 +288,7 @@
       firebase.auth().getRedirectResult().catch(() => {});
       firebase.auth().onAuthStateChanged((user) => {
         if (user) { startSync(user); }
-        else { if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; } cloud.user = null; cloud.status = "off"; render(); }
+        else { if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; } cloud.user = null; cloud.status = "off"; cloud.synced = false; render(); }
       });
     }
 
@@ -841,9 +869,11 @@
                 ${cloud.user ? `
                   <div class="row">
                     <span style="color:var(--text); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%">${cloud.user.email}</span>
-                    <span id="cloud-status" style="color:var(--success); font-size:12px; font-weight:600">${cloud.status === 'ok' ? '☁️ Sincronizado' : cloud.status === 'syncing' ? '⏳ Sincronizando...' : '⚠️ Error'}</span>
+                    <span id="cloud-status" style="color:${cloud.status === 'error' ? 'var(--danger)' : 'var(--success)'}; font-size:12px; font-weight:600">${cloud.status === 'ok' ? '☁️ Sincronizado' : cloud.status === 'syncing' ? '⏳ Sincronizando...' : '⚠️ Error'}</span>
                   </div>
+                  ${cloud.status === 'error' && cloud.errorMsg ? `<div style="color:var(--danger); font-size:11px; margin:6px 0; word-break:break-word; background:rgba(255,139,139,0.08); padding:8px; border-radius:8px">${cloud.errorMsg}</div>` : ''}
                   <p style="color:var(--muted); font-size:11px; margin:6px 0 10px">Tus horas se guardan en la nube y se comparten entre tus dispositivos.</p>
+                  <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:8px" onclick="forceCloudPull()">⬇️ Forzar descarga de la nube</button>
                   <button class="big-btn" style="border-color:var(--danger); color:var(--danger)" onclick="logoutGoogle()">Cerrar sesión</button>
                 ` : `
                   <p style="color:var(--muted); font-size:12px; margin:0 0 10px">Inicia sesión para sincronizar tus datos entre el móvil y la tablet y no perderlos nunca.</p>
@@ -1044,10 +1074,14 @@
     };
 
     try { const raw = localStorage.getItem("horas-app-v2"); if (raw) { const p = JSON.parse(raw); state.config = { ...DEFAULT_CONFIG, ...(p.config||{}) }; state.allData = p.data||{}; } } catch(e){}
-    if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(()=>{});
-}
     render();
+
+    // ============================================================
+    // PWA: REGISTRO DEL SERVICE WORKER
+    // ============================================================
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch((e) => console.warn("SW no registrado:", e));
+    }
   </script>
 </body>
 </html>
