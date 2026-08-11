@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#12151A">
+<title>Parte del día</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#12151A; --surface:#1B2027; --surface2:#242B34; --line:#2E3742;
+  --txt:#E8EBEF; --muted:#8994A3; --accent:#FFB020;
+  --sixt:#FF5F00; --avis:#D4002A; --hertz:#FFD100; --europcar:#00A650;
+  --ok:#4ADE80; --danger:#F87171;
+  --mono:'DM Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --ui:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--txt);font-family:var(--ui);
+  font-size:16px;line-height:1.4;
+  padding:0 0 96px;touch-action:manipulation;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- login ---------- */
+#gate{
+  position:fixed;inset:0;z-index:100;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;padding:24px;text-align:center;
+}
+#gate h1{font-size:22px;margin:0;font-weight:700}
+#gate p{color:var(--muted);margin:0;max-width:280px;font-size:14px}
+.gbtn{
+  background:#fff;color:#1a1a1a;font-weight:600;border-radius:999px;
+  padding:13px 22px;display:flex;align-items:center;gap:10px;font-size:15px;
+}
+#gate .err{color:var(--danger);font-size:13px;min-height:1.2em}
+
+/* ---------- cabecera ---------- */
+header{
+  position:sticky;top:0;z-index:30;background:var(--bg);
+  border-bottom:1px solid var(--line);
+  padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;
+}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fecha{font-family:var(--mono);font-size:20px;font-weight:500;letter-spacing:-.02em}
+.fecha input{background:none;border:0;font:inherit;color:inherit;width:5.4em;padding:0}
+.hdr-der{display:flex;align-items:center;gap:8px}
+.total{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.total b{color:var(--accent);font-weight:500}
+.icobtn{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:7px 10px;font-size:16px;line-height:1;
+}
+.turnos{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.turno{
+  display:flex;align-items:center;gap:4px;background:var(--surface);
+  border:1px solid var(--line);border-radius:8px;padding:4px 8px;
+  font-family:var(--mono);font-size:13px;
+}
+.turno input{background:none;border:0;width:4.2em;padding:0;text-align:center}
+.turno .tlbl{color:var(--muted);font-size:11px}
+.cuenta{
+  display:flex;align-items:center;gap:8px;margin-top:8px;
+  font-size:12px;color:var(--muted);
+}
+.cuenta .punto{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.cuenta .punto.ok{background:var(--ok)}
+.cuenta .punto.err{background:var(--danger)}
+.cuenta button{color:var(--muted);text-decoration:underline;font-size:12px;padding:2px}
+
+/* ---------- lista ---------- */
+main{padding:16px 16px 0}
+.vacio{text-align:center;padding:56px 24px;color:var(--muted)}
+.vacio strong{display:block;color:var(--txt);font-size:17px;margin-bottom:6px;font-weight:600}
+.grupo-cli{
+  font-family:var(--mono);font-size:12px;letter-spacing:.12em;font-weight:500;
+  margin:22px 0 8px;display:flex;align-items:center;gap:8px;
+}
+.grupo-cli:first-child{margin-top:0}
+.grupo-cli::after{content:"";flex:1;height:1px;background:var(--line)}
+.svc{position:relative;display:flex;gap:12px;padding:0 0 4px 0}
+.spine{position:relative;width:4px;flex:none;border-radius:2px;background:var(--line)}
+.svc .card{
+  flex:1;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:10px 12px;margin-bottom:8px;
+}
+.svc .card:active{background:var(--surface2)}
+.linea1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.horas{font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:-.01em}
+.iconos{font-size:15px;letter-spacing:1px}
+.dur{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.linea2{margin-top:3px;font-family:var(--mono);font-size:13.5px;color:#C3CBD6;word-break:break-word}
+.linea2 .mat{color:var(--txt);text-transform:uppercase}
+.notatxt{margin-top:3px;font-size:12.5px;color:var(--muted);font-style:italic}
+.mov-linea{margin-top:2px;font-family:var(--mono);font-size:13px;color:#C3CBD6}
+
+/* ---------- barra ---------- */
+.barra{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  display:flex;gap:8px;padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);
+  background:linear-gradient(to top,var(--bg) 62%,transparent);
+}
+.btn{
+  flex:1;border-radius:12px;padding:14px 12px;font-weight:600;font-size:15px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.btn-p{background:var(--accent);color:#12151A}
+.btn-s{background:var(--surface2);color:var(--txt);border:1px solid var(--line)}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.5}
+
+/* ---------- hojas ---------- */
+.sheet{
+  position:fixed;inset:0;z-index:50;background:rgba(8,10,13,.72);
+  display:none;align-items:flex-end;
+}
+.sheet.on{display:flex}
+.sheet-in{
+  background:var(--bg);width:100%;max-height:94dvh;overflow-y:auto;
+  border-radius:18px 18px 0 0;border-top:1px solid var(--line);
+  padding:8px 16px calc(env(safe-area-inset-bottom) + 20px);
+  animation:up .22s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet-in{animation:none}}
+.grab{width:38px;height:4px;background:var(--line);border-radius:2px;margin:6px auto 14px}
+.sheet h2{margin:0 0 14px;font-size:18px;font-weight:700;letter-spacing:-.01em}
+
+label,.lbl{display:block;font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;margin:16px 0 6px}
+.lbl-s{font-size:10px;margin:8px 0 4px}
+input[type=text],input[type=number],select,textarea{
+  width:100%;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;padding:11px 12px;font-family:var(--mono);
+}
+textarea{font-size:13px;line-height:1.5;min-height:260px;resize:vertical}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{
+  border:1px solid var(--line);background:var(--surface);border-radius:999px;
+  padding:9px 14px;font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px;
+}
+.chip.on{background:var(--accent);color:#12151A;border-color:var(--accent);font-weight:700}
+.chip.cli.on{color:#fff}
+.fila{display:flex;gap:10px}
+.fila>*{flex:1;min-width:0}
+.horafin{
+  display:flex;align-items:center;gap:10px;background:var(--surface2);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:6px;
+}
+.horafin .val{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--accent)}
+.horafin small{color:var(--muted);font-size:11px}
+.acciones{display:flex;gap:8px;margin-top:24px}
+.link{color:var(--muted);font-size:13px;text-decoration:underline;padding:10px 0}
+.cam{
+  display:flex;gap:8px;align-items:center;justify-content:center;
+  background:var(--surface2);border:1px dashed var(--line);border-radius:10px;
+  padding:12px;margin-top:8px;font-size:14px;color:var(--muted);width:100%;
+}
+.mov-box{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;background:var(--surface)}
+.mov-box h3{margin:0 0 2px;font-size:13px;font-weight:600;color:var(--muted)}
+.aviso{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.45}
+.toast{
+  position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:60;
+  background:var(--ok);color:#0B1410;font-weight:700;font-size:14px;
+  padding:11px 20px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s;
+  max-width:86vw;text-align:center;
+}
+.toast.on{opacity:1}
+
+/* escáner en vivo */
+#scan{position:fixed;inset:0;z-index:80;background:#000;display:flex;flex-direction:column}
+#scan video{flex:1;width:100%;object-fit:cover}
+.scan-marco{
+  position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+  width:78vw;max-width:420px;aspect-ratio:5/1.6;
+  border:2px solid rgba(255,255,255,.85);border-radius:12px;
+  box-shadow:0 0 0 100vmax rgba(0,0,0,.35);pointer-events:none;
+}
+.scan-txt{
+  position:absolute;left:0;right:0;top:calc(42% + 12vw + 24px);
+  text-align:center;color:#fff;font-size:14px;text-shadow:0 1px 4px #000;
+  padding:0 24px;
+}
+
+/* plaza estructurada */
+.plaza-num{width:5.5em !important;text-align:center}
+
+/* historial */
+.mes{margin-bottom:18px}
+.mes-h{
+  display:flex;align-items:baseline;gap:8px;margin-bottom:8px;
+  font-family:var(--mono);font-size:13px;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase;font-weight:500;
+}
+.mes-h small{color:var(--muted);letter-spacing:0;text-transform:none;margin-left:auto}
+.dia-row{
+  width:100%;display:flex;align-items:center;gap:12px;text-align:left;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:12px;margin-bottom:7px;
+}
+.dia-row:active{background:var(--surface2)}
+.dia-row .f{font-family:var(--mono);font-size:15px;font-weight:500}
+.dia-row .d{font-size:12.5px;color:var(--muted)}
+.dia-row .h{margin-left:auto;font-family:var(--mono);font-size:14px;color:var(--accent)}
+.hoy-tag{
+  font-size:10px;letter-spacing:.08em;background:var(--accent);color:#12151A;
+  border-radius:5px;padding:2px 6px;font-weight:700;
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="gate">
+  <h1>Parte del día</h1>
+  <p>Tus servicios se guardan en tu cuenta y se sincronizan entre dispositivos.</p>
+  <button class="gbtn" id="bLogin">
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.2 5.2C41 35.4 44 30.2 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
+    Entrar con Google
+  </button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<header hidden id="hdr">
+  <div class="hdr-top">
+    <div class="fecha">
+      <label class="lbl" for="fecha" style="margin:0 0 2px">Fecha</label>
+      <input id="fecha" type="text" inputmode="numeric" placeholder="dd/mm/aa"> <span style="color:var(--muted);font-size:15px">Sintax</span>
+    </div>
+    <div class="hdr-der">
+      <div class="total">Total <b id="totalH">0</b></div>
+      <button class="icobtn" id="bParte" aria-label="Leer parte con la cámara">📄</button>
+      <button class="icobtn" id="bHist" aria-label="Historial por meses">🗂️</button>
+    </div>
+  </div>
+  <div class="turnos">
+    <div class="turno"><span class="tlbl" id="lT1">Turno 1</span>
+      <input id="t1e" type="text" inputmode="numeric" placeholder="8:00" aria-label="Turno 1, hora de entrada">–<input id="t1s" type="text" inputmode="numeric" placeholder="14:00" aria-label="Turno 1, hora de salida"></div>
+    <div class="turno"><span class="tlbl" id="lT2">Turno 2</span>
+      <input id="t2e" type="text" inputmode="numeric" placeholder="17:00" aria-label="Turno 2, hora de entrada">–<input id="t2s" type="text" inputmode="numeric" placeholder="21:00" aria-label="Turno 2, hora de salida"></div>
+  </div>
+  <div class="cuenta">
+    <span class="punto" id="syncDot"></span>
+    <span id="syncTxt">conectando…</span>
+    <span id="quien" style="margin-left:auto"></span>
+    <button id="bSwitch" type="button">cambiar</button>
+  </div>
+</header>
+
+<main id="lista" hidden></main>
+
+<div class="barra" id="barra" hidden>
+  <button class="btn btn-s" id="bExport">📋 Nota del día</button>
+  <button class="btn btn-p" id="bNuevo">+ Servicio</button>
+</div>
+
+<!-- HOJA: servicio -->
+<div class="sheet" id="shSvc">
+  <div class="sheet-in">
+    <div class="grab"></div>
+    <h2 id="svcTitulo">Nuevo servicio</h2>
+
+    <span class="lbl" id="lCli">Cliente</span>
+    <div class="chips" id="cliChips" role="group" aria-labelledby="lCli"></div>
+
+    <span class="lbl" id="lTipo">Servicio</span>
+    <div class="chips" id="tipoChips" role="group" aria-labelledby="lTipo"></div>
+
+    <div id="camposEspecial" hidden>
+      <span class="lbl" id="lEsp">Tiempo de la limpieza especial</span>
+      <div class="chips" id="espChips" role="group" aria-labelledby="lEsp"></div>
+    </div>
+
+    <div id="camposMov" hidden>
+      <span class="lbl" id="lRuta">Ruta del movimiento</span>
+      <div class="chips" id="movChips" role="group" aria-labelledby="lRuta"></div>
+      <div id="movLineas"></div>
+      <button class="link" id="bAddLinea" type="button">+ añadir línea</button>
+    </div>
+
+    <div id="camposVh">
+      <label for="fMat">Matrícula</label>
+      <input id="fMat" type="text" placeholder="0000ABC" autocomplete="off" autocapitalize="characters">
+      <button class="cam" id="bCam" type="button">📷 Escanear llavero o matrícula</button>
+      <input type="file" id="fileCam" accept="image/*" capture="environment" hidden aria-hidden="true">
+
+      <div class="fila">
+        <div><label for="fMod">Modelo</label><input id="fMod" type="text" placeholder="Karoq" autocomplete="off"></div>
+        <div><label for="fKm">Kilómetros</label><input id="fKm" type="text" inputmode="numeric" placeholder="18633"></div>
+      </div>
+
+      <span class="lbl" id="lPlaza">Plaza</span>
+      <div class="chips" id="plazaChips" role="group" aria-labelledby="lPlaza"></div>
+    </div>
+
+    <label for="fIni">Hora de inicio</label>
+    <input id="fIni" type="text" inputmode="numeric" placeholder="16:00">
+
+    <div class="horafin">
+      <div>
+        <div class="val" id="vFin">—</div>
+        <small id="vDur">hora de fin</small>
+      </div>
+      <button class="chip" id="bEditFin" type="button" style="margin-left:auto">Cambiar</button>
+    </div>
+
+    <label for="fNota">Nota (opcional)</label>
+    <input id="fNota" type="text" placeholder="baliza, aforador, pendiente cerrar…" autocomplete="off">
+
+    <div class="acciones">
+      <button class="btn btn-s" id="bCancel" type="button">Cancelar</button>
+      <button class="btn btn-p" id="bGuardar" type="button">Guardar</button>
+    </div>
+    <button class="link" id="bBorrar" type="button" hidden style="width:100%;text-align:center;color:var(--danger)">Borrar este servicio</button>
+  </div>
+</div>
+
+<!-- HOJA: exportar / ver nota -->
+<div class="sheet" id="shExp">
+  <div class="sheet-in">
+    <div class="grab"></div>
+    <h2 id="expTitulo">Nota del día</h2>
+    <p class="aviso">Revisa y corrige lo que quieras antes de copiar. Se pega tal cual en Keep.</p>
+    <label for="salida">Texto de la nota</label>
+    <textarea id="salida" spellcheck="false"></textarea>
+    <div class="acciones">
+      <button class="btn btn-s" id="bCerrarExp" type="button">Cerrar</button>
+      <button class="btn btn-p" id="bCopiar" type="button">Copiar</button>
+    </div>
+    <button class="link" id="bCompartir" type="button" style="width:100%;text-align:center">Compartir a otra app…</button>
+    <button class="link" id="bAbrirDia" type="button" hidden style="width:100%;text-align:center">✏️ Abrir este día para editarlo</button>
+    <button class="link" id="bBorrarDia" type="button" hidden style="width:100%;text-align:center;color:var(--danger)">Eliminar este día del historial</button>
+  </div>
+</div>
+
+<!-- HOJA: historial -->
+<div class="sheet" id="shHist">
+  <div class="sheet-in">
+    <div class="grab"></div>
+    <h2>Historial</h2>
+    <div id="histLista"></div>
+  </div>
+</div>
+
+<!-- HOJA: lector de partes -->
+<div class="sheet" id="shParte">
+  <div class="sheet-in">
+    <div class="grab"></div>
+    <h2>Leer parte del día</h2>
+    <p class="aviso">Haz foto al parte (o varias si hay hojas de movimientos). La IA cuenta los servicios de <b>todos los operarios</b> y transcribe los movimientos manuscritos. Luego revisas el resumen antes de copiarlo.</p>
+
+    <span class="lbl" id="lPCli">Compañía del parte</span>
+    <div class="chips" id="parteCliChips" role="group" aria-labelledby="lPCli"></div>
+
+    <label for="pFecha">Fecha del parte</label>
+    <input id="pFecha" type="text" inputmode="numeric" placeholder="dd/mm/aa">
+
+    <label for="fileParte" class="cam" style="cursor:pointer" id="lblFileParte">📷 Hacer foto o elegir imágenes</label>
+    <input type="file" id="fileParte" accept="image/*" multiple hidden>
+    <div class="aviso" id="parteEstado"></div>
+
+    <div id="parteResBox" hidden>
+      <label for="parteRes">Resumen generado (editable)</label>
+      <textarea id="parteRes" spellcheck="false" style="min-height:220px"></textarea>
+      <div class="acciones">
+        <button class="btn btn-s" id="bCerrarParte" type="button">Cerrar</button>
+        <button class="btn btn-p" id="bCopiarParte" type="button">Copiar resumen</button>
+      </div>
+    </div>
+    <div class="acciones" id="parteAccIni">
+      <button class="btn btn-s" id="bCerrarParte2" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ESCÁNER EN VIVO -->
+<div id="scan" hidden>
+  <video id="scanVid" playsinline muted></video>
+  <div class="scan-marco" aria-hidden="true"></div>
+  <div class="scan-txt" id="scanTxt">Apunta al llavero o a la matrícula</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/* =========================================================
+   CONFIGURACIÓN — pega aquí lo mismo que en tus otras apps
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "PEGA_AQUI_TU_API_KEY",
+  authDomain: "mishoras-bb0cc.firebaseapp.com",
+  projectId: "mishoras-bb0cc",
+  appId: "PEGA_AQUI_TU_APP_ID"
+};
+const GEMINI_API_KEY = "PEGA_AQUI_TU_GEMINI_API_KEY";
+/* ========================================================= */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp(FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ============ datos ============ */
+const CLIENTES={
+  SIXT:{c:'var(--sixt)'}, AVIS:{c:'var(--avis)'},
+  HERTZ:{c:'var(--hertz)'}, EUROPCAR:{c:'var(--europcar)'}
+};
+const TIPOS={
+  SIXT:[
+    {k:'lavado', e:'💧', n:'Lavado'},
+    {k:'repostado', e:'⛽', n:'Repostado'},
+    {k:'repaso', e:'🌪', n:'Repaso'},
+    {k:'especial', e:'🚨', n:'Especial'},
+    {k:'mov', e:'🚘', n:'Movimiento'}
+  ],
+  OTROS:[
+    {k:'agua', e:'💧', n:'Agua'},
+    {k:'seco', e:'💩', n:'Seco'},
+    {k:'repostado', e:'⛽', n:'Repostado'},
+    {k:'especial', e:'🚨', n:'Especial'},
+    {k:'mov', e:'🚘', n:'Movimiento'}
+  ]
+};
+const tiposDe = c => c==='SIXT' ? TIPOS.SIXT : TIPOS.OTROS;
+
+const RUTAS={
+  'renfe-apto':{n:'Renfe ↔ apto', m:60},
+  'camion':{n:'Zona camión', m:25, porVh:true},
+  'guadix':{n:'Guadix', m:120},
+  'jaen':{n:'Jaén', m:150},
+  'malaga':{n:'Málaga', m:210},
+  'cordoba':{n:'Córdoba', m:270},
+  'almeria':{n:'Almería', m:270},
+  'sevilla':{n:'Sevilla', m:270},
+  'otro':{n:'Otra (manual)', m:60}
+};
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const PLAZAS=[{k:'p',n:'P nº'},{k:'fp',n:'FP'},{k:'fp+30',n:'FP+30'},{k:'dp',n:'DP'},{k:'',n:'Sin plaza'}];
+
+/* ============ tiempo ============ */
+function toMin(s){
+  if(!s) return null;
+  const m=String(s).trim().replace(/[.\-]/g,':').match(/^(\d{1,2}):?(\d{2})$/);
+  if(!m) return null;
+  const h=+m[1], mi=+m[2];
+  if(h>23||mi>59) return null;
+  return h*60+mi;
+}
+function toHora(n){
+  if(n==null) return '';
+  n=((n%1440)+1440)%1440;
+  return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
+}
+function fmtHoras(min){
+  const h=min/60;
+  return Number.isInteger(h) ? String(h) : (Math.floor(h)+"'"+Math.round((h%1)*10));
+}
+function sub(a,b){const A=toMin(a),B=toMin(b);if(A==null||B==null)return 0;return B>=A?B-A:0;}
+function totalDia(d){return sub(d.t1e,d.t1s)+sub(d.t2e,d.t2s);}
+
+function duracion(s){
+  if(s.tipos.includes('mov')){
+    const r=RUTAS[s.ruta]||RUTAS['renfe-apto'];
+    if(s.durManual) return s.durManual;
+    return r.porVh ? r.m*Math.max(1,(s.lineas||[]).length) : r.m;
+  }
+  if(s.tipos.includes('especial')) return s.minEsp||65;
+  if(s.cliente==='SIXT'){
+    if(s.tipos.includes('repaso')) return 30;
+    return 60;
+  }
+  if(s.tipos.includes('seco')) return 30;
+  if(s.tipos.includes('agua')) return s.tipos.includes('repostado')?60:50;
+  if(s.tipos.includes('repostado')) return 60;
+  return 50;
+}
+
+/* ============ estado + Firebase ============ */
+let USER=null;
+let DIAS={};
+let D=null;
+let claveActual=null;
+
+function hoyStr(){
+  const d=new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()).slice(2);
+}
+function nuevoDia(f){return {fecha:f||hoyStr(),t1e:'',t1s:'',t2e:'',t2s:'',svc:[]};}
+const docId=f=>f.replace(/\//g,'-');
+
+const $=id=>document.getElementById(id);
+function setSync(estado,txt){
+  const dot=$('syncDot');
+  dot.className='punto'+(estado==='ok'?' ok':estado==='err'?' err':'');
+  $('syncTxt').textContent=txt;
+}
+
+let saveTimer=null, pendiente=new Set();
+function guardar(){
+  if(!D)return;
+  DIAS[D.fecha]=D;
+  pendiente.add(D.fecha);
+  setSync('','guardando…');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(flushSaves,700);
+}
+async function flushSaves(){
+  if(!USER){setSync('err','sin sesión');return;}
+  const fechas=[...pendiente]; pendiente.clear();
+  try{
+    for(const f of fechas){
+      if(DIAS[f]) await setDoc(doc(db,'servicios',USER.uid,'dias',docId(f)), DIAS[f]);
+    }
+    setSync('ok','guardado en la nube');
+  }catch(e){
+    fechas.forEach(f=>pendiente.add(f));
+    setSync('err','sin conexión — reintentando');
+    setTimeout(flushSaves,5000);
+  }
+}
+async function cargarTodo(){
+  setSync('','cargando…');
+  const snap=await getDocs(collection(db,'servicios',USER.uid,'dias'));
+  DIAS={};
+  snap.forEach(s=>{const d=s.data(); if(d&&d.fecha) DIAS[d.fecha]=d;});
+  setSync('ok','guardado en la nube');
+}
+
+function cambiarDia(nuevaFecha){
+  if(!D||nuevaFecha===D.fecha) return;
+  const vieja=D.fecha;
+  delete DIAS[vieja];
+  D.fecha=nuevaFecha;
+  DIAS[nuevaFecha]=D;
+  pendiente.add(nuevaFecha);
+  if(USER) deleteDoc(doc(db,'servicios',USER.uid,'dias',docId(vieja))).catch(()=>{});
+  guardar();
+  pinta();
+}
+function abrirDia(f){
+  claveActual=f;
+  D=DIAS[f]||nuevoDia(f);
+  D.fecha=f;
+  DIAS[f]=D;
+  pinta();
+}
+
+/* ============ login ============ */
+$('bLogin').onclick=async()=>{
+  $('loginErr').textContent='';
+  try{ await signInWithPopup(auth,new GoogleAuthProvider()); }
+  catch(e){ $('loginErr').textContent='No se ha podido iniciar sesión. Inténtalo otra vez.'; }
+};
+$('bSwitch').onclick=async()=>{
+  await flushSaves();
+  await signOut(auth);
+};
+onAuthStateChanged(auth, async u=>{
+  USER=u;
+  if(!u){
+    $('gate').hidden=false;$('hdr').hidden=true;$('lista').hidden=true;$('barra').hidden=true;
+    return;
+  }
+  $('gate').hidden=true;$('hdr').hidden=false;$('lista').hidden=false;$('barra').hidden=false;
+  $('quien').textContent=u.displayName?u.displayName.split(' ')[0]:u.email;
+  try{ await cargarTodo(); }
+  catch(e){ setSync('err','error al cargar'); }
+  abrirDia(hoyStr());
+});
+
+/* ============ render principal ============ */
+function pinta(){
+  if(!D)return;
+  $('fecha').value=D.fecha;
+  ['t1e','t1s','t2e','t2s'].forEach(k=>$(k).value=D[k]||'');
+  const tot=totalDia(D);
+  $('totalH').textContent = tot? fmtHoras(tot) : '0';
+
+  const L=$('lista');
+  if(!D.svc.length){
+    L.innerHTML='<div class="vacio"><strong>Sin servicios todavía</strong>Dale a “+ Servicio” cuando empieces el primero.</div>';
+    return;
+  }
+  let html='', cliPrev=null;
+  D.svc.forEach((s,i)=>{
+    if(s.cliente!==cliPrev){
+      html+=`<div class="grupo-cli" style="color:${CLIENTES[s.cliente].c}">${s.cliente}</div>`;
+      cliPrev=s.cliente;
+    }
+    const emo=iconos(s);
+    let cuerpo='';
+    if(s.tipos.includes('mov')){
+      cuerpo=(s.lineas||[]).map(l=>`<div class="mov-linea">-${txtLinea(l)}</div>`).join('');
+    }else{
+      const p=[s.modelo,`<span class="mat">${s.matricula||''}</span>`].filter(Boolean).join(' ');
+      const r=[s.km?'/ '+s.km:'',s.plaza||''].filter(Boolean).join(' ');
+      cuerpo=`<div class="linea2">${p} ${r}</div>`;
+    }
+    html+=`<div class="svc" data-i="${i}">
+      <div class="spine" style="background:${CLIENTES[s.cliente].c}"></div>
+      <div class="card">
+        <div class="linea1">
+          <span class="horas">${s.ini} ${s.fin}</span>
+          <span class="iconos">${emo}</span>
+          <span class="dur">${duracion(s)}'</span>
+        </div>
+        ${cuerpo}
+        ${s.nota?`<div class="notatxt">${s.nota}</div>`:''}
+      </div>
+    </div>`;
+  });
+  L.innerHTML=html;
+  L.querySelectorAll('.svc').forEach(el=>el.onclick=()=>abrirSvc(+el.dataset.i));
+}
+function iconos(s){
+  const map={agua:'💧',seco:'💩',lavado:'💧',repostado:'⛽',repaso:'🌪',especial:'🚨',mov:'🚘'};
+  return s.tipos.map(t=>map[t]||'').join('');
+}
+function txtLinea(l){
+  return [l.accion,l.quien,l.sentido,l.modelo,l.matricula,l.km?'/ '+l.km:'',l.plaza].filter(Boolean).join(' ');
+}
+
+/* ============ hoja de servicio ============ */
+let edit=null, F=null;
+
+function blanco(){
+  const ult=D.svc[D.svc.length-1];
+  return {cliente:ult?ult.cliente:'SIXT',tipos:[],ini:ult?ult.fin:'',fin:'',
+    matricula:'',modelo:'',km:'',plaza:'',nota:'',
+    ruta:'renfe-apto',lineas:[{accion:'Escoba',quien:'',sentido:'dt ap',modelo:'',matricula:'',km:'',plaza:''}],
+    minEsp:65,durManual:null,finManual:false};
+}
+function abrirSvc(i){
+  edit = (i==null?null:i);
+  F = i==null ? blanco() : JSON.parse(JSON.stringify(D.svc[i]));
+  $('svcTitulo').textContent = i==null?'Nuevo servicio':'Editar servicio';
+  $('bBorrar').hidden = i==null;
+  pintaForm();
+  $('shSvc').classList.add('on');
+}
+function cerrarSvc(){cerrarScan();$('shSvc').classList.remove('on');}
+
+/* plaza: 'p13' | 'fp' | 'fp+30' | 'dp' | '' */
+function plazaTipo(p){
+  if(!p)return '';
+  if(/^p\d+$/i.test(p))return 'p';
+  const low=p.toLowerCase();
+  if(low==='fp'||low==='fp+30'||low==='dp')return low;
+  return 'otro';
+}
+function pintaPlaza(){
+  const t=plazaTipo(F.plaza);
+  const num = t==='p' ? F.plaza.replace(/^p/i,'') : '';
+  let html=PLAZAS.map(p=>
+    `<button type="button" class="chip ${t===p.k?'on':''}" data-p="${p.k}">${p.n}</button>`).join('');
+  if(t==='p'){
+    html+=`<input type="text" class="plaza-num" inputmode="numeric" id="plazaNum"
+      value="${num}" placeholder="nº" aria-label="Número de plaza">`;
+  }
+  if(t==='otro'){
+    html+=`<input type="text" class="plaza-num" id="plazaLibre" value="${F.plaza}"
+      aria-label="Plaza (texto libre)" style="width:8em !important">`;
+  }
+  $('plazaChips').innerHTML=html;
+  $('plazaChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.p;
+    F.plaza = k==='p' ? 'p' : k;
+    pintaPlaza();
+    if(k==='p'){const n=$('plazaNum');if(n)n.focus();}
+  });
+  const n=$('plazaNum');
+  if(n)n.oninput=e=>{F.plaza='p'+e.target.value.replace(/\D/g,'');};
+  const lb=$('plazaLibre');
+  if(lb)lb.oninput=e=>{F.plaza=e.target.value;};
+}
+
+function pintaForm(){
+  $('cliChips').innerHTML=Object.keys(CLIENTES).map(c=>
+    `<button type="button" class="chip cli ${F.cliente===c?'on':''}" data-c="${c}"
+      ${F.cliente===c?`style="background:${CLIENTES[c].c};border-color:${CLIENTES[c].c}"`:''}>${c}</button>`).join('');
+  $('cliChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+    F.cliente=b.dataset.c;
+    F.tipos=F.tipos.filter(t=>tiposDe(F.cliente).some(x=>x.k===t));
+    pintaForm();
+  });
+  $('tipoChips').innerHTML=tiposDe(F.cliente).map(t=>
+    `<button type="button" class="chip ${F.tipos.includes(t.k)?'on':''}" data-t="${t.k}">${t.e} ${t.n}</button>`).join('');
+  $('tipoChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.t;
+    if(k==='mov'){ F.tipos = F.tipos.includes('mov')?[]:['mov']; }
+    else { F.tipos=F.tipos.filter(x=>x!=='mov');
+      F.tipos.includes(k)?F.tipos.splice(F.tipos.indexOf(k),1):F.tipos.push(k); }
+    F.finManual=false; pintaForm();
+  });
+  const esEsp=F.tipos.includes('especial');
+  $('camposEspecial').hidden=!esEsp;
+  if(esEsp){
+    let o='';for(let m=65;m<=150;m+=5)o+=`<button type="button" class="chip ${F.minEsp===m?'on':''}" data-m="${m}">${m}'</button>`;
+    $('espChips').innerHTML=o;
+    $('espChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{F.minEsp=+b.dataset.m;F.finManual=false;pintaForm();});
+  }
+  const esMov=F.tipos.includes('mov');
+  $('camposMov').hidden=!esMov;
+  $('camposVh').hidden=esMov;
+  if(esMov){
+    $('movChips').innerHTML=Object.entries(RUTAS).map(([k,r])=>
+      `<button type="button" class="chip ${F.ruta===k?'on':''}" data-r="${k}">${r.n}</button>`).join('');
+    $('movChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{F.ruta=b.dataset.r;F.durManual=null;F.finManual=false;pintaForm();});
+    $('movLineas').innerHTML=F.lineas.map((l,i)=>`
+      <div class="mov-box">
+        <h3>Línea ${i+1}</h3>
+        <div class="chips" style="margin:8px 0" role="group" aria-label="Acción de la línea ${i+1}">
+          <button type="button" class="chip ${l.accion==='Escoba'?'on':''}" data-i="${i}" data-a="Escoba">Escoba</button>
+          <button type="button" class="chip ${l.accion==='Transfer'?'on':''}" data-i="${i}" data-a="Transfer">Transfer</button>
+        </div>
+        <div class="fila">
+          <div><span class="lbl lbl-s">Quién</span><input type="text" value="${l.quien}" data-i="${i}" data-f="quien" aria-label="Quién hace la línea ${i+1}"></div>
+          <div><span class="lbl lbl-s">Sentido</span><input type="text" value="${l.sentido}" data-i="${i}" data-f="sentido" placeholder="dt ap" aria-label="Sentido de la línea ${i+1}"></div>
+        </div>
+        <div class="fila" style="margin-top:8px">
+          <div><span class="lbl lbl-s">Modelo</span><input type="text" value="${l.modelo}" data-i="${i}" data-f="modelo" aria-label="Modelo, línea ${i+1}"></div>
+          <div><span class="lbl lbl-s">Matrícula</span><input type="text" value="${l.matricula}" data-i="${i}" data-f="matricula" aria-label="Matrícula, línea ${i+1}"></div>
+        </div>
+        <div class="fila" style="margin-top:8px">
+          <div><span class="lbl lbl-s">Kilómetros</span><input type="text" value="${l.km}" data-i="${i}" data-f="km" inputmode="numeric" aria-label="Kilómetros, línea ${i+1}"></div>
+          <div><span class="lbl lbl-s">Plaza</span><input type="text" value="${l.plaza}" data-i="${i}" data-f="plaza" aria-label="Plaza, línea ${i+1}"></div>
+        </div>
+      </div>`).join('');
+    $('movLineas').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+      F.lineas[+b.dataset.i].accion=b.dataset.a;F.durManual=null;F.finManual=false;pintaForm();});
+    $('movLineas').querySelectorAll('input').forEach(inp=>inp.oninput=()=>{
+      F.lineas[+inp.dataset.i][inp.dataset.f]=inp.value;
+      if(RUTAS[F.ruta].porVh) refrescaFin();
+    });
+  }
+  $('fMat').value=F.matricula; $('fMod').value=F.modelo;
+  $('fKm').value=F.km;
+  pintaPlaza();
+  $('fIni').value=F.ini; $('fNota').value=F.nota;
+  refrescaFin();
+}
+function refrescaFin(){
+  const ini=toMin(F.ini);
+  const d=duracion(F);
+  if(ini==null){ $('vFin').textContent='—'; $('vDur').textContent='pon la hora de inicio'; return; }
+  if(!F.finManual) F.fin=toHora(ini+d);
+  $('vFin').textContent=F.fin;
+  $('vDur').textContent = F.finManual ? 'ajustada a mano' : `${d} min · hora de fin`;
+}
+
+['fMat','fMod','fKm','fNota'].forEach(id=>{
+  $(id).oninput=e=>{
+    const map={fMat:'matricula',fMod:'modelo',fKm:'km',fNota:'nota'};
+    F[map[id]]=e.target.value;
+  };
+});
+$('fIni').oninput=e=>{F.ini=e.target.value;F.finManual=false;refrescaFin();};
+$('bEditFin').onclick=()=>{
+  const v=prompt('Hora de fin (hh:mm)',F.fin||'');
+  if(v===null)return;
+  if(toMin(v)==null){aviso('Formato no válido, usa hh:mm');return;}
+  F.fin=toHora(toMin(v));F.finManual=true;
+  if(F.tipos.includes('mov')){const i=toMin(F.ini);if(i!=null)F.durManual=((toMin(F.fin)-i)+1440)%1440;}
+  refrescaFin();
+};
+$('bAddLinea').onclick=()=>{
+  F.lineas.push({accion:'Transfer',quien:'',sentido:'ap dt',modelo:'',matricula:'',km:'',plaza:''});
+  pintaForm();
+};
+$('bCancel').onclick=cerrarSvc;
+$('bBorrar').onclick=()=>{
+  if(edit==null)return;
+  if(!confirm('¿Borrar este servicio?'))return;
+  D.svc.splice(edit,1);guardar();pinta();cerrarSvc();
+};
+$('bGuardar').onclick=()=>{
+  if(!F.tipos.length){aviso('Elige al menos un servicio');return;}
+  if(toMin(F.ini)==null){aviso('Falta la hora de inicio');return;}
+  F.ini=toHora(toMin(F.ini));
+  if(F.plaza==='p')F.plaza='';
+  if(edit==null)D.svc.push(F); else D.svc[edit]=F;
+  D.svc.sort((a,b)=>toMin(a.ini)-toMin(b.ini));
+  guardar();pinta();cerrarSvc();
+};
+$('bNuevo').onclick=()=>abrirSvc(null);
+
+/* cabecera */
+$('fecha').onchange=e=>{
+  const v=e.target.value.trim();
+  if(!/^\d{2}\/\d{2}\/\d{2}$/.test(v)){aviso('Formato dd/mm/aa');e.target.value=D.fecha;return;}
+  if(DIAS[v] && v!==D.fecha){aviso('Ese día ya existe en el historial');e.target.value=D.fecha;return;}
+  cambiarDia(v);
+};
+['t1e','t1s','t2e','t2s'].forEach(k=>$(k).oninput=e=>{D[k]=e.target.value;guardar();
+  const tot=totalDia(D);$('totalH').textContent=tot?fmtHoras(tot):'0';});
+
+/* ============ Gemini ============ */
+const hayGemini=()=>GEMINI_API_KEY && !GEMINI_API_KEY.startsWith('PEGA_');
+
+function fileABase64(f){
+  return new Promise((ok,ko)=>{
+    const r=new FileReader();
+    r.onload=()=>ok(r.result.split(',')[1]);
+    r.onerror=()=>ko(new Error('lectura'));
+    r.readAsDataURL(f);
+  });
+}
+async function gemini(promptTxt, imagenes){
+  const parts=[{text:promptTxt}];
+  for(const f of imagenes){
+    parts.push({inline_data:{mime_type:f.type||'image/jpeg', data:await fileABase64(f)}});
+  }
+  const res=await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({contents:[{parts}],generationConfig:{temperature:0.1}})}
+  );
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const j=await res.json();
+  const t=j?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+  return t.replace(/```json|```/g,'').trim();
+}
+
+/* --- escáner en vivo: llavero (barcode) + matrícula/llavero (Gemini) --- */
+let scanStream=null, scanActivo=false, scanBD=null, geminiOcupado=false;
+
+function extraeMatricula(t){
+  if(!t)return null;
+  const s=String(t).toUpperCase().replace(/[^A-Z0-9]/g,' ');
+  const m=s.match(/\b(\d{4})\s?([BCDFGHJKLMNPRSTVWXYZ]{3})\b/);
+  return m ? m[1]+m[2] : null;
+}
+function scanExito(mat,mod,origen){
+  if(!scanActivo)return;
+  if(mat){F.matricula=mat;$('fMat').value=mat;}
+  if(mod){F.modelo=mod;$('fMod').value=mod;}
+  if(navigator.vibrate)navigator.vibrate(80);
+  cerrarScan();
+  aviso(origen+(mod?' — matrícula y modelo':' — matrícula')+' ✓ revísalo');
+}
+async function abrirScan(){
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:1280}},audio:false
+    });
+  }catch(e){
+    // sin permiso de cámara: foto clásica
+    $('fileCam').click();
+    return;
+  }
+  const v=$('scanVid');
+  v.srcObject=scanStream;
+  await v.play().catch(()=>{});
+  $('scan').hidden=false;
+  scanActivo=true;
+  $('scanTxt').textContent='Apunta al llavero o a la matrícula';
+  scanBD=('BarcodeDetector' in window)?new BarcodeDetector():null;
+  const t0=Date.now();
+  let ultimoGemini=0;
+  setTimeout(()=>{
+    if(scanActivo&&!geminiOcupado)$('scanTxt').textContent='Apunta al llavero o a la matrícula · toca la pantalla para salir';
+  },8000);
+
+  (async function bucle(){
+    while(scanActivo){
+      // 1) código de barras: instantáneo y gratis
+      if(scanBD){
+        try{
+          const codes=await scanBD.detect(v);
+          if(codes.length){
+            const mat=extraeMatricula(codes.map(c=>c.rawValue).join(' '));
+            if(mat){scanExito(mat,null,'Código de barras');return;}
+          }
+        }catch(_){}
+      }
+      // 2) Gemini sobre un fotograma, a partir de 1,5 s y cada 2,5 s
+      const ahora=Date.now();
+      if(hayGemini() && !geminiOcupado && ahora-t0>1500 && ahora-ultimoGemini>2500){
+        ultimoGemini=ahora;
+        geminiOcupado=true;
+        $('scanTxt').textContent='Leyendo…';
+        capturaYGemini(v).finally(()=>{geminiOcupado=false;
+          if(scanActivo)$('scanTxt').textContent='Apunta al llavero o a la matrícula';});
+      }
+      await new Promise(r=>setTimeout(r,280));
+    }
+  })();
+}
+async function capturaYGemini(v){
+  try{
+    const c=document.createElement('canvas');
+    c.width=v.videoWidth||1280;c.height=v.videoHeight||720;
+    c.getContext('2d').drawImage(v,0,0);
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.85));
+    if(!blob||!scanActivo)return;
+    const txt=await gemini(
+`Fotograma de la cámara de un móvil. Puede verse la MATRÍCULA de un coche (placa española: 4 números + 3 letras consonantes) o un LLAVERO de coche de alquiler con la matrícula impresa y a veces el modelo.
+Responde SOLO con JSON: {"matricula":"1234ABC o null","modelo":"modelo corto o null"}
+Matrícula en mayúsculas, sin espacios ni guiones. Si no hay nada legible con seguridad, pon null — no te inventes nada.`,[blob]);
+    const j=JSON.parse(txt);
+    const mat=extraeMatricula(j.matricula);
+    if(mat&&scanActivo)scanExito(mat,j.modelo||null,'Cámara');
+  }catch(_){}
+}
+function cerrarScan(){
+  scanActivo=false;
+  $('scan').hidden=true;
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+  const v=$('scanVid');v.srcObject=null;
+}
+$('scan').onclick=cerrarScan; // escape discreto: tocar la pantalla
+$('bCam').onclick=abrirScan;
+
+/* foto clásica: fallback si no hay permiso de cámara en vivo */
+$('fileCam').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const btn=$('bCam'); btn.textContent='⏳ Leyendo…';
+  try{
+    if(hayGemini()){
+      const txt=await gemini(
+`Foto de un llavero de coche de alquiler o de la matrícula de un coche (placa española: 4 números + 3 letras).
+Responde SOLO con JSON: {"matricula":"1234ABC o null","modelo":"modelo corto o null"}
+Matrícula en mayúsculas y sin espacios. Si no se lee algo con seguridad, null.`,[f]);
+      const j=JSON.parse(txt);
+      let algo=false;
+      const mat=extraeMatricula(j.matricula);
+      if(mat){F.matricula=mat;$('fMat').value=mat;algo=true;}
+      if(j.modelo){F.modelo=j.modelo;$('fMod').value=j.modelo;algo=true;}
+      aviso(algo?'Leído — revísalo':'No se ha podido leer');
+    }else{
+      let hecho=false;
+      if('BarcodeDetector' in window){
+        try{
+          const bmp=await createImageBitmap(f);
+          const codes=await new BarcodeDetector().detect(bmp);
+          const mat=extraeMatricula(codes.map(c=>c.rawValue).join(' '));
+          if(mat){F.matricula=mat;$('fMat').value=mat;hecho=true;aviso('Matrícula del código de barras');}
+        }catch(_){}
+      }
+      if(!hecho)aviso('Añade la clave de Gemini para leer con la cámara');
+    }
+  }catch(err){aviso('No se ha podido leer la imagen');}
+  btn.textContent='📷 Escanear llavero o matrícula';
+  e.target.value='';
+};
+
+/* --- lector de partes --- */
+let parteCli='SIXT';
+function pintaParteCli(){
+  $('parteCliChips').innerHTML=Object.keys(CLIENTES).map(c=>
+    `<button type="button" class="chip cli ${parteCli===c?'on':''}" data-c="${c}"
+      ${parteCli===c?`style="background:${CLIENTES[c].c};border-color:${CLIENTES[c].c}"`:''}>${c}</button>`).join('');
+  $('parteCliChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{parteCli=b.dataset.c;pintaParteCli();});
+}
+$('bParte').onclick=()=>{
+  if(!hayGemini()){aviso('Falta la clave de Gemini en la configuración');return;}
+  $('pFecha').value=D?D.fecha:hoyStr();
+  $('parteEstado').textContent='';
+  $('parteResBox').hidden=true;
+  $('parteAccIni').hidden=false;
+  pintaParteCli();
+  $('shParte').classList.add('on');
+};
+$('fileParte').onchange=async e=>{
+  const files=[...e.target.files];
+  if(!files.length)return;
+  $('parteEstado').textContent=`⏳ Leyendo ${files.length} imagen${files.length>1?'es':''}… (unos segundos)`;
+  const VOCAB={
+    SIXT:`Columnas habituales del parte SIXT: "Circuito completo sin repostado", "Circuito completo con repostado", "Repaso", "Repaso con repostado", "Suplemento limpieza", "Escoba", "Transfer", "Transfer con escoba personal Sixt", "Observaciones".`,
+    AVIS:`AVIS usa nombres propios, parecidos pero no iguales: lavado (con agua) / lavado completo, lavado en seco, repostado o repostaje (a veces columna aparte, a veces junto al lavado), limpieza especial o suplemento, y movimientos (escoba, transfer, traslado, recogida). Mapea por el significado, no por el nombre exacto.`,
+    HERTZ:`HERTZ usa sus propios nombres: lavado / lavado completo, lavado en seco o repaso exterior, repostaje, limpieza especial, y movimientos (transfer, traslado, shuttle, zona camión, delivery). Mapea por el significado, no por el nombre exacto.`,
+    EUROPCAR:`EUROPCAR usa sus propios nombres: lavado / limpieza, seco, repostaje, y movimientos (escoba, transfer, traslado). Mapea por el significado, no por el nombre exacto.`
+  };
+  try{
+    const txt=await gemini(
+`Eres el asistente de un operario de preparación de vehículos de alquiler en Granada. Te paso fotos del PARTE DE TRABAJO diario de la compañía ${parteCli} (una tabla impresa rellenada A MANO por varios operarios) y quizá hojas manuscritas de movimientos.
+
+CONTEXTO:
+- Cada fila es una operación: operario, horas, matrícula, kilómetros, modelo, y una X (o marca) en la columna del servicio realizado.
+- ${VOCAB[parteCli]}
+- Cada compañía nombra los servicios a su manera: PRIMERO lee los encabezados reales de las columnas de esta tabla y decide a qué categoría corresponde cada uno por su significado.
+- Cuenta TODAS las filas de TODOS los operarios (no filtres por nadie).
+- Los movimientos (escobas, transfers, rutas tipo "Granada-Málaga", "Renfe apto", "dt ap", deliveries, recogidas) suelen ir manuscritos en Observaciones o en hojas aparte: transcríbelos tal cual.
+- Puede haber fotos giradas o boca abajo: oriéntalas mentalmente.
+
+CATEGORÍAS de destino:
+- lavado completo / circuito / lavado agua SIN repostar -> lavado_sin
+- ídem CON repostado -> lavado_con
+- lavado en seco -> seco
+- repaso sin repostar -> repaso_sin ; repaso con repostado -> repaso_con
+- suplemento limpieza / limpieza especial -> especial
+- escoba -> escoba ; transfer / traslado -> transfer ; transfer con escoba -> transfer_escoba
+
+Responde SOLO con JSON:
+{"filas_total":N,"lavado_sin":N,"lavado_con":N,"seco":N,"repaso_sin":N,"repaso_con":N,"especial":N,"escoba":N,"transfer":N,"transfer_escoba":N,
+"columnas_detectadas":["encabezado real -> categoría asignada","..."],
+"movimientos":["texto de cada movimiento transcrito, ej: Escoba Guti dt ap Kamiq 9889NSK","..."],
+"dudas":["cosas que no has podido leer bien"]}`, files);
+    const r=JSON.parse(txt);
+    $('parteRes').value=resumenParte(r);
+    $('parteResBox').hidden=false;
+    $('parteAccIni').hidden=true;
+    const partes=[];
+    if(r.columnas_detectadas&&r.columnas_detectadas.length)partes.push('Columnas: '+r.columnas_detectadas.join(' · '));
+    if(r.dudas&&r.dudas.length)partes.push('⚠️ Dudas: '+r.dudas.join(' · '));
+    $('parteEstado').textContent = partes.length?partes.join('  |  '):'✅ Leído. Revisa los números contra el papel.';
+  }catch(err){
+    $('parteEstado').textContent='❌ No se ha podido leer el parte. Prueba con una foto más recta y con luz.';
+  }
+  e.target.value='';
+};
+function resumenParte(r){
+  const f=$('pFecha').value||(D?D.fecha:hoyStr());
+  const lav=(r.lavado_sin||0)+(r.lavado_con||0);
+  const rep=(r.lavado_con||0)+(r.repaso_con||0);
+  const prep=lav+(r.seco||0)+(r.repaso_sin||0)+(r.repaso_con||0)+(r.especial||0);
+  let o=`RESUMEN ${parteCli} ${f}\n`;
+  o+=`${prep} vehículos preparados\n`;
+  if(parteCli==='SIXT'){
+    if(lav)o+=`${lav} lavados completos\n`;
+  }else{
+    if(lav)o+=`${lav} lavado agua\n`;
+    if(r.seco)o+=`${r.seco} lavado seco\n`;
+  }
+  if(r.repaso_sin)o+=`${r.repaso_sin} repaso SIN repostado\n`;
+  if(r.repaso_con)o+=`${r.repaso_con} repaso CON repostado\n`;
+  if(r.especial)o+=`${r.especial} limpieza especial\n`;
+  if(rep)o+=`${rep} repostados${r.repaso_con?` (${r.lavado_con||0}+${r.repaso_con} repaso)`:''}\n`;
+  const movN=(r.escoba||0)+(r.transfer||0)+(r.transfer_escoba||0);
+  if(movN){
+    o+=`Movimientos: ${movN}\n`;
+    (r.movimientos||[]).forEach(m=>o+=`• ${m}\n`);
+  }
+  return o;
+}
+$('bCerrarParte').onclick=$('bCerrarParte2').onclick=()=>$('shParte').classList.remove('on');
+$('bCopiarParte').onclick=async()=>{
+  try{await navigator.clipboard.writeText($('parteRes').value);aviso('Resumen copiado');}
+  catch(e){$('parteRes').select();document.execCommand('copy');aviso('Resumen copiado');}
+};
+
+/* ============ nota / exportar ============ */
+function generar(d){
+  let o=`${d.fecha} - Sintax\n`;
+  if(d.t1e||d.t1s){o+=`Hora entrada: ${d.t1e}\nHora salida: ${d.t1s}\n`;}
+  if(d.t2e||d.t2s){o+=`Hora entrada: ${d.t2e}\nHora salida: ${d.t2s}\n`;}
+  const tot=totalDia(d);
+  if(tot)o+=`Total: ${fmtHoras(tot)}\n`;
+  o+='\n';
+  let prev=null;
+  d.svc.forEach(s=>{
+    if(s.cliente!==prev){o+=`${s.cliente}\n`;prev=s.cliente;}
+    const esp = s.tipos.includes('especial') ? ` limpieza especial ${s.minEsp}'` : '';
+    o+=`${s.ini} ${s.fin}${iconos(s)}${esp}${s.nota?' '+s.nota:''}\n`;
+    if(s.tipos.includes('mov')){
+      (s.lineas||[]).forEach(l=>{const t=txtLinea(l);if(t.trim())o+=`-${t}\n`;});
+    }else{
+      const p=[s.modelo,s.matricula].filter(Boolean).join(' ');
+      const r=[s.km?'/ '+s.km:'',s.plaza].filter(Boolean).join(' ');
+      o+=`${p}${r?' '+r:''}\n`;
+    }
+  });
+  o+='\n'+resumen(d);
+  return o;
+}
+function resumen(d){
+  const porCli={};
+  d.svc.forEach(s=>{
+    const c=porCli[s.cliente]=porCli[s.cliente]||{prep:0,agua:0,seco:0,esp:[],rep:0,repaso:0,esc:0,tra:0};
+    if(s.tipos.includes('mov')){
+      (s.lineas||[]).forEach(l=>{l.accion==='Escoba'?c.esc++:c.tra++;});
+      return;
+    }
+    c.prep++;
+    if(s.tipos.includes('agua')||s.tipos.includes('lavado'))c.agua++;
+    if(s.tipos.includes('seco'))c.seco++;
+    if(s.tipos.includes('especial'))c.esp.push(s.minEsp);
+    if(s.tipos.includes('repostado'))c.rep++;
+    if(s.tipos.includes('repaso'))c.repaso++;
+  });
+  let o='';
+  Object.entries(porCli).forEach(([cli,c])=>{
+    o+=`Servicios a ${cli}\n`;
+    if(c.prep)o+=`${c.prep} vehículos preparados\n`;
+    if(cli==='SIXT'){ if(c.agua)o+=`${c.agua} lavados completos\n`; }
+    else{ if(c.agua)o+=`${c.agua} lavado agua\n`; if(c.seco)o+=`${c.seco} lavado en seco\n`; }
+    c.esp.forEach(m=>o+=`1 limpieza especial ${m}'\n`);
+    if(c.repaso)o+=`${c.repaso} repaso\n`;
+    if(c.rep)o+=`${c.rep} repostados\n`;
+    if(c.esc)o+=`${c.esc} escobas\n`;
+    if(c.tra)o+=`${c.tra} transfer\n`;
+    o+='\n';
+  });
+  return o;
+}
+
+let diaVisto=null;
+$('bExport').onclick=()=>{
+  diaVisto=null;
+  $('expTitulo').textContent='Nota del día';
+  $('bAbrirDia').hidden=true;$('bBorrarDia').hidden=true;
+  $('salida').value=generar(D);
+  $('shExp').classList.add('on');
+};
+$('bCerrarExp').onclick=()=>$('shExp').classList.remove('on');
+$('bCopiar').onclick=async()=>{
+  const t=$('salida').value;
+  try{await navigator.clipboard.writeText(t);aviso('Copiado');}
+  catch(e){$('salida').select();document.execCommand('copy');aviso('Copiado');}
+};
+$('bCompartir').onclick=async()=>{
+  const t=$('salida').value;
+  if(navigator.share){try{await navigator.share({text:t});}catch(e){}}
+  else aviso('Este navegador no permite compartir');
+};
+$('bAbrirDia').onclick=()=>{
+  if(!diaVisto)return;
+  abrirDia(diaVisto);
+  $('shExp').classList.remove('on');
+  $('shHist').classList.remove('on');
+  aviso('Día '+diaVisto+' abierto');
+};
+$('bBorrarDia').onclick=async()=>{
+  if(!diaVisto)return;
+  if(!confirm(`¿Eliminar el día ${diaVisto} del historial?\nEsto no se puede deshacer.`))return;
+  delete DIAS[diaVisto];
+  if(USER){try{await deleteDoc(doc(db,'servicios',USER.uid,'dias',docId(diaVisto)));}catch(e){}}
+  if(D&&diaVisto===D.fecha){abrirDia(hoyStr());}
+  $('shExp').classList.remove('on');
+  pintaHist();
+  aviso('Día eliminado');
+};
+
+/* ============ historial ============ */
+function claveMes(f){const [,m,a]=f.split('/');return +a*100+ +m;}
+function pintaHist(){
+  const fechas=Object.keys(DIAS).filter(f=>/^\d{2}\/\d{2}\/\d{2}$/.test(f));
+  if(!fechas.length){
+    $('histLista').innerHTML='<div class="vacio"><strong>Todavía no hay días guardados</strong>Cada día que registres aparecerá aquí, agrupado por mes.</div>';
+    return;
+  }
+  const meses={};
+  fechas.forEach(f=>{const k=claveMes(f);(meses[k]=meses[k]||[]).push(f);});
+  const ordenMeses=Object.keys(meses).map(Number).sort((a,b)=>b-a);
+  let html='';
+  ordenMeses.forEach(k=>{
+    const mm=k%100, aa=Math.floor(k/100);
+    const dias=meses[k].sort((a,b)=>+b.slice(0,2)-+a.slice(0,2));
+    const totMes=dias.reduce((acc,f)=>acc+totalDia(DIAS[f]),0);
+    html+=`<div class="mes">
+      <div class="mes-h">${MESES[mm-1]} '${String(aa).padStart(2,'0')}
+        <small>${dias.length} día${dias.length!==1?'s':''} · ${fmtHoras(totMes)} h</small>
+      </div>`;
+    dias.forEach(f=>{
+      const d=DIAS[f];
+      const tot=totalDia(d);
+      const clientes=[...new Set(d.svc.map(s=>s.cliente))].join(' · ');
+      html+=`<button type="button" class="dia-row" data-f="${f}">
+        <div>
+          <div class="f">${f} ${D&&f===D.fecha?'<span class="hoy-tag">ABIERTO</span>':''}</div>
+          <div class="d">${d.svc.length} servicio${d.svc.length!==1?'s':''}${clientes?' — '+clientes:''}</div>
+        </div>
+        <div class="h">${tot?fmtHoras(tot)+' h':''}</div>
+      </button>`;
+    });
+    html+='</div>';
+  });
+  $('histLista').innerHTML=html;
+  $('histLista').querySelectorAll('.dia-row').forEach(b=>b.onclick=()=>{
+    const f=b.dataset.f;
+    diaVisto=f;
+    $('expTitulo').textContent='Nota del '+f;
+    $('bAbrirDia').hidden = (D&&f===D.fecha);
+    $('bBorrarDia').hidden = false;
+    $('salida').value=generar(DIAS[f]);
+    $('shExp').classList.add('on');
+  });
+}
+$('bHist').onclick=()=>{pintaHist();$('shHist').classList.add('on');};
+
+/* toast */
+let tt;
+function aviso(t){const el=$('toast');el.textContent=t;el.classList.add('on');
+  clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('on'),2200);}
+
+/* cerrar hojas tocando fuera */
+[['shSvc',cerrarSvc],['shExp',()=>$('shExp').classList.remove('on')],
+ ['shHist',()=>$('shHist').classList.remove('on')],['shParte',()=>$('shParte').classList.remove('on')]]
+.forEach(([id,fn])=>{$(id).onclick=e=>{if(e.target.id===id)fn();};});
+</script>
+</body>
+</html>
