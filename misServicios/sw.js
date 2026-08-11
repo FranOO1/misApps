@@ -1,7 +1,7 @@
 /* Parte del día — service worker
    ⚠️ Sube CACHE_VERSION en cada deploy, como siempre. */
-const CACHE_VERSION = 'parte-v1';
-const APP_SHELL = ['./', './index.html'];
+const CACHE_VERSION = 'parte-v2';
+const APP_SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
