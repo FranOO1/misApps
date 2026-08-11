@@ -573,10 +573,18 @@ function errLogin(e){
   };
   $('loginErr').textContent = mapa[cod] || ('Error: '+cod);
 }
+const ES_MOVIL=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
 $('bLogin').onclick=async()=>{
   $('loginErr').textContent='';
   const prov=new GoogleAuthProvider();
   try{
+    if(ES_MOVIL){
+      // En móvil la ventana emergente pierde la conexión con la app:
+      // se navega a Google y se vuelve con la sesión.
+      $('loginErr').textContent='Abriendo Google…';
+      await signInWithRedirect(auth,prov);
+      return;
+    }
     await signInWithPopup(auth,prov);
   }catch(e){
     if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/popup-closed-by-user'
