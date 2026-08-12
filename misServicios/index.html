@@ -224,12 +224,13 @@ textarea{font-size:13px;line-height:1.5;min-height:260px;resize:vertical}
 <div id="gate">
   <h1>Parte del día</h1>
   <p>Tus servicios se guardan en tu cuenta y se sincronizan entre dispositivos.</p>
-  <button class="gbtn" id="bLogin">
+  <div id="gsiBtn"></div>
+  <button class="gbtn" id="bLogin" hidden>
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.2 5.2C41 35.4 44 30.2 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
     Entrar con Google
   </button>
   <div class="err" id="loginErr"></div>
-  <p style="font-size:11px;color:var(--muted);opacity:.7;margin-top:4px">v2 · acceso por redirección</p>
+  <p style="font-size:11px;color:var(--muted);opacity:.7;margin-top:4px">v3 · acceso directo Google</p>
 </div>
 
 <header hidden id="hdr">
@@ -406,10 +407,11 @@ const FIREBASE_CONFIG = {
   appId: "1:282064047722:web:24a04aabeecb4a67394413"
 };
 const GEMINI_API_KEY = "AIzaSyCirz6oTDD3oWKv0-yIHxEwUgp5vlDk3Lg";
+const GOOGLE_CLIENT_ID = "282064047722-7j84fa0ggt2ls19f63n08pf74s9lvq5l.apps.googleusercontent.com";
 /* ========================================================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -574,26 +576,50 @@ function errLogin(e){
   };
   $('loginErr').textContent = mapa[cod] || ('Error: '+cod);
 }
+/* --- Login directo con Google (GIS): todo en nuestro dominio, sin pasar
+       por firebaseapp.com. El botón lo pinta Google. --- */
+const hayClientId=()=>GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.startsWith('PEGA_');
+function iniciaGIS(){
+  if(!hayClientId()){muestraLoginAntiguo('Falta el Client ID de Google en la configuración');return;}
+  const s=document.createElement('script');
+  s.src='https://accounts.google.com/gsi/client';
+  s.async=true;
+  s.onload=()=>{
+    try{
+      google.accounts.id.initialize({
+        client_id:GOOGLE_CLIENT_ID,
+        callback:async r=>{
+          $('loginErr').textContent='Entrando…';
+          try{
+            await signInWithCredential(auth, GoogleAuthProvider.credential(r.credential));
+            $('loginErr').textContent='';
+          }catch(e){errLogin(e);}
+        }
+      });
+      google.accounts.id.renderButton($('gsiBtn'),
+        {theme:'filled_black',size:'large',shape:'pill',text:'continue_with',locale:'es',width:260});
+    }catch(e){muestraLoginAntiguo('No se ha podido cargar el botón de Google');}
+  };
+  s.onerror=()=>muestraLoginAntiguo('Sin conexión con Google');
+  document.head.appendChild(s);
+}
+function muestraLoginAntiguo(motivo){
+  if(motivo)$('loginErr').textContent=motivo+' — usando método alternativo';
+  $('bLogin').hidden=false;
+}
+iniciaGIS();
 const ES_MOVIL=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
 $('bLogin').onclick=async()=>{
   $('loginErr').textContent='';
   const prov=new GoogleAuthProvider();
   try{
     if(ES_MOVIL){
-      // En móvil la ventana emergente pierde la conexión con la app:
-      // se navega a Google y se vuelve con la sesión.
       $('loginErr').textContent='Abriendo Google…';
       await signInWithRedirect(auth,prov);
       return;
     }
     await signInWithPopup(auth,prov);
-  }catch(e){
-    if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/popup-closed-by-user'
-        ||e.code==='auth/cancelled-popup-request'||e.code==='auth/operation-not-supported-in-this-environment')){
-      errLogin(e);
-      try{ await signInWithRedirect(auth,prov); }catch(e2){ errLogin(e2); }
-    }else errLogin(e);
-  }
+  }catch(e){errLogin(e);}
 };
 getRedirectResult(auth).catch(errLogin);
 $('bSwitch').onclick=async()=>{
