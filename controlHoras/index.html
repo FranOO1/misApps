@@ -69,6 +69,8 @@
     .step-btn { width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 22px; }
     .add-btn { width: 100%; padding: 13px 0; border-radius: 14px; background: linear-gradient(100deg, #3FD68C, #7BE8A8); color: #0E1420; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', system-ui; }
     .day-earn-box { text-align: center; padding: 14px 12px; border-radius: 14px; background: linear-gradient(160deg, rgba(123,232,168,0.08), rgba(63,214,140,0.03)); border: 1px solid rgba(123,232,168,0.2); }
+
+    .week-banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: linear-gradient(160deg, rgba(79,163,255,0.10), rgba(79,163,255,0.03)); border: 1px solid var(--border); animation: fadeIn 0.2s ease-out; }
     
     .bubble { max-width: 85%; border-radius: 14px; border: 1px solid; padding: 9px 13px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
     .bubble.user { background: rgba(79,163,255,0.18); border-color: rgba(79,163,255,0.35); margin-left: auto; color: var(--text); }
@@ -149,6 +151,7 @@
 
     const eur = (n) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n || 0);
     const fmt = (n) => state.config.hideMoney ? "•••• €" : eur(n);
+    const fmtH = (n) => String(Math.round((Number(n) || 0) * 100) / 100).replace(".", ",");
     const monthKey = (y, m) => `${y}-${String(m + 1).padStart(2, "0")}`;
     const extraActive = (cfg) => cfg.profile === "sintax" && cfg.sintaxUnlocked;
     const saveState = () => { localStorage.setItem("horas-app-v2", JSON.stringify({ config: state.config, data: state.allData })); cloudSave(); };
@@ -307,6 +310,26 @@
       const rec = allData[monthKey(date.getFullYear(), date.getMonth())];
       return rec?.days?.[date.getDate()] || null;
     }
+
+    // Info de la semana (lunes a domingo) que contiene una fecha dada
+    function calcWeekInfo(date) {
+      const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
+      const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+      let hNormal = 0, hFestivo = 0, dias = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+        const e = getEntry(state.allData, d);
+        if (!e || e.type === "descanso") continue;
+        const h = Number(e.hours) || 0;
+        if (h > 0) dias++;
+        if (e.type === "festivo") hFestivo += h; else hNormal += h;
+      }
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const isCurrent = today >= monday && today <= sunday;
+      return { monday, sunday, hNormal, hFestivo, total: hNormal + hFestivo, dias, isCurrent, isClosed: sunday < today };
+    }
+
+    const fmtDia = (d) => `${d.getDate()} ${MESES_CORTO[d.getMonth()].toLowerCase()}`;
 
     function calcExtraMap(allData, year, month, daysInMonth) {
       const extraMap = {};
@@ -681,8 +704,24 @@
       const monthRec = state.allData[mk] || { days: {} };
       const s = state.draft || { type: "normal", hours: 8 };
       const imp = s.type === "descanso" ? 0 : (Number(s.hours)||0) * (state.config.rateNormal + (s.type === "festivo" ? state.config.plusFestivo : 0));
+
+      // Banner con las horas de la semana del día seleccionado (en curso o cerrada)
+      const w = calcWeekInfo(new Date(state.year, state.month, state.selectedDay));
+      const wLabel = w.isCurrent ? '⏳ Semana en curso' : w.isClosed ? '✓ Semana cerrada' : 'Semana próxima';
+      const wColor = w.isCurrent ? 'var(--accent)' : w.isClosed ? 'var(--success)' : 'var(--muted)';
+      const weekBanner = `
+        <div class="week-banner" style="border-color:${w.isCurrent ? 'rgba(79,163,255,0.45)' : 'var(--border)'}">
+          <div>
+            <div style="color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:1px; font-weight:600">📅 Semana ${fmtDia(w.monday)} – ${fmtDia(w.sunday)}</div>
+            <div style="color:${wColor}; font-size:11.5px; font-weight:600; margin-top:3px">${wLabel}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:24px; color:var(--text); font-variant-numeric:tabular-nums">${fmtH(w.total)} h</div>
+            <div style="color:var(--muted); font-size:11px">${fmtH(w.hNormal)} norm. · ${fmtH(w.hFestivo)} fest. · ${w.dias} días</div>
+          </div>
+        </div>`;
       
-      container.innerHTML = `
+      container.innerHTML = weekBanner + `
         <div class="editor">
           <div style="font-weight:700; font-size:16px; margin-bottom:12px">${state.selectedDay} de ${MESES[state.month].toLowerCase()}</div>
           <div style="display:flex; gap:8px; margin-bottom:12px">
@@ -755,6 +794,7 @@
                 <div style="color:var(--muted); font-size:12px; font-weight:600; letter-spacing:1px">Neto estimado a recibir</div>
                 <div class="neto-value">${fmt(c.neto)}</div>
                 <div style="color:var(--muted); font-size:12px">Bruto ${eur(c.bruto)} · Retenciones −${eur(c.totalDed)}</div>
+                <div style="color:var(--muted); font-size:11px; margin-top:4px; opacity:0.85">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes · ${fmtH(c.hNormal)} normales · ${fmtH(c.hFestivo)} festivas</div>
               </div>
               
               <div id="calendar-grid" class="grid"></div>
