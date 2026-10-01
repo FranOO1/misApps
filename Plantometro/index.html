@@ -36,9 +36,9 @@
     <p class="wtip" id="w-tip">Cargando el clima de tu zona…</p></details>
 
     <div class="statbar">
-      <span class="sp">🪴 <b id="st-total">0</b> plantas</span>
-      <span class="sp warn">🌱 <b id="st-today">0</b> revisar hoy</span>
-      <span class="sp bad">🌱 <b id="st-late">0</b> por revisar</span>
+      <span class="sp">🪴 <b id="st-total">0</b> <span id="st-total-label">plantas</span></span>
+      <span class="sp warn">🌱 <b id="st-today">0</b> <span id="st-today-label">revisiones hoy</span></span>
+      <span class="sp bad">🌱 <b id="st-late">0</b> <span id="st-late-label">revisiones pendientes</span></span>
       <span class="sp fire" hidden><b id="st-streak">0</b></span>
     </div>
 
@@ -51,7 +51,7 @@
       <button data-view="week" data-action="setView" data-arg="week">📅 Revisiones</button>
     </div>
     <div class="search"><input type="search" aria-label="Buscar planta o especie" id="q" placeholder="Buscar planta o especie…" ></div>
-    <div class="chips" id="chips"></div>
+    <p class="note" id="filter-help">«Hoy y pendientes» incluye hoy y las revisiones de días anteriores. Ubicación y búsqueda se aplican en ambas vistas.</p><div class="chips" id="chips" role="group" aria-label="Filtros"></div>
   </div>
 
   <main class="grid" id="grid"></main>
@@ -154,7 +154,7 @@
 <!-- ===== Cuenta ===== -->
 <div class="modal" id="account-modal">
   <div class="sheet">
-    <div class="mhead"><h2>Cuenta</h2><button class="xbtn" data-action="closeModal" data-arg="account-modal" aria-label="Cerrar">✕</button></div>
+    <div class="mhead"><h2>Cuenta</h2><p id="sync-status" class="note" role="status"></p><button class="xbtn" data-action="closeModal" data-arg="account-modal" aria-label="Cerrar">✕</button></div>
     <div style="display:flex;align-items:center;gap:14px;background:var(--surface2);border-radius:16px;padding:14px">
       <img id="acc-photo" src="" alt="" style="width:52px;height:52px;border-radius:50%;background:var(--line)" referrerpolicy="no-referrer">
       <div style="min-width:0">

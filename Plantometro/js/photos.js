@@ -1,6 +1,6 @@
 import { $, todayStr, fmt } from "./utils.js";
 import { whoAmI } from "./settings.js";
-import { plants, putPlant } from "./sync.js";
+import { plants, putPlant, sessionToken } from "./sync.js";
 import { trimPlant } from "./plants.js";
 import { toast, openModal, closeModal } from "./ui.js";
 
@@ -35,24 +35,25 @@ function shrinkImage(file, max, q){
       URL.revokeObjectURL(img.src);
       res(cv.toDataURL("image/jpeg", q));
     };
-    img.onerror = rej;
+    img.onerror = ()=>{URL.revokeObjectURL(img.src);rej(new Error("No se pudo leer la imagen"));};
     img.src = URL.createObjectURL(file);
   });
 }
 function pushDiary(p, dataUrl, note){
-  p.gallery = [{date: todayStr(), img: dataUrl, note: (note||"").slice(0,140)}, ...(p.gallery||[])].slice(0,6);
+  p.gallery = [{date: todayStr(), img: dataUrl, note: (note||"").slice(0,140)}, ...(p.gallery||[])];
   p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-  putPlant(trimPlant(p));
+  return putPlant(trimPlant(p));
 }
 let galAddPlantId = null;
 function galleryAdd(id){ galAddPlantId = id; $("g-file").value=""; $("g-file").click(); }
 async function galleryPicked(e){
   const file = e.target.files[0]; if(!file) return;
   const p = plants.find(x=>x.id===galAddPlantId); if(!p) return;
+  const session=sessionToken();
   try{
     const small = await shrinkImage(file, 480, .6);
-    pushDiary(p, small, "");
-    renderGallery(p); toast("Foto añadida al diario 📷");
+    if(session!==sessionToken() || !plants.some(x=>x.id===p.id))return;
+    if(await pushDiary(plants.find(x=>x.id===p.id), small, "")){renderGallery(plants.find(x=>x.id===p.id)); toast("Foto añadida al diario 📷");}
   }catch(err){ toast("No se pudo leer la imagen ❌"); }
 }
 

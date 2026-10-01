@@ -1,6 +1,7 @@
-import { $, todayStr, addDays, diffDays } from "./utils.js";
+import { validateBackup } from "./backup.js";
+import { $, todayStr, addDays, diffDays, dateNumber } from "./utils.js";
 import { whoAmI } from "./settings.js";
-import { plants, putPlant, removePlant } from "./sync.js";
+import { plants, putPlant, removePlant, putPlantsBatch, updatePlantTransaction, sessionToken } from "./sync.js";
 import { shrinkImage } from "./photos.js";
 import { toast, splash, openDetail, openModal, closeModal } from "./ui.js";
 
@@ -9,7 +10,8 @@ function effectiveFreq(p){
 }
 function plantState(p){
   const f = effectiveFreq(p);
-  const base = /^\d{4}-\d{2}-\d{2}$/.test(p.lastWater || "") ? p.lastWater : (p.createdAt || todayStr()).slice(0,10);
+  const created=(p.createdAt||"").slice(0,10);
+  const base=Number.isFinite(dateNumber(p.lastWater))?p.lastWater:Number.isFinite(dateNumber(created))?created:todayStr();
   const next = addDays(base, f);
   const d = diffDays(todayStr(), next);
   return { next, d, f, state: d<0 ? "late" : d===0 ? "today" : "ok" };
@@ -39,12 +41,12 @@ function openForm(id){
 }
 async function pickPhoto(e){
   const file = e.target.files[0]; if(!file) return;
-  const revision = ++formRevision;
+  const revision = ++formRevision, session=sessionToken();
   $("f-identify").disabled = false;
   $("f-suggestions").hidden = true;
   try{
     const photo = await shrinkImage(file, 640, .68);
-    if(revision !== formRevision) return;
+    if(revision !== formRevision || session!==sessionToken()) return;
     formPhoto = photo;
     $("f-prev").innerHTML = `<img src="${formPhoto}" alt="Foto de la planta">`;
     $("f-aistatus").style.display = "block";
@@ -52,7 +54,7 @@ async function pickPhoto(e){
   }catch(e){ toast("No se pudo leer la foto. Prueba con otra imagen."); }
 }
 
-function savePlant(e){
+async function savePlant(e){
   e.preventDefault();
   const id = $("f-id").value || (Date.now().toString(36)+Math.random().toString(36).slice(2,7));
   const old = plants.find(x=>x.id===id);
@@ -78,30 +80,36 @@ function savePlant(e){
     updatedAt: new Date().toISOString(),
     updatedBy: whoAmI()
   };
-  putPlant(p); closeModal("form-modal"); toast(old ? "Planta actualizada ✏️" : "¡Planta añadida! 🌿");
+  closeModal("form-modal");
+  const session=sessionToken(), result=putPlant(p);toast("Ficha actualizada en este dispositivo. Consulta Cuenta para ver la sincronización.");
+  if(!await result && session===sessionToken())openForm(id);
 }
 
 /* ============ Acciones ============ */
-function trimPlant(p){
-  // Firestore limita cada documento a ~1MB: recorta diario e historial si hace falta
-  while(JSON.stringify(p).length > 850000 && (p.gallery||[]).length > 1) p.gallery.pop();
-  return p;
-}
+function trimPlant(p){ return p; } // Nunca recortar fotos ni historial silenciosamente.
+
 function water(id, el){
   const p = plants.find(x=>x.id===id); if(!p) return;
-  const prev = { lastWater: p.lastWater, history: p.history ? [...p.history] : [] };
-  splash(el);
-  p.lastWater = todayStr();
-  p.history = [{t:"agua", date:todayStr(), by:whoAmI()}, ...(p.history||[])];
-  p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-  putPlant(p);
-  toast(`💧 ${p.name} regada`, "Deshacer", ()=>{
-    p.lastWater = prev.lastWater; p.history = prev.history;
-    p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-    putPlant(p); toast("Riego deshecho ↩️");
-    if($("detail-modal").classList.contains("open")) openDetail(id);
-  });
+  const eventId=crypto.randomUUID();
+  const event={t:"agua",date:todayStr(),by:whoAmI(),eventId,previousLastWater:p.lastWater||"",previousWaterEventId:p.history?.find(h=>h.t==="agua")?.eventId||""};
+  splash(el);p.lastWater=todayStr();p.history=[event,...(p.history||[])];
+  p.updatedAt=new Date().toISOString();p.updatedBy=whoAmI();
+  const pending=putPlant(p);
+  toast(`💧 ${p.name}: riego registrado en este dispositivo`,"Deshacer",()=>correctWater(id,eventId));
+  return pending;
 }
+function removeWaterEvent(p,eventId){
+  const event=p.history?.find(h=>h.eventId===eventId && h.t==="agua");if(!event)return null;
+  const newest=p.history.find(h=>h.t==="agua");
+  const history=p.history.filter(h=>h.eventId!==eventId).map(h=>h.previousWaterEventId===eventId ? {...h,previousWaterEventId:event.previousWaterEventId||"",previousLastWater:event.previousLastWater||""}:h);
+  return {...p,history,lastWater:newest.eventId===eventId && p.lastWater===event.date ? (event.previousLastWater||"") : p.lastWater,updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
+}
+async function correctWater(id,eventId){
+  const result=await updatePlantTransaction(id,p=>removeWaterEvent(p,eventId));
+  if(result && $("detail-modal").classList.contains("open"))openDetail(id);
+  return result;
+}
+
 function fertilize(id){
   const p = plants.find(x=>x.id===id); if(!p) return;
   p.lastFert = todayStr();
@@ -109,10 +117,13 @@ function fertilize(id){
   p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
   putPlant(p); openDetail(id); toast(`🌱 ${p.name} abonada`);
 }
-function delPlant(id){
+async function delPlant(id){
   const p = plants.find(x=>x.id===id); if(!p) return;
   if(!confirm(`¿Eliminar "${p.name}"? Desaparecerá también del móvil de tu pareja.`)) return;
-  removePlant(id); closeModal("detail-modal"); toast("Planta eliminada 🗑️");
+  closeModal("detail-modal");
+  const session=sessionToken();
+  if(await removePlant(id))toast("Planta eliminada y confirmada en la nube.");
+  else if(session===sessionToken())openDetail(id);
 }
 
 function invalidateForm(){
@@ -129,24 +140,17 @@ function exportDownload(){
   a.download = `plantometro_${todayStr()}.json`; a.click();
   toast("Copia descargada 💾");
 }
-function importData(e){
-  const file = e.target.files[0]; e.target.value=""; if(!file) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    try{
-      const d = JSON.parse(ev.target.result);
-      const list = Array.isArray(d) ? d : d.plants;
-      if(!Array.isArray(list)) throw 0;
-      let n=0;
-      list.forEach(np=>{
-        const local = plants.find(x=>x.id===np.id);
-        if(!local || (np.updatedAt||"") > (local.updatedAt||"")){ delete np.deleted; putPlant(np); n++; }
-      });
-      closeModal("account-modal");
-      toast(`Restauradas ${n} plantas ✅`);
-    }catch(err){ toast("Ese archivo no es un jardín válido ❌"); }
-  };
-  r.readAsText(file);
+async function importData(e){
+  const file=e.target.files[0];e.target.value="";if(!file)return;
+  const session=sessionToken();
+  try{
+    if(file.size>10*1024*1024)throw Error("El archivo supera 10 MB");
+    const list=validateBackup(JSON.parse(await file.text()));
+    if(session!==sessionToken())throw Error("La cuenta cambió; abre la copia de nuevo");
+    const selected=list.filter(np=>{const old=plants.find(p=>p.id===np.id);return !old || (np.updatedAt||"")>(old.updatedAt||"");});
+    if(!selected.length){toast("La copia es válida; todas las fichas ya son iguales o más recientes.");return;}
+    if(!confirm(`Copia válida: restaurar ${selected.length} ${selected.length===1?'planta':'plantas'} y conservar ${list.length-selected.length} fichas más recientes. Se aplicará en una sola operación. ¿Continuar?`))return;
+    if(await putPlantsBatch(selected)){toast(`Restauración confirmada: ${selected.length} ${selected.length===1?'planta':'plantas'}.`);closeModal("account-modal");}
+  }catch(err){toast("No se restauró ninguna ficha: " + (err.message||"copia inválida"));}
 }
-
-export { effectiveFreq, plantState, formPhoto, formLight, formRevision, setLight, openForm, pickPhoto, savePlant, trimPlant, water, fertilize, delPlant, exportDownload, importData, invalidateForm, setFormLight };
+export {effectiveFreq,plantState,formPhoto,formLight,formRevision,setLight,openForm,pickPhoto,savePlant,trimPlant,water,correctWater,removeWaterEvent,fertilize,delPlant,exportDownload,importData,invalidateForm,setFormLight};

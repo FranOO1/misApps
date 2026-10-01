@@ -21,11 +21,11 @@ APP = "export const initializeApp = config => config;"
 AUTH = """
 export const getAuth = () => ({currentUser:{uid:'test-user'}});
 export class GoogleAuthProvider {}
-export const signInWithPopup = async () => {};
+export const signInWithPopup = async () => {window.testAuthCallback({uid:"test-user",displayName:"Prueba"});};
 export const signInWithRedirect = async () => {};
 export const getRedirectResult = async () => null;
-export const signOut = async () => {};
-export const onAuthStateChanged = (auth, cb) => queueMicrotask(()=>cb({uid:'test-user',displayName:'Prueba',email:'test@example.invalid'}));
+export const signOut = async () => {window.testAuthCallback(null);};
+export const onAuthStateChanged = (auth, cb) => {window.testAuthCallback=cb;queueMicrotask(()=>cb({uid:'test-user',displayName:'Prueba',email:'test@example.invalid'}));};
 """
 FIRESTORE = """
 export const initializeFirestore = () => ({});
@@ -39,9 +39,14 @@ export const onSnapshot = (ref, cb) => {
  return ()=>{};
 };
 export const setDoc = async (ref, p) => {
+ if(window.testWriteError)throw {code:window.testWriteError};
  window.testWrites.push(JSON.parse(JSON.stringify({ref:ref.slice(1),plant:p})));
+ const i=window.testPlants.findIndex(x=>x.id===p.id);if(i>=0)window.testPlants[i]=JSON.parse(JSON.stringify(p));else window.testPlants.push(JSON.parse(JSON.stringify(p)));
 };
-export const deleteDoc = async () => {};
+export const deleteDoc = async ref => {if(window.testWriteError)throw {code:window.testWriteError};window.testPlants=window.testPlants.filter(p=>p.id!==ref.at(-1));};
+export const writeBatch = () => {const changes=[];return {set:(r,p)=>changes.push([r,p]),commit:async()=>{if(window.testWriteError)throw {code:window.testWriteError};for(const [r,p] of changes)await setDoc(r,p);}};};
+export const runTransaction = async (db,cb) => cb({get:async ref=>{const p=window.testPlants.find(p=>p.id===ref.at(-1));return {exists:()=>!!p,data:()=>JSON.parse(JSON.stringify(p))};},set: (r,p)=>{setDoc(r,p);}});
+
 """
 PLANT = dict(id="existing", name="Monstera del salón con un nombre muy largo "*3,
              species="Monstera deliciosa", loc="Terraza", light="media", waterFreq=7,
@@ -72,6 +77,8 @@ def route_external(route):
                       luz="media", confianza="baja", motivo="Foto o nombre insuficientes para confirmar.",
                       consejo="Comprueba la humedad, no riegues por calendario.")
         route.fulfill(json=dict(candidates=[dict(content=dict(parts=[dict(text=json.dumps(result))]))]))
+    elif "bigdatacloud.net" in url:
+        route.fulfill(json={"city":"Ciudad GPS"})
     elif "geocoding-api.open-meteo.com" in url:
         route.fulfill(json={"results":[{"name":"Granada","latitude":37.17,"longitude":-3.59,"country":"España"}]})
     elif "api.open-meteo.com" in url:
@@ -126,6 +133,7 @@ with sync_playwright() as pw:
         assert saved["history"][1:]==PLANT["history"] and saved["gallery"]==PLANT["gallery"]
         assert saved["futureField"]=="keep-me" and saved["waterFreq"]==7
         page.locator("#toast button").click()
+        page.wait_for_function("testWrites.at(-1).plant.history.length === 65")
         assert page.evaluate("testWrites.at(-1).plant.history.length")==65
         page.locator("#d-edit").click()
         expect(page.locator("#f-details")).to_have_attribute("open", "")
@@ -187,6 +195,139 @@ with sync_playwright() as pw:
         assert not errors, errors
         print(f"PASS {width}x{height}: open, edit, history, undo, name/photo suggestions, discard, correction, add, weather, calendar, contrast")
         context.close()
+    # Regression scenarios on real DOM, with explicit service failure and account changes.
+    for width,height in [(390,844),(768,1024)]:
+        context=browser.new_context(viewport=dict(width=width,height=height),service_workers="block")
+        context.route("https://**/*",route_external)
+        context.add_init_script("window.testPlants="+json.dumps([{**PLANT,"name":"Bob","gallery":[]}])+";window.testWrites=[];")
+        page=context.new_page();errors=[];page.on("pageerror",lambda e:errors.append(str(e)));page.goto(URL)
+        expect(page.locator("#grid .card")).to_have_count(1)
+        expect(page.locator("#st-total-label")).to_have_text("planta")
+        expect(page.locator("#st-late-label")).to_have_text("revisión pendiente")
+        page.locator("#due-action").click();expect(page.locator("#d-name")).to_have_text("Bob")
+        page.locator("#detail-modal .xbtn").click()
+        for view in ["grid","week"]:
+            page.locator(f"[data-view={view}]").click()
+            page.locator("#q").fill("No existe")
+            expect(page.locator("#grid .card" if view=="grid" else "#week [data-open]")).to_have_count(0)
+            page.locator("#q").fill("Bob")
+            expect(page.locator("#grid .card" if view=="grid" else "#week [data-open]")).to_have_count(1)
+            page.locator("[data-fs=today]").click()
+            expect(page.locator("#grid .card" if view=="grid" else "#week [data-open]")).to_have_count(0)
+            page.locator("[data-fs=pend]").click()
+            expect(page.locator("#grid .card" if view=="grid" else "#week [data-open]")).to_have_count(1)
+        page.locator("[data-view=grid]").click()
+        page.locator("#grid [data-open]").first.click()
+        # Two waterings plus fertilizer: correct the earlier exact event after toast expiry.
+        page.locator("#d-water").click();page.wait_for_function("testWrites.length===1")
+        first=page.evaluate("testWrites[0].plant.history[0].eventId")
+        page.locator("#d-water").click();page.wait_for_function("testWrites.length===2")
+        second=page.evaluate("testWrites[1].plant.history[0].eventId")
+        page.locator("#d-fertbtn").click();page.wait_for_function("testWrites.length===3")
+        page.wait_for_timeout(5100)
+        page.once("dialog",lambda d:d.accept())
+        page.locator(f'[data-correct="{first}"]').click()
+        page.wait_for_function("testWrites.length===4")
+        saved=page.evaluate("testWrites.at(-1).plant")
+        assert saved["history"][0]["t"]=="abono" and saved["history"][1]["eventId"]==second
+        assert all(h.get("eventId")!=first for h in saved["history"])
+        assert page.evaluate("import('./js/plants.js').then(m=>m.correctWater('existing', '"+second+"'))")
+        saved=page.evaluate("testWrites.at(-1).plant")
+        assert saved["lastWater"]==PLANT["lastWater"] and saved["history"][0]["t"]=="abono"
+        # Invalid copies and duplicate IDs must not write any document.
+        before=page.evaluate("testWrites.length")
+        for payload in [[{"id":"bad"}], [PLANT,PLANT]]:
+            page.locator("#backup-file").set_input_files(dict(name="bad.json",mimeType="application/json",buffer=json.dumps(payload).encode()))
+            expect(page.locator("#toast")).to_contain_text("No se restauró ninguna ficha")
+            assert page.evaluate("testWrites.length")==before
+        # Genuine permission errors must rollback and must not promise future synchronization.
+        page.evaluate("window.testWriteError='permission-denied'")
+        page.locator("#d-edit").click();page.locator("#f-name").fill("Nombre que no se guardó");page.locator("#f-save").click()
+        expect(page.locator("#sync-status")).to_contain_text("rechazó el permiso")
+        expect(page.locator("#f-name")).to_have_value("Bob")
+        page.locator("#form-modal .xbtn").click()
+        page.locator("#grid [data-open]").first.click()
+        page.once("dialog",lambda d:d.accept());page.locator("#d-del").click()
+        expect(page.locator("#sync-status")).to_contain_text("rechazó el permiso")
+        expect(page.locator("#grid .card")).to_have_count(1)
+        page.evaluate("window.testWriteError=null")
+        page.locator("#detail-modal .xbtn").click()
+        page.locator("#q").fill("")
+        # Valid restore is one batch; rejected batch rolls back every optimistic document.
+        copied={**PLANT,"id":"copy","name":"Copia","gallery":[],"updatedAt":"2026-10-01T12:00:00Z"}
+        page.once("dialog",lambda d:d.accept())
+        page.locator("#backup-file").set_input_files(dict(name="valid.json",mimeType="application/json",buffer=json.dumps([copied]).encode()))
+        expect(page.locator("#toast")).to_contain_text("Restauración confirmada: 1 planta")
+        expect(page.locator("#grid .card")).to_have_count(2)
+        page.evaluate("window.testWriteError='permission-denied'")
+        page.once("dialog",lambda d:d.accept())
+        page.locator("#backup-file").set_input_files(dict(name="valid.json",mimeType="application/json",buffer=json.dumps([{**copied,"id":"copy-2"},{**copied,"id":"copy-3"}]).encode()))
+        expect(page.locator("#sync-status")).to_contain_text("rechazó el permiso")
+        expect(page.locator("#grid .card")).to_have_count(2)
+        page.evaluate("window.testWriteError=null")
+        # GPS, daily photos beyond the old six-photo cap, saved Gemini review, export.
+        context.grant_permissions(["geolocation"],origin=URL)
+        context.set_geolocation(dict(latitude=37.17,longitude=-3.59))
+        page.evaluate("import('./js/ui.js').then(m=>m.openModal('settings-modal'))")
+        page.get_by_title("Usar mi ubicación").click()
+        expect(page.locator("#s-city")).to_have_value("Ciudad GPS")
+        page.locator("#s-gkey").fill("test-placeholder");page.locator("#s-name").fill("Fran")
+        page.get_by_role("button",name="Guardar ajustes").click()
+        assert page.evaluate("""async()=>{const s=await import('./js/sync.js'),p=await import('./js/photos.js');for(let i=0;i<7;i++)await p.pushDiary(s.plants.find(p=>p.id==='existing'),'data:image/png;base64,AAAA','Foto '+i);return s.plants.find(p=>p.id==='existing').gallery.length===7;}""")
+        page.locator("#grid [data-open]").first.click()
+        expect(page.locator("#d-gal .gph")).to_have_count(7)
+        page.locator("#d-aicard").click()
+        expect(page.locator("#ai-body .ai-spin")).to_have_count(0)
+        page.locator("#ai-modal .xbtn").click()
+        page.locator("#detail-modal .xbtn").click()
+        page.locator("#grid [data-open]").first.click()
+        page.locator("#d-lastai-btn").click();expect(page.locator("#ai-body")).not_to_be_empty()
+        page.locator("#ai-modal .xbtn").click();page.locator("#detail-modal .xbtn").click()
+        page.locator("#acc-btn").click()
+        with page.expect_download() as download:
+            page.get_by_role("button",name="Descargar copia de seguridad").click()
+        exported=json.loads(Path(download.value.path()).read_text())
+        assert exported["app"]=="plantometro" and len(exported["plants"])==2
+        assert len(next(p for p in exported["plants"] if p["id"]=="existing")["gallery"])==7
+        page.locator("#account-modal .xbtn").click()
+        # Logout erases account-local garden; the next account starts empty.
+        assert page.evaluate("localStorage.getItem('pg3_cache_test-user')")
+        page.evaluate("""() => {
+          window.oldSnapshot=window.testSnapshot;
+          window.pendingRestore=import('./js/plants.js').then(m=>m.importData({target:{files:[{size:100,text:()=>new Promise(r=>window.finishRestore=r)}],value:''}}));
+        }""")
+        page.wait_for_function("typeof finishRestore==='function'")
+        page.evaluate("import('./js/sync.js').then(m=>m.doSignOut())")
+        expect(page.locator("#gate")).to_be_visible()
+        assert page.evaluate("import('./js/sync.js').then(m=>m.plants.length)")==0
+        assert page.evaluate("localStorage.getItem('pg3_cache_test-user')")==None
+        page.evaluate("window.testPlants=[];testAuthCallback({uid:'other-account',displayName:'Otro'})")
+        expect(page.locator("#grid .card")).to_have_count(0)
+        before=page.evaluate("testWrites.length")
+        page.evaluate("oldSnapshot({docs:[{data:()=>({id:'old-account',name:'No debe aparecer',waterFreq:7})}]})")
+        page.evaluate("finishRestore(JSON.stringify([{id:'old-copy',name:'No debe restaurarse',waterFreq:7}]))")
+        page.evaluate("pendingRestore")
+        expect(page.locator("#toast")).to_contain_text("La cuenta cambió")
+        assert page.evaluate("testWrites.length")==before
+        expect(page.locator("#grid .card")).to_have_count(0)
+        page.evaluate("import('./js/sync.js').then(m=>m.doSignOut())")
+        page.get_by_role("button",name="Continuar con Google").click()
+        expect(page.locator("#gate")).to_be_hidden()
+        expect(page.locator("#grid .card")).to_have_count(0)
+        assert not errors,errors
+        print(f"PASS regressions {width}x{height}: singulars, useful notice, shared search/filters, exact durable watering correction, failed write/delete, atomic restore, logout/account isolation")
+        context.close()
+    # The self-contained preview is also tested; no live service is used.
+    context=browser.new_context(viewport=dict(width=390,height=844),service_workers="block")
+    context.route("https://**/*",lambda r:r.abort())
+    page=context.new_page();errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
+    page.goto(URL+"preview.html")
+    expect(page.locator("#grid .card")).to_have_count(2)
+    expect(page.locator("aside")).to_contain_text("simulados")
+    expect(page.locator("#grid .next").first).to_contain_text("77 días")
+    page.screenshot(path=str(OUT/"preview-mobile.png"),full_page=True)
+    assert not errors,errors
+    context.close()
     # Real service worker and offline app shell, without a production sign-in.
     context=browser.new_context(viewport=dict(width=390,height=844))
     context.route("https://**/*",route_external)
@@ -196,8 +337,8 @@ with sync_playwright() as pw:
     page.reload()
     page.wait_for_function("navigator.serviceWorker.controller !== null")
     keys=page.evaluate("caches.keys()")
-    assert "plantometro-v9" in keys
-    assert page.evaluate("caches.open('plantometro-v9').then(c=>c.match(location.href).then(Boolean))")
+    assert "plantometro-v10" in keys
+    assert page.evaluate("caches.open('plantometro-v10').then(c=>c.match(location.href).then(Boolean))")
     # Preserve caches belonging to the other apps on the same GitHub Pages origin.
     page.evaluate("caches.open('horas-v1')")
     sw=page.evaluate("navigator.serviceWorker.getRegistration().then(r=>r.active.scriptURL)")
@@ -207,7 +348,7 @@ with sync_playwright() as pw:
     context.set_offline(True);page.reload()
     expect(page.locator(".brand h1")).to_have_text("🌿Plantómetro")
     assert "horas-v1" in page.evaluate("caches.keys()")
-    print("PASS PWA: scoped worker v9, app cache, offline shell, standalone manifest, other-app cache retained")
+    print("PASS PWA: scoped worker v10, app cache, offline shell, standalone manifest, other-app cache retained")
     context.close();browser.close()
 server.shutdown()
 print(f"Screenshots: {OUT}")

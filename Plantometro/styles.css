@@ -318,3 +318,10 @@ header.top{padding:24px 0 4px}
 }
 @media(min-width:640px) and (max-width:979px){.wrap{padding:0 24px}.card .name{font-size:21px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important}}
+
+/* Todos los filtros permanecen visibles en pantallas estrechas. */
+.chips{flex-wrap:wrap;overflow:visible;gap:8px}
+.chip{white-space:normal;text-align:left;line-height:1.35}
+.hist{max-height:360px}
+.history-correct{padding:8px 12px;min-height:44px;border:1px solid var(--line);border-radius:10px;color:var(--blue);font-size:13px}
+#due-action{margin-top:8px;min-height:44px}

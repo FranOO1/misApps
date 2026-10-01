@@ -2,9 +2,9 @@ import { $, esc, todayStr, addDays, diffDays, fmt, LIGHT } from "./utils.js";
 import { settings, renderSettingsUI, maybeNotify } from "./settings.js";
 import { plants, alive } from "./sync.js";
 import { isOutdoor, rainyToday, weatherContext } from "./weather.js";
-import { plantState, openForm, water, fertilize, delPlant, invalidateForm } from "./plants.js";
+import { plantState, openForm, water, correctWater, fertilize, delPlant, invalidateForm } from "./plants.js";
 import { renderGallery } from "./photos.js";
-import { aiReviewCard, aiPhotoDiag } from "./gemini.js";
+import { aiReviewCard, aiPhotoDiag, mdToHtml } from "./gemini.js";
 
 function toast(msg, actionLabel, actionFn){
   const t = $("toast");
@@ -37,13 +37,13 @@ function splash(el){
 }
 
 /* ============ Render ============ */
-let filterLoc = "Todas", filterState = "todo", view = "grid";
+let filterLoc = "Todas las ubicaciones", filterState = "todo", view = "grid";
 function ring(p){
   const {d, f, state} = plantState(p);
   const frac = Math.max(0, Math.min(1, d / f));
   const R=42, C=2*Math.PI*R;
   const col = d<0 ? "var(--grana)" : d===0 ? "var(--amber)" : "var(--blue)";
-  const pill = state==="late" ? `-${Math.abs(d)} d` : state==="today" ? "HOY" : `en ${d} d`;
+  const pill = state==="late" ? `${Math.abs(d)} d pend.` : state==="today" ? "HOY" : `en ${d} d`;
   return `<svg viewBox="0 0 92 92" width="92" height="92" aria-hidden="true">
     <circle cx="46" cy="46" r="${R}" fill="none" stroke="var(--line)" stroke-width="5.5"/>
     <circle cx="46" cy="46" r="${R}" fill="none" stroke="${col}" stroke-width="5.5" stroke-linecap="round"
@@ -59,10 +59,10 @@ function setView(v){
   render();
 }
 
-function renderWeek(){
+function renderWeek(shown){
   const t = todayStr();
   const byDay = {};
-  alive().forEach(p=>{
+  shown.forEach(p=>{
     const {next, state} = plantState(p);
     const day = state==="ok" ? next : t; // atrasadas y de hoy → hoy
     if(diffDays(t, day) > 6) return;
@@ -77,7 +77,7 @@ function renderWeek(){
       ? items.map(({p,state})=>`<button class="wp ${state==="late"?"late":""}" data-open="${p.id}">
           <span class="mini">${p.photo?`<img src="${p.photo}" alt="">`:"🪴"}</span>
           <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${state==="late"?"⚠️ ":""}${esc(p.name)}</span></button>`).join("")
-      : `<div class="free">Día libre 🍃</div>`;
+      : `<div class="free">Sin revisiones con estos filtros</div>`;
     return `<div class="wday ${i===0?"today":""}"><div class="wd-h">${esc(wd)}</div><div class="wd-d">${dd.toLocaleDateString("es-ES",{day:"numeric",month:"short"})} · ${items.length?items.length+(items.length>1?" revisiones":" revisión"):"—"}</div>${inner}</div>`;
   }).join("");
   $("week").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>openDetail(el.dataset.open));
@@ -89,14 +89,17 @@ function render(){
   list.forEach(p=>{ const s=plantState(p).state; if(s==="today") today++; if(s==="late") late++; });
   // No gamificar el cumplimiento de una pauta de riego orientativa.
   $("st-total").textContent=list.length; $("st-today").textContent=today; $("st-late").textContent=late;
+  $("st-total-label").textContent=list.length===1?"planta":"plantas";
+  $("st-today-label").textContent=today===1?"revisión hoy":"revisiones hoy";
+  $("st-late-label").textContent=late===1?"revisión pendiente":"revisiones pendientes";
   $("st-streak").textContent = settings.streak || 0;
   $("st-today").parentElement.classList.toggle("zero", !today);
   $("st-late").parentElement.classList.toggle("zero", !late);
   $("st-streak").parentElement.classList.toggle("zero", !(settings.streak||0));
   notifyDue();
 
-  const locs = ["Todas", ...new Set(list.map(p=>p.loc).filter(Boolean))];
-  const states = [["todo","Todas"],["pend","🌱 Revisar"],["late","Revisión pendiente"]];
+  const locs = ["Todas las ubicaciones", ...new Set(list.map(p=>p.loc).filter(Boolean))];
+  const states = [["todo","Todos los estados"],["pend","Hoy y pendientes"],["today","Solo hoy"],["late","Días anteriores"]];
   $("chips").innerHTML =
     states.map(([v,t])=>`<button class="chip ${filterState===v?'on':''}" data-fs="${v}">${t}</button>`).join("") +
     locs.map((l,i)=>`<button class="chip ${filterLoc===l?'on':''}" data-fl="${i}">${esc(l)}</button>`).join("");
@@ -104,17 +107,19 @@ function render(){
   $("chips").querySelectorAll("[data-fl]").forEach(b=>b.onclick=()=>{filterLoc=locs[+b.dataset.fl];render();});
   $("loclist").innerHTML = locs.slice(1).map(l=>`<option value="${esc(l)}">`).join("");
 
-  if(view === "week"){ renderWeek(); return; }
 
   const q = $("q").value.trim().toLowerCase();
   const shown = list.filter(p=>{
     const s = plantState(p).state;
-    if(filterLoc!=="Todas" && p.loc!==filterLoc) return false;
+    if(filterLoc!=="Todas las ubicaciones" && p.loc!==filterLoc) return false;
     if(filterState==="pend" && s==="ok") return false;
+    if(filterState==="today" && s!=="today")return false;
     if(filterState==="late" && s!=="late") return false;
     if(q && !(p.name+" "+(p.species||"")).toLowerCase().includes(q)) return false;
     return true;
   }).sort((a,b)=> plantState(a).d - plantState(b).d);
+
+  if(view === "week"){ renderWeek(shown); return; }
 
   if(!shown.length){
     $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">
@@ -124,7 +129,7 @@ function render(){
   }
   $("grid").innerHTML = shown.map(p=>{
     const {next,d,state,f} = plantState(p);
-    const nextTxt = state==="late" ? `Revisión pendiente desde ${fmt(next)}` : state==="today" ? "Revisar humedad hoy" : `Revisar humedad: ${fmt(next)}`;
+    const nextTxt = state==="late" ? `Revisión pendiente desde ${fmt(next)} · ${Math.abs(d)} ${Math.abs(d)===1?"día":"días"}` : state==="today" ? "Revisar humedad hoy" : `Revisar humedad: ${fmt(next)}`;
     const fert = p.fertFreq>0 && p.lastFert ? diffDays(todayStr(), addDays(p.lastFert, p.fertFreq))<=0 : false;
     const rain = (state!=="ok") && isOutdoor(p) && rainyToday();
     const lastBy = p.history?.[0]?.by ? `· último: ${esc(p.history[0].by)}` : "";
@@ -169,7 +174,7 @@ function openDetail(id){
   $("d-light").textContent = LIGHT[p.light] || "—";
   $("d-freq").textContent = `Cada ${f} días · orientativo`;
   $("d-last").textContent = fmt(p.lastWater);
-  $("d-next").innerHTML = `<span style="color:${state==='late'?'var(--grana)':state==='today'?'var(--amber)':'var(--blue)'}">${fmt(next)}${state==='late'?` · pendiente de revisar`:state==='today'?' · hoy':''}</span>`;
+  $("d-next").innerHTML = `<span style="color:${state==='late'?'var(--grana)':state==='today'?'var(--amber)':'var(--blue)'}">${fmt(next)}${state==='late'?` · ${Math.abs(d)} ${Math.abs(d)===1?"día":"días"} pendiente de revisar`:state==='today'?' · hoy':''}</span>`;
   if(p.fertFreq>0){
     $("d-fertrow").style.display="flex";
     $("d-fert").textContent = p.lastFert ? fmt(addDays(p.lastFert, p.fertFreq)) : "Sin registrar";
@@ -201,8 +206,9 @@ function openDetail(id){
   } else $("d-lastai").style.display="none";
   renderGallery(p);
   $("d-hist").innerHTML = (p.history?.length)
-    ? p.history.map(h=>`<div class="h">${h.t==="agua"?"💧 Riego":"🌱 Abono"} · <b>${esc(h.by||"")}</b><span class="d">${fmt(h.date)}</span></div>`).join("")
+    ? p.history.map(h=>`<div class="h">${h.t==="agua"?"💧 Riego":"🌱 Abono"} · <b>${esc(h.by||"")}</b><span class="d">${fmt(h.date)}</span>${h.t==="agua" && h.eventId?`<button type="button" class="history-correct" data-correct="${esc(h.eventId)}">Corregir este riego</button>`:""}</div>`).join("")
     : "<p class='note'>Aún sin registros. El primer riego lo estrena.</p>";
+  $("d-hist").querySelectorAll("[data-correct]").forEach(b=>b.onclick=()=>{if(confirm("¿Quitar solo este riego accidental? Los demás registros se conservarán."))correctWater(id,b.dataset.correct);});
   $("d-water").onclick = e=>{ water(id, e.currentTarget); openDetail(id); };
   $("d-water").dataset.plantId = id;
   $("d-aiphoto").onclick = ()=>aiPhotoDiag(id);
@@ -220,9 +226,10 @@ function notifyDue(){
   alive().forEach(p=>{ const s=plantState(p).state; if(s==="today") hoy.push(p); if(s==="late") tarde.push(p); });
   if(!hoy.length && !tarde.length){ el.style.display="none"; return; }
   const head = tarde.length
-    ? `🌱 <b>${tarde.length}</b> por revisar${hoy.length?` · <b>${hoy.length}</b> para hoy`:""}`
-    : `🌱 <b>${hoy.length}</b> para revisar hoy`;
-  el.innerHTML = head + ` <span style="font-weight:400;color:var(--ink2)">· comprueba la tierra antes de regar</span>`;
+    ? `🌱 <b>${tarde.length}</b> ${tarde.length===1?"revisión pendiente":"revisiones pendientes"}${hoy.length?` · <b>${hoy.length}</b> para hoy`:""}`
+    : `🌱 <b>${hoy.length}</b> ${hoy.length===1?"revisión":"revisiones"} para hoy`;
+  el.innerHTML = head + ` <span style="font-weight:400;color:var(--ink2)">· comprueba la tierra antes de regar</span><button type="button" class="btn soft" id="due-action">${tarde.length+hoy.length===1?"Ver ficha":"Ver plantas para revisar"}</button>`;
+  $("due-action").onclick=()=>{if(tarde.length+hoy.length===1)openDetail([...tarde,...hoy][0].id);else{filterState="pend";filterLoc="Todas las ubicaciones";$("q").value="";setView("grid");$("grid").scrollIntoView({behavior:"smooth",block:"start"});}};;
   el.style.background = tarde.length ? "color-mix(in srgb, var(--grana) 12%, var(--surface))" : "color-mix(in srgb, var(--amber) 12%, var(--surface))";
   el.style.border = "1.5px solid " + (tarde.length ? "var(--grana)" : "var(--amber)");
   el.style.color = "var(--ink)";

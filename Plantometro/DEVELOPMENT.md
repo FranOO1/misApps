@@ -11,6 +11,7 @@ archivos directamente desde `Plantometro/`; todas las rutas propias son relativa
 | `js/utils.js` | Fechas, texto seguro y constantes compartidas. |
 | `js/ui.js` | Tarjetas, calendario, ficha, modales y avisos. |
 | `js/plants.js` | Formulario, revisiones de humedad, registro de riegos/abonos y copias. |
+| `js/backup.js` | Validación completa de copias antes de restaurarlas. |
 | `js/photos.js` | Compresión de imágenes y diario fotográfico. |
 | `js/weather.js` | Ciudad/GPS, previsión y contexto para plantas de exterior. |
 | `js/gemini.js` | Identificación, sugerencias editables y diagnóstico. |
@@ -38,7 +39,7 @@ los módulos, para evitar ejecutar funciones antes de inicializar sus dependenci
   botón habitual. La revisión de fichas existentes usa el mismo flujo.
 - La clave de Gemini sigue en las preferencias del dispositivo; no se guarda en
   Firebase ni en el repositorio, no se imprime y se envía como cabecera al servicio.
-- La caché `plantometro-v9` incluye HTML, CSS, todos los módulos y los tres SDK
+- La caché `plantometro-v10` incluye HTML, CSS, todos los módulos y los tres SDK
   Firebase de la versión ya utilizada. Solo elimina cachés `plantometro-*`;
   conserva las de las otras aplicaciones en el mismo origen. No cachea llamadas
   Gemini, autenticación, datos Firestore ni previsiones.
@@ -71,10 +72,52 @@ superficies: mínimo 5,58:1 en claro y 7,20:1 en oscuro (referencia AA: 4,5:1).
 **Validación de navegador realizada:** la suite Chromium pasa en 320×740,
 390×844, 768×1024 y 820×1180: abrir, añadir/editar, fotos, sugerencias por
 nombre/foto, corrección y descarte, riego/deshacer, historial, clima, calendario,
-ambos temas y contraste. También pasa registro del worker v9, caché de la app,
+ambos temas y contraste. También pasa registro del worker v10, caché de la app,
 apertura sin conexión, manifest standalone y conservación de cachés de otras apps.
 Se revisaron las capturas generadas; la prueba usa datos y servicios simulados.
 
 **Pendiente en dispositivos reales:** verificar el login Google, una respuesta
 real de Gemini y la instalación en vuestros móviles. Las pruebas no escriben en
 el jardín de producción ni utilizan una clave real de Gemini.
+
+## Correcciones del PR #1
+
+- Búsqueda y filtros comparten resultados en tarjetas y Semana. «Hoy y pendientes»
+  incluye revisiones de hoy y anteriores; «Días anteriores» muestra solo atrasadas.
+  Los filtros se distribuyen en varias filas en móvil. Contadores y avisos distinguen
+  singular y plural; el aviso abre la ficha o el conjunto de revisiones pendientes.
+- Las fechas se calculan por días de calendario UTC, sin errores de horario de
+  verano. El ejemplo sintético de 84 días desde el riego con frecuencia de 7 días
+  produce 77 días de revisión pendiente; no demuestra falta de agua. No se ha
+  consultado ni modificado la ficha real de Bob.
+- La memoria y la copia local de la cuenta se limpian al cerrar sesión. Las copias
+  locales llevan UID y las respuestas asíncronas verifican la sesión original.
+- Guardar/eliminar diferencia permisos, sesión caducada, límites y servicio no
+  disponible. Un rechazo revierte el cambio optimista; estar sin conexión muestra
+  un estado pendiente, no una confirmación de escritura.
+- Restaurar valida toda la copia, sus fechas, fotos, historial, tamaños e IDs antes
+  de escribir. Una copia inválida se rechaza íntegra. Las fichas seleccionadas se
+  envían en un único batch atómico (máximo 400); se informa de las fichas conservadas.
+- Los riegos nuevos añaden un identificador y referencias a su estado anterior en
+  el historial existente. «Corregir este riego» sigue disponible en la ficha después
+  del aviso; una transacción elimina únicamente ese registro y conserva abonos y
+  riegos posteriores. Las fichas antiguas siguen abriendo sin migración.
+- No se recortan automáticamente fotos ni historial. Una ficha demasiado grande
+  se rechaza con un aviso para conservar una copia antes de reducir su contenido.
+
+Las regresiones adicionales del navegador se ejecutan en 390×844 y 768×1024:
+permisos de escritura/eliminación, restauración inválida y batch fallido, cambio de
+cuenta, filtros en ambas vistas, corrección precisa de dos riegos con abono, diario
+con siete fotos, GPS, exportación y reapertura de una revisión Gemini guardada.
+Firebase, autenticación, clima, geocodificación y Gemini se simulan. El navegador,
+DOM, almacenamiento, service worker, manifest y apertura sin conexión son reales
+en Chromium local; la instalación y los servicios en dispositivos reales quedan
+pendientes.
+
+## Demostración sin fusionar
+
+Ver [PREVIEW.md](PREVIEW.md). `scripts/build_preview.py` genera `preview.html`
+con los módulos y estilos actuales y adaptadores simulados. No contiene la
+configuración Firebase ni una clave real; no usa datos del jardín ni permite
+probar autenticación, servicios o instalación reales. Regenerar tras cambiar los
+módulos: `python Plantometro/scripts/build_preview.py`.

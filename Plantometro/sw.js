@@ -1,7 +1,7 @@
 // Plantómetro v2 — caché real para funcionar sin conexión
-const CACHE = "plantometro-v9";
+const CACHE = "plantometro-v10";
 const CORE = ["./", "./index.html", "./manifest.json", "./styles.css",
-  "./js/app.js", "./js/utils.js", "./js/settings.js", "./js/sync.js", "./js/weather.js", "./js/plants.js", "./js/photos.js", "./js/gemini.js", "./js/ui.js",
+  "./js/backup.js", "./js/app.js", "./js/utils.js", "./js/settings.js", "./js/sync.js", "./js/weather.js", "./js/plants.js", "./js/photos.js", "./js/gemini.js", "./js/ui.js",
   "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
   "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
   "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"];

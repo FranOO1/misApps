@@ -1,6 +1,6 @@
 import { $, esc, todayStr, fmt, LIGHT } from "./utils.js";
 import { settings, whoAmI } from "./settings.js";
-import { plants, putPlant } from "./sync.js";
+import { plants, putPlant, sessionToken } from "./sync.js";
 import { isOutdoor, seasonContext, weatherContext } from "./weather.js";
 import { plantState, formPhoto, formLight, formRevision, openForm, trimPlant, setFormLight } from "./plants.js";
 import { shrinkImage, pushDiary } from "./photos.js";
@@ -112,6 +112,7 @@ function extractSuggestions(txt){
 let aiBusy = false;
 async function runAI(p, subtitle, parts){
   if(aiBusy) return null;
+  const session=sessionToken();
   aiBusy = true;
   $("ai-title").textContent = "🤖 " + p.name;
   $("ai-sub").textContent = subtitle;
@@ -121,6 +122,8 @@ async function runAI(p, subtitle, parts){
   let clean = null;
   try{
     const txt = await callGemini(parts);
+    if(session!==sessionToken() || !plants.some(x=>x.id===p.id)){aiBusy=false;return null;}
+    p=plants.find(x=>x.id===p.id);
     if(txt === null){ aiBusy = false; return null; } // faltaba la clave
     const ex = extractSuggestions(txt);
     clean = ex.clean;
@@ -153,6 +156,7 @@ async function runAI(p, subtitle, parts){
       };
     }
   }catch(err){
+    if(session!==sessionToken()){aiBusy=false;return null;}
     $("ai-body").innerHTML = `<p><b>❌ No se pudo completar el análisis.</b></p><p class="note">No se pudo obtener una respuesta válida.</p><p class="note">Comprueba tu clave de Gemini en Ajustes ⚙️ y tu conexión.</p>`;
   }
   aiBusy = false;
@@ -190,11 +194,13 @@ function aiPhotoDiag(id){
 async function aiPhotoPicked(e){
   const file = e.target.files[0]; if(!file) return;
   const p = plants.find(x=>x.id===aiPhotoPlantId); if(!p) return;
+  const session=sessionToken();
   let big, small;
   try{
     big = await shrinkImage(file, 1024, .85);   // para la IA
     small = await shrinkImage(file, 480, .6);   // para el diario
   }catch(err){ toast("No se pudo leer la imagen ❌"); return; }
+  if(session!==sessionToken())return;
   const prompt =
 `Eres un experto jardinero. Te envío una FOTO ACTUAL de mi planta junto con su ficha de la app (estamos en ${settings.city || "España"}, hoy es ${todayStr()}).
 Analiza la foto y dime:
@@ -206,10 +212,9 @@ Responde en español, claro y breve, con títulos (##) y listas con guiones.${SU
 
 ${fichaText(p)}`;
   const txt = await runAI(p, "Diagnóstico por foto 📸", [{ text: prompt }, dataUrlToPart(big)]);
-  if(txt){
+  if(txt && session===sessionToken()){
     const firstLine = txt.split("\n").map(s=>s.replace(/[#*]/g,"").trim()).filter(s=>s && !/^(estado|problemas|causa|qué hacer)/i.test(s))[0] || "";
-    pushDiary(p, small, firstLine);
-    toast("Diagnóstico guardado en el diario 📷");
+    if(await pushDiary(plants.find(x=>x.id===p.id), small, firstLine))toast("Diagnóstico guardado en el diario 📷");
   }
 }
 
@@ -218,7 +223,7 @@ async function identifyPlant(){
   const name = $("f-name").value.trim();
   if(!name && !formPhoto){ toast("Escribe un nombre o añade una foto primero."); return; }
   if(!(settings.geminiKey || "").trim()){ toast("Añade tu clave de Gemini en Ajustes."); return; }
-  const revision = formRevision;
+  const revision = formRevision, session=sessionToken();
   const st = $("f-aistatus"), btn = $("f-identify");
   btn.disabled = true; $("f-suggestions").hidden = true;
   st.style.display = "block"; st.textContent = "Consultando Gemini…";
@@ -228,15 +233,15 @@ async function identifyPlant(){
 Los días son una frecuencia ORIENTATIVA para revisar humedad, NUNCA una orden de regar. Usa null cuando no puedas recomendar algo. Explica la incertidumbre y alternativas. No deduzcas humedad de una foto ni ajustes días por lluvia prevista. Contexto: ciudad ${settings.city}, latitud ${settings.lat}, fecha ${todayStr()}, ${seasonContext()}. Nombre introducido: ${name}. Especie introducida: ${$("f-species").value}. Ubicación: ${$("f-loc").value}.`;
     const parts = [{text:prompt}]; const photo = dataUrlToPart(formPhoto); if(photo) parts.push(photo);
     const txt = await callGemini(parts);
-    if(revision !== formRevision || !$("form-modal").classList.contains("open")) return;
+    if(session!==sessionToken() || revision !== formRevision || !$("form-modal").classList.contains("open")) return;
     if(!txt) return;
     const j = JSON.parse(txt.replace(/```json|```/gi, "").trim());
     if(!j || typeof j !== "object" || Array.isArray(j)) throw new Error("Formato inválido");
     showPlantSuggestions(j);
     st.textContent = "Revisa, corrige y elige qué datos quieres usar. Aún no se ha aplicado nada.";
   }catch(e){
-    if(revision === formRevision) st.textContent = "No se pudo obtener una sugerencia válida. Puedes completar la ficha a mano o intentarlo otra vez.";
-  }finally{ if(revision === formRevision) btn.disabled = false; }
+    if(session===sessionToken() && revision === formRevision) st.textContent = "No se pudo obtener una sugerencia válida. Puedes completar la ficha a mano o intentarlo otra vez.";
+  }finally{ if(session===sessionToken() && revision === formRevision) btn.disabled = false; }
 }
 function showPlantSuggestions(j){
   const box = $("f-suggestions"); box.replaceChildren(); box.hidden = false;
@@ -289,4 +294,4 @@ function showPlantSuggestions(j){
   box.append(apply,discard);
 }
 
-export { aiReviewCard, aiPhotoDiag, aiPhotoPicked, identifyPlant, showPlantSuggestions };
+export { aiReviewCard, aiPhotoDiag, aiPhotoPicked, identifyPlant, showPlantSuggestions, mdToHtml };
