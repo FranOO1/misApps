@@ -3,8 +3,8 @@
   "short_name": "Plantómetro",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#EDF1E3",
-  "theme_color": "#173B24",
+  "background_color": "#F5F3EC",
+  "theme_color": "#214B38",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/892/892926.png",

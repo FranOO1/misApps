@@ -2,415 +2,160 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Plantómetro · El jardín compartido</title>
-<meta name="theme-color" content="#173B24">
+<meta name="theme-color" content="#214B38">
 <link rel="manifest" href="./manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#EDF1E3; --surface:#FBFCF6; --surface2:#F3F6EA;
-  --ink:#1E2E1C; --ink2:#5C6B57; --line:#DDE4CE;
-  --green:#3E7C4A; --green-deep:#173B24; --leaf:#7FB069;
-  --grana:#C2402A; --amber:#C08A1E; --blue:#3A7CA5;
-  --shadow:0 2px 12px rgba(30,46,28,.08);
-  --r:18px;
-}
-html.dark{
-  --bg:#121810; --surface:#1B241A; --surface2:#222E20;
-  --ink:#E9EFE0; --ink2:#9AAB92; --line:#2E3B2B;
-  --green:#6FAE7C; --green-deep:#DDEBD8; --leaf:#7FB069;
-  --grana:#E06048; --amber:#D9A63F; --blue:#6FA8CB;
-  --shadow:0 2px 14px rgba(0,0,0,.4);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{
-  background:var(--bg); color:var(--ink);
-  font-family:'Instrument Sans',system-ui,sans-serif;
-  font-size:15px; line-height:1.45;
-  min-height:100dvh; padding-bottom:96px;
-  transition:background .3s,color .3s;
-}
-.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
-h1,h2,h3,.display{font-family:'Fraunces',serif;letter-spacing:-.01em}
-button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
-input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;outline:none;transition:border .15s}
-input:focus,select:focus,textarea:focus{border-color:var(--green)}
-label{font-size:12px;font-weight:600;color:var(--ink2);display:block;margin:12px 0 4px;text-transform:uppercase;letter-spacing:.06em}
-:focus-visible{outline:2px solid var(--green);outline-offset:2px}
-
-/* ---------- Cabecera ---------- */
-header.top{padding:14px 0 4px}
-.headrow{display:flex;align-items:center;gap:10px}
-.brand h1{font-size:21px;font-weight:700;color:var(--green-deep);display:flex;align-items:center;gap:7px}
-.brand h1 .dot{color:var(--grana)}
-.topbtns{display:flex;gap:6px;margin-left:auto}
-.iconbtn{width:36px;height:36px;border-radius:12px;background:var(--surface);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);font-size:16px;transition:transform .1s}
-.iconbtn:active{transform:scale(.93)}
-
-/* ---------- Clima (una línea) ---------- */
-.wbar{display:flex;align-items:center;gap:10px;margin-top:12px;padding:9px 14px;background:var(--surface);border:1.5px solid var(--line);border-radius:999px;box-shadow:var(--shadow);font-size:13px;font-weight:600;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
-.wbar::-webkit-scrollbar{display:none}
-.wbar .wcity{font-family:'Fraunces',serif;font-size:14px}
-.wbar .wdat{display:flex;align-items:center;gap:3px;color:var(--ink2)}
-.wbar .wdat b{color:var(--ink);font-variant-numeric:tabular-nums}
-.wbar .wrefresh{margin-left:auto;width:26px;height:26px;border-radius:50%;background:var(--surface2);color:var(--ink2);font-size:14px;flex-shrink:0}
-.wtip{font-size:12px;font-style:italic;color:var(--ink2);margin:7px 4px 0}
-
-/* ---------- Estadísticas (píldoras) ---------- */
-.statbar{display:flex;gap:7px;margin:10px 0 2px;overflow-x:auto;scrollbar-width:none}
-.statbar::-webkit-scrollbar{display:none}
-.sp{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink2);padding:6px 12px;border-radius:999px;background:var(--surface);border:1.5px solid var(--line);white-space:nowrap}
-.sp b{font-family:'Fraunces',serif;font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
-.sp.warn b{color:var(--amber)} .sp.bad b{color:var(--grana)} .sp.fire b{color:var(--grana)}
-.sp.zero{opacity:.55}
-
-/* Aviso con chips tocables */
-.duechips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.duechips button{font-size:12px;font-weight:700;padding:6px 11px;border-radius:999px;background:var(--surface);border:1.5px solid var(--line)}
-.duechips button.late{border-color:var(--grana);color:var(--grana)}
-.duechips button.today{border-color:var(--amber);color:var(--amber)}
-
-/* ---------- Filtros ---------- */
-.tools{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0 8px;transition:background .3s}
-.search{display:flex;gap:8px;margin-bottom:8px}
-.search input{flex:1;border-radius:999px;padding-left:38px;background:var(--surface) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%235C6B57" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>') 13px center no-repeat}
-.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{white-space:nowrap;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink2)}
-.chip.on{background:var(--green-deep);border-color:var(--green-deep);color:var(--bg)}
-html.dark .chip.on{background:var(--leaf);border-color:var(--leaf);color:#10190f}
-
-/* ---------- Tarjetas ---------- */
-.grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:6px}
-@media(min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
-.card{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;position:relative;transition:transform .12s,border-color .2s}
-.card:active{transform:scale(.985)}
-.card.late{border-color:color-mix(in srgb,var(--grana) 55%,var(--line));background:color-mix(in srgb,var(--grana) 6%,var(--surface))}
-.card.today{border-color:color-mix(in srgb,var(--amber) 55%,var(--line));background:color-mix(in srgb,var(--amber) 6%,var(--surface))}
-.card .body{padding:14px;display:flex;gap:14px;align-items:flex-start;cursor:pointer}
-.ringwrap{position:relative;width:92px;height:92px;flex-shrink:0}
-.ringwrap svg{position:absolute;inset:0;transform:rotate(-90deg)}
-.ringwrap .ph{position:absolute;inset:7px;border-radius:50%;overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:32px}
-.ringwrap .ph img{width:100%;height:100%;object-fit:cover}
-.daypill{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);font-size:10px;font-weight:800;letter-spacing:.03em;padding:3px 9px;border-radius:999px;background:var(--surface);border:1.5px solid var(--line);color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums;z-index:2}
-.daypill.late{background:var(--grana);border-color:var(--grana);color:#fff}
-.daypill.today{background:var(--amber);border-color:var(--amber);color:#fff}
-.card .info{min-width:0;flex:1}
-.card .name{font-family:'Fraunces',serif;font-weight:600;font-size:19px;line-height:1.15}
-.card .species{font-size:12.5px;font-style:italic;color:var(--ink2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
-.tag{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
-.tag.rain{color:var(--blue);border-color:var(--blue)}
-.tag.summer{color:var(--amber);border-color:var(--amber)}
-.card .next{font-size:12.5px;font-weight:600;margin-top:8px;font-variant-numeric:tabular-nums}
-.next.ok{color:var(--green)} .next.today{color:var(--amber)} .next.late{color:var(--grana)}
-.card .foot{display:flex;border-top:1.5px solid var(--line)}
-.card.late .foot,.card.today .foot{border-color:inherit}
-.card .foot button{flex:1;padding:11px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px}
-.card .foot button+button{border-left:1.5px solid var(--line)}
-.waterbtn{color:var(--blue)}
-.badge{position:absolute;top:10px;right:10px;font-size:9.5px;font-weight:800;letter-spacing:.05em;padding:4px 9px;border-radius:999px;color:#fff;z-index:2}
-.badge.late{background:var(--grana);animation:pulse 1.6s infinite}
-.badge.today{background:var(--amber)}
-@keyframes pulse{50%{opacity:.55}}
-@media(prefers-reduced-motion:reduce){.badge.late{animation:none}.modal .sheet{animation:none}}
-
-/* Gotas al regar */
-.drop{position:fixed;z-index:90;font-size:15px;pointer-events:none;animation:dropfly .8s cubic-bezier(.2,.7,.4,1) forwards}
-@keyframes dropfly{0%{transform:translate(0,0) scale(.6);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1.15);opacity:0}}
-
-/* Vista semanal */
-.seg{display:flex;background:var(--surface);border:1.5px solid var(--line);border-radius:999px;padding:3px;gap:2px;margin-bottom:8px;box-shadow:var(--shadow)}
-.seg button{flex:1;padding:8px;border-radius:999px;font-size:13px;font-weight:700;color:var(--ink2)}
-.seg button.on{background:var(--green-deep);color:var(--bg)}
-html.dark .seg button.on{background:var(--leaf);color:#10190f}
-.week{display:flex;gap:10px;overflow-x:auto;padding:6px 0 14px;scrollbar-width:none}
-.week::-webkit-scrollbar{display:none}
-.wday{min-width:138px;flex-shrink:0;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:var(--shadow)}
-.wday.today{border-color:var(--green)}
-.wday .wd-h{font-family:'Fraunces',serif;font-weight:700;font-size:15px;text-transform:capitalize}
-.wday .wd-d{font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:8px}
-.wday .wp{display:flex;align-items:center;gap:7px;width:100%;text-align:left;padding:6px 8px;border-radius:10px;background:var(--surface2);border:1px solid var(--line);font-size:12.5px;font-weight:600;margin-top:5px}
-.wday .wp.late{border-color:var(--grana);color:var(--grana)}
-.wday .wp .mini{width:24px;height:24px;border-radius:50%;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-.wday .wp .mini img{width:100%;height:100%;object-fit:cover}
-.wday .free{font-size:12px;color:var(--ink2);font-style:italic;padding:6px 0}
-
-.empty{text-align:center;padding:48px 20px;color:var(--ink2)}
-.empty .big{font-size:44px}
-.empty h3{font-size:20px;color:var(--ink);margin:10px 0 4px}
-
-/* ---------- FAB ---------- */
-.fab{position:fixed;bottom:22px;right:18px;width:58px;height:58px;border-radius:20px;background:var(--green-deep);color:var(--bg);font-size:30px;font-weight:300;box-shadow:0 8px 24px rgba(23,59,36,.35);display:flex;align-items:center;justify-content:center;z-index:30;transition:transform .1s}
-html.dark .fab{background:var(--leaf);color:#10190f}
-.fab:active{transform:scale(.92)}
-@media(min-width:1140px){.fab{right:calc(50% - 550px + 18px)}}
-
-/* ---------- Modales ---------- */
-.modal{position:fixed;inset:0;background:rgba(18,24,16,.55);backdrop-filter:blur(3px);z-index:50;display:none;align-items:flex-end;justify-content:center}
-.modal.open{display:flex}
-.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;border-radius:26px 26px 0 0;padding:22px 20px 30px;animation:up .28s cubic-bezier(.16,1,.3,1)}
-@media(min-width:640px){.modal{align-items:center;padding:20px}.sheet{border-radius:26px;padding-bottom:22px}}
-@keyframes up{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
-.sheet .mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
-.sheet .mhead h2{font-size:23px;font-weight:700}
-.xbtn{width:32px;height:32px;border-radius:50%;background:var(--surface2);font-weight:700;color:var(--ink2);flex-shrink:0}
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:14px;font-weight:700;font-size:14.5px;margin-top:14px}
-.btn.primary{background:var(--green-deep);color:var(--bg)}
-html.dark .btn.primary{background:var(--leaf);color:#10190f}
-.btn.soft{background:var(--surface2);border:1.5px solid var(--line)}
-.btn.danger{color:var(--grana)}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.photopick{display:flex;align-items:center;gap:14px;margin-top:4px}
-.photopick .prev{width:84px;height:84px;border-radius:20px;background:var(--surface2);border:1.5px dashed var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0}
-.photopick .prev img{width:100%;height:100%;object-fit:cover}
-.lightopts{display:flex;gap:8px}
-.lightopts button{flex:1;padding:10px 4px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-size:12.5px;font-weight:600}
-.lightopts button.on{border-color:var(--green);background:var(--green);color:#fff}
-html.dark .lightopts button.on{color:#10190f}
-
-/* ---------- Detalle ---------- */
-.hero{position:relative;margin:-22px -20px 16px;height:250px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:64px;border-radius:26px 26px 0 0;overflow:hidden}
-.hero img{width:100%;height:100%;object-fit:cover}
-.hero .shade{position:absolute;inset:0;background:linear-gradient(to top,rgba(12,20,10,.72) 0%,rgba(12,20,10,.15) 45%,rgba(12,20,10,0) 65%)}
-.hero .htitle{position:absolute;left:18px;right:60px;bottom:14px;color:#fff}
-.hero .htitle h2{font-size:27px;font-weight:700;line-height:1.1;text-shadow:0 1px 8px rgba(0,0,0,.4)}
-.hero .htitle p{font-style:italic;font-size:13.5px;opacity:.85}
-.hero .hstate{position:absolute;top:14px;left:16px;font-size:10.5px;font-weight:800;letter-spacing:.05em;padding:5px 11px;border-radius:999px;color:#fff;background:var(--green);box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.hero .hstate.late{background:var(--grana)} .hero .hstate.today{background:var(--amber)}
-.hero .xbtn{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.9);color:#1E2E1C;z-index:3}
-.hero.noimg .shade{display:none}
-.hero.noimg .htitle{color:var(--ink)} .hero.noimg .htitle h2{text-shadow:none} .hero.noimg .htitle p{color:var(--ink2)}
-.kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
-.kv:last-child{border:none}
-.kv .k{font-size:11.5px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
-.kv .v{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
-.desc{background:var(--surface2);border-radius:14px;padding:12px 14px;font-size:14px;margin:10px 0;white-space:pre-wrap}
-.rainhint{display:none;background:color-mix(in srgb,var(--blue) 12%,var(--surface));border:1.5px solid var(--blue);border-radius:14px;padding:10px 14px;font-size:13px;font-weight:600;margin:10px 0}
-.hist{max-height:200px;overflow-y:auto;margin-top:6px}
-.hist .h{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
-.hist .h .d{margin-left:auto;color:var(--ink2);font-variant-numeric:tabular-nums;font-size:12px}
-.actions2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-
-/* Diario fotográfico */
-.gal{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}
-.gal::-webkit-scrollbar{display:none}
-.gal .gph{position:relative;width:86px;height:86px;border-radius:14px;overflow:hidden;flex-shrink:0;border:1.5px solid var(--line);background:var(--surface2);padding:0}
-.gal .gph img{width:100%;height:100%;object-fit:cover;display:block}
-.gal .gph .gd{position:absolute;left:0;right:0;bottom:0;font-size:9px;font-weight:800;color:#fff;background:linear-gradient(to top,rgba(0,0,0,.65),transparent);padding:10px 4px 3px;text-align:center}
-.gal .gadd{width:86px;height:86px;border-radius:14px;border:1.5px dashed var(--line);background:var(--surface2);flex-shrink:0;font-size:24px;color:var(--ink2)}
-.lastai{display:none;justify-content:space-between;align-items:center;gap:8px;background:var(--surface2);border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--ink2);margin-top:8px}
-.lastai button{color:var(--green);font-weight:800;font-size:12.5px;flex-shrink:0}
-
-/* ---------- IA ---------- */
-.aibox{margin:14px 0 4px;background:linear-gradient(120deg,var(--surface2),var(--surface));border:1.5px dashed var(--line);border-radius:16px;padding:12px}
-.aibox h3{font-size:15px;margin-bottom:8px}
-.aibtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.aibtns .btn{margin:0;font-size:13.5px;padding:10px 8px}
-.ai-out{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px;font-size:14px;line-height:1.55;max-height:55vh;overflow-y:auto}
-.ai-out h4{font-family:'Fraunces',serif;font-size:15px;margin:12px 0 4px;color:var(--green-deep)}
-.ai-out h4:first-child{margin-top:0}
-.ai-out ul{padding-left:18px;margin:4px 0}
-.ai-out li{margin:3px 0}
-.ai-out p{margin:6px 0}
-.ai-spin{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 0;color:var(--ink2);font-size:13.5px}
-.ai-spin .leafspin{font-size:34px;animation:leafspin 1.6s linear infinite;display:inline-block}
-@keyframes leafspin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){.ai-spin .leafspin{animation:none}}
-
-/* ---------- Geocoder ---------- */
-.georesults{margin-top:8px;display:flex;flex-direction:column;gap:6px}
-.georesults button{text-align:left;padding:10px 12px;border-radius:12px;background:var(--surface2);border:1.5px solid var(--line);font-size:13.5px}
-.georesults button:hover{border-color:var(--green)}
-
-/* ---------- Sync ---------- */
-.syncsteps{counter-reset:s;margin:6px 0 4px}
-.syncsteps p{position:relative;padding:8px 0 8px 36px;font-size:13.5px}
-.syncsteps p::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:8px;width:24px;height:24px;border-radius:50%;background:var(--green-deep);color:var(--bg);font-family:'Fraunces',serif;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
-html.dark .syncsteps p::before{background:var(--leaf);color:#10190f}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:var(--green-deep);color:var(--bg);padding:11px 20px;border-radius:999px;font-weight:600;font-size:13.5px;z-index:80;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s;display:flex;align-items:center;gap:12px;max-width:92vw}
-html.dark .toast{background:var(--leaf);color:#10190f}
-.toast.show{opacity:1;pointer-events:auto}
-.toast button{font-weight:800;text-decoration:underline;font-size:13.5px;color:inherit;flex-shrink:0}
-.togglebtn{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface2);font-weight:600;font-size:14px;margin-top:4px}
-.togglebtn .sw{font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:var(--line);color:var(--ink2)}
-.togglebtn.on{border-color:var(--amber)}
-.togglebtn.on .sw{background:var(--amber);color:#fff}
-.themeopts{display:flex;gap:8px}
-.themeopts button{flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-weight:600;font-size:13px}
-.themeopts button.on{border-color:var(--green);background:var(--green);color:#fff}
-html.dark .themeopts button.on{color:#10190f}
-.note{font-size:12px;color:var(--ink2);margin-top:6px}
-</style>
+<link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+<svg class="svg-defs" aria-hidden="true" width="0" height="0"><defs>
+  <symbol id="plant-art" viewBox="0 0 160 160">
+    <path d="M80 103V52M80 78L58 61M80 91l25-22" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+    <path d="M79 61C61 42 79 25 93 22c9 22 0 34-14 39ZM68 72C45 76 34 56 37 42c23-1 35 12 31 30ZM92 87c-1-25 16-37 34-35 0 24-12 39-34 35Z" fill="currentColor" opacity=".75"/>
+    <path d="M55 103h50l-7 34H62Z" fill="currentColor" opacity=".35"/><path d="M53 103h54" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+  </symbol>
+</defs></svg>
+<div class="app-shell" id="app-shell">
 <div class="wrap">
-
   <header class="top">
     <div class="headrow">
-      <div class="brand">
-        <h1>🪴 Plantómetro<span class="dot">.</span></h1>
-      </div>
+      <h1 class="brand"><svg class="brand-leaf" viewBox="0 0 28 32" aria-hidden="true"><path d="M7 29c1-12 4-19 13-25M9 20C0 19 0 9 2 5c10 0 14 7 7 15ZM12 15C10 5 19 1 26 2c0 9-4 16-14 13Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Plantómetro</h1>
       <div class="topbtns">
-        <button class="iconbtn" id="acc-btn" onclick="openModal('account-modal')" title="Cuenta" style="overflow:hidden">👤</button>
-        <button class="iconbtn" onclick="openModal('settings-modal')" title="Ajustes">⚙️</button>
+        <button class="iconbtn" id="search-toggle" data-action="toggleSearch" title="Buscar una planta" aria-label="Buscar una planta" aria-controls="search-panel" aria-expanded="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+        <button class="iconbtn" id="settings-btn" data-action="openModal" data-arg="settings-modal" title="Ajustes" aria-label="Ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 3-1 2 2 3-2 1-3 3-1-1-4-3-1-1-3Z"/><circle cx="12" cy="11" r="3"/></svg></button>
       </div>
     </div>
-
-    <div class="wbar">
-      <span id="w-icon">🌤️</span>
-      <span class="wcity" id="w-city">—</span>
-      <span class="wdat">🌡️ <b id="w-temp">--°</b></span>
-      <span class="wdat">💧 <b id="w-hum">--%</b></span>
-      <span class="wdat">🌧️ <b id="w-rain">--%</b></span>
-      <button class="wrefresh" onclick="loadWeather(true)" title="Actualizar clima">↻</button>
-    </div>
-    <p class="wtip" id="w-tip">Cargando el clima de tu zona…</p>
-
-    <div class="statbar">
-      <span class="sp">🪴 <b id="st-total">0</b> plantas</span>
-      <span class="sp warn">💧 <b id="st-today">0</b> hoy</span>
-      <span class="sp bad">⚠️ <b id="st-late">0</b> atrasadas</span>
-      <span class="sp fire">🔥 <b id="st-streak">0</b> racha</span>
-    </div>
-
-    <div id="due-banner" style="display:none;margin-top:10px;border-radius:var(--r);padding:12px 16px;box-shadow:var(--shadow)"></div>
+    <p class="garden-summary" id="garden-summary">Tu jardín, a tu ritmo.</p>
   </header>
-
-  <div class="tools">
-    <div class="seg" id="viewseg">
-      <button class="on" data-view="grid" onclick="setView('grid')">🪴 Plantas</button>
-      <button data-view="week" onclick="setView('week')">📅 Semana</button>
-    </div>
-    <div class="search"><input type="search" id="q" placeholder="Buscar planta o especie…" oninput="render()"></div>
-    <div class="chips" id="chips"></div>
+  <div class="search-panel" id="search-panel" hidden>
+    <label class="sr-only" for="q">Buscar planta o especie</label>
+    <input type="search" id="q" placeholder="Buscar una planta…" autocomplete="off">
+    <button class="text-button" data-action="closeSearch" aria-label="Cerrar búsqueda">Cerrar</button>
   </div>
-
-  <main class="grid" id="grid"></main>
-  <section class="week" id="week" style="display:none"></section>
+  <main class="grid" id="grid" aria-label="Tus plantas"></main>
 </div>
-
-<button class="fab" onclick="openForm()" aria-label="Añadir planta">+</button>
+<div class="add-dock" id="add-dock">
+  <button class="fab" data-action="openForm" aria-label="Añadir planta"><span aria-hidden="true">+</span><span class="fab-label">Añadir planta</span></button>
+</div>
+</div>
 <div class="toast" id="toast"></div>
 
 <!-- ===== Formulario ===== -->
 <div class="modal" id="form-modal">
-  <form class="sheet" onsubmit="savePlant(event)">
-    <div class="mhead"><h2 id="form-title">Nueva planta</h2><button type="button" class="xbtn" onclick="closeModal('form-modal')">✕</button></div>
+  <form class="sheet" id="plant-form">
+    <div class="mhead"><h2 id="form-title">Nueva planta</h2><button type="button" class="xbtn" data-action="closeModal" data-arg="form-modal" aria-label="Cerrar">✕</button></div>
     <input type="hidden" id="f-id">
-
-    <label>Foto</label>
-    <div class="photopick">
-      <div class="prev" id="f-prev">🪴</div>
-      <div style="flex:1">
-        <input type="file" accept="image/*" id="f-photo" onchange="pickPhoto(event)" style="padding:8px;font-size:13px">
-        <p class="note">Se comprime automáticamente para ocupar poco.</p>
-        <button type="button" class="btn soft" style="margin-top:8px;padding:9px;font-size:13px" onclick="identifyPlant()">🔮 Identificar con IA</button>
-        <p class="note" id="f-aistatus" style="display:none"></p>
-      </div>
-    </div>
 
     <label for="f-name">Nombre *</label>
     <input id="f-name" required placeholder="Ej: Monstera del salón">
-    <label for="f-species">Especie / tipo</label>
-    <input id="f-species" placeholder="Ej: Monstera deliciosa">
-    <label for="f-loc">Ubicación</label>
-    <input id="f-loc" list="loclist" placeholder="Ej: Salón, Terraza, Baño…">
-    <datalist id="loclist"></datalist>
-
-    <label>Luz que recibe</label>
-    <div class="lightopts" id="f-light">
-      <button type="button" data-v="sol" onclick="setLight('sol')">☀️ Sol directo</button>
-      <button type="button" data-v="media" onclick="setLight('media')">⛅ Luz media</button>
-      <button type="button" data-v="sombra" onclick="setLight('sombra')">🌑 Sombra</button>
+    <label for="f-photo-button">Foto (opcional)</label>
+    <div class="photopick">
+      <div class="prev" id="f-prev" aria-live="polite"><svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg></div>
+      <button type="button" class="btn soft photo-button" id="f-photo-button" data-action="chooseFormPhoto">Añadir foto</button>
+      <input type="file" accept="image/*" id="f-photo" hidden>
     </div>
-
-    <div class="row2">
-      <div><label for="f-freq">Riego: cada (días) *</label><input id="f-freq" type="number" min="1" max="120" required value="7"></div>
-      <div><label for="f-last">Último riego *</label><input id="f-last" type="date" required></div>
+    <div class="frequency-field">
+      <label for="f-freq" id="f-freq-label">Recordarme cada</label>
+      <input id="f-freq" type="number" min="1" max="120" required value="7" aria-labelledby="f-freq-label f-freq-unit" aria-describedby="f-freq-note">
+      <span id="f-freq-unit">días</span>
     </div>
-    <div class="row2">
-      <div><label for="f-fertfreq">Abono: cada (días)</label><input id="f-fertfreq" type="number" min="0" max="365" value="0" placeholder="0 = sin abono"></div>
-      <div><label for="f-fertlast">Último abonado</label><input id="f-fertlast" type="date"></div>
-    </div>
-    <div class="row2">
-      <div><label for="f-potsize">Maceta (tamaño)</label><input id="f-potsize" placeholder="Ej: Ø18 cm"></div>
-      <div><label for="f-potdate">Último trasplante</label><input id="f-potdate" type="date"></div>
-    </div>
-
-    <label for="f-desc">Descripción y notas</label>
-    <textarea id="f-desc" rows="3" placeholder="Cuidados, dónde la comprasteis, manías que tenga…"></textarea>
+    <p class="note" id="f-freq-note">Comprueba la tierra antes de regar</p>
+    <button type="button" class="text-button identify" id="f-identify" data-action="identifyPlant">Pedir ayuda a Gemini</button>
+    <p class="note" id="f-aistatus" role="status" style="display:none"></p>
+    <section id="f-suggestions" class="suggestions" hidden aria-label="Sugerencias de Gemini"></section>
+    <details id="f-details" class="more-details"><summary>Más detalles</summary>
+      <label for="f-species">Especie / tipo</label><input id="f-species" placeholder="Ej: Monstera deliciosa">
+      <label for="f-loc">Ubicación</label><input id="f-loc" list="loclist" placeholder="Ej: Salón, Terraza, Baño…"><datalist id="loclist"></datalist>
+      <label>Luz que recibe</label><div class="lightopts" id="f-light">
+        <button type="button" data-v="sol" data-action="setLight" data-arg="sol">☀️ Sol directo</button>
+        <button type="button" data-v="media" data-action="setLight" data-arg="media">⛅ Luz media</button>
+        <button type="button" data-v="sombra" data-action="setLight" data-arg="sombra">🌑 Sombra</button>
+      </div>
+      <label for="f-last">Último riego (si lo recuerdas)</label><input id="f-last" type="date">
+      <p class="note">Si lo dejas vacío, las revisiones empiezan desde que añades la planta. No se registra un riego.</p>
+      <div class="row2">
+        <div><label for="f-fertfreq">Abono: cada (días)</label><input id="f-fertfreq" type="number" min="0" max="365" value="0"></div>
+        <div><label for="f-fertlast">Último abonado</label><input id="f-fertlast" type="date"></div>
+      </div>
+      <div class="row2">
+        <div><label for="f-potsize">Maceta (tamaño)</label><input id="f-potsize" placeholder="Ej: Ø18 cm"></div>
+        <div><label for="f-potdate">Último trasplante</label><input id="f-potdate" type="date"></div>
+      </div>
+      <label for="f-desc">Descripción y notas</label><textarea id="f-desc" rows="3" placeholder="Cuidados, origen, observaciones…"></textarea>
+    </details>
 
     <button class="btn primary" id="f-save">Guardar planta</button>
   </form>
 </div>
 
-<!-- ===== Detalle ===== -->
+<!-- ===== Ficha ===== -->
 <div class="modal" id="detail-modal">
-  <div class="sheet">
+  <div class="sheet detail-sheet">
     <div class="hero" id="d-hero">
-      <span id="d-photo">🪴</span>
-      <div class="shade"></div>
-      <span class="hstate" id="d-state">AL DÍA</span>
-      <button class="xbtn" onclick="closeModal('detail-modal')">✕</button>
-      <div class="htitle"><h2 id="d-name">—</h2><p id="d-species"></p></div>
+      <span id="d-photo"></span>
+      <button class="xbtn" data-action="closeModal" data-arg="detail-modal" aria-label="Cerrar">✕</button>
     </div>
-    <div class="rainhint" id="d-rain">🌧️ Hoy se espera lluvia: si está en el exterior, quizá la riega el cielo.</div>
-    <div id="d-desc" class="desc" style="display:none"></div>
-    <div class="kv"><span class="k">Ubicación</span><span class="v" id="d-loc">—</span></div>
-    <div class="kv"><span class="k">Luz</span><span class="v" id="d-light">—</span></div>
-    <div class="kv"><span class="k">Riego</span><span class="v" id="d-freq">—</span></div>
+    <div class="detail-heading"><h2 id="d-name">—</h2><p id="d-species"></p><p class="detail-date" id="d-state"></p></div>
+    <button class="btn primary" id="d-water">Ya la he regado</button>
     <div class="kv"><span class="k">Último riego</span><span class="v" id="d-last">—</span></div>
-    <div class="kv"><span class="k">Próximo riego</span><span class="v" id="d-next">—</span></div>
-    <div class="kv" id="d-fertrow"><span class="k">Próximo abono</span><span class="v" id="d-fert">—</span></div>
-    <div class="kv" id="d-potrow" style="display:none"><span class="k">Maceta</span><span class="v" id="d-pot">—</span></div>
-    <div class="aibox">
-      <h3>🤖 Asistente de jardinería (IA)</h3>
+    <div class="kv"><span class="k">Para mirar la tierra</span><span class="v" id="d-next">—</span></div>
+
+    <details class="detail-section" id="d-photo-section">
+      <summary>Fotos</summary><div class="gal" id="d-gal"></div>
+    </details>
+    <details class="detail-section" id="d-care-section">
+      <summary>Cuidados</summary>
+      <div id="d-desc" class="desc" style="display:none"></div>
+      <div class="kv"><span class="k">Ubicación</span><span class="v" id="d-loc">—</span></div>
+      <div class="kv"><span class="k">Luz</span><span class="v" id="d-light">—</span></div>
+      <div class="kv"><span class="k">Mirar la tierra</span><span class="v" id="d-freq">—</span></div>
+      <div class="kv" id="d-fertrow"><span class="k">Próximo abono</span><span class="v" id="d-fert">—</span></div>
+      <div class="kv" id="d-potrow" style="display:none"><span class="k">Maceta</span><span class="v" id="d-pot">—</span></div>
+      <div class="rainhint" id="d-rain"></div>
+      <button class="text-button" id="d-fertbtn">He añadido abono</button>
+    </details>
+    <details class="detail-section" id="d-history-section">
+      <summary>Historial</summary><div class="hist" id="d-hist"></div>
+    </details>
+    <details class="detail-section" id="d-ai-section">
+      <summary>Ayuda con Gemini</summary>
       <div class="aibtns">
-        <button class="btn soft" id="d-aiphoto">📸 Diagnóstico por foto</button>
-        <button class="btn soft" id="d-aicard">📋 Revisar ficha</button>
+        <button class="btn soft" id="d-aiphoto">Consultar una foto</button>
+        <button class="btn soft" id="d-aicard">Revisar los cuidados</button>
       </div>
       <div class="lastai" id="d-lastai"><span id="d-lastai-txt"></span><button id="d-lastai-btn">Ver</button></div>
-      <input type="file" accept="image/*" capture="environment" id="ai-file" hidden>
-      <input type="file" accept="image/*" id="g-file" hidden>
-    </div>
-
-    <h3 style="font-size:16px;margin-top:14px">📷 Evolución</h3>
-    <div class="gal" id="d-gal"></div>
-
-    <h3 style="font-size:16px;margin-top:10px">Historial</h3>
-    <div class="hist" id="d-hist"></div>
-    <div class="actions2">
-      <button class="btn primary" id="d-water">💧 Regar ahora</button>
-      <button class="btn soft" id="d-fertbtn">🌱 Abonar</button>
-      <button class="btn soft" id="d-edit">✏️ Editar</button>
-      <button class="btn soft danger" id="d-del">🗑️ Eliminar</button>
-    </div>
+    </details>
+    <details class="detail-section" id="d-manage-section">
+      <summary>Editar planta</summary>
+      <button class="btn soft" id="d-edit">Editar los datos</button>
+      <button class="text-button danger" id="d-del">Eliminar planta</button>
+    </details>
+    <input type="file" accept="image/*" capture="environment" id="ai-file" hidden>
+    <input type="file" accept="image/*" id="g-file" hidden>
   </div>
 </div>
 
 <!-- ===== Cuenta ===== -->
 <div class="modal" id="account-modal">
   <div class="sheet">
-    <div class="mhead"><h2>Cuenta</h2><button class="xbtn" onclick="closeModal('account-modal')">✕</button></div>
-    <div style="display:flex;align-items:center;gap:14px;background:var(--surface2);border-radius:16px;padding:14px">
+    <div class="mhead"><h2>Cuenta y copias</h2><p id="sync-status" class="note" role="status"></p><button class="xbtn" data-action="closeModal" data-arg="account-modal" aria-label="Cerrar">✕</button></div>
+    <div class="account-card">
       <img id="acc-photo" src="" alt="" style="width:52px;height:52px;border-radius:50%;background:var(--line)" referrerpolicy="no-referrer">
       <div style="min-width:0">
-        <div style="font-weight:700" id="acc-name">—</div>
+        <div id="acc-name">—</div>
         <div class="note" id="acc-email" style="margin:0;overflow:hidden;text-overflow:ellipsis">—</div>
       </div>
     </div>
-    <p class="note" style="margin-top:10px">✅ Sincronización en tiempo real activa. Las plantas pertenecen a esta cuenta: entra con ella en el otro móvil y veréis lo mismo al instante.</p>
-    <button class="btn soft" onclick="exportDownload()">💾 Descargar copia de seguridad</button>
-    <label class="btn soft" style="cursor:pointer">📥 Restaurar copia
-      <input type="file" accept=".json,application/json" hidden onchange="importData(event)">
+    <p class="note" style="margin-top:10px">Para compartir el jardín, usa esta misma cuenta en el otro móvil.</p>
+    <button class="btn soft" data-action="exportDownload">Descargar copia de seguridad</button>
+    <label class="btn soft" style="cursor:pointer">Restaurar copia
+      <input type="file" accept=".json,application/json" hidden id="backup-file">
     </label>
-    <button class="btn soft danger" onclick="doSignOut()">Cerrar sesión</button>
+    <button class="btn soft danger" data-action="doSignOut">Cerrar sesión</button>
   </div>
 </div>
 
@@ -419,13 +164,13 @@ html.dark .themeopts button.on{color:#10190f}
   <div style="max-width:420px;width:100%">
     <div style="text-align:center;margin-bottom:18px">
       <div style="font-size:52px">🪴</div>
-      <h1 style="font-size:32px;color:var(--green-deep)">Plantómetro<span style="color:var(--grana)">.</span></h1>
+      <h1 style="font-size:32px;color:var(--green-deep)">Plantómetro</h1>
       <p style="color:var(--ink2);font-size:14px;margin-top:4px">Vuestro jardín, sincronizado al instante</p>
     </div>
 
     <div id="gate-login" style="display:none;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);text-align:center">
       <p style="font-size:14px;margin-bottom:4px">Entrad <b>los dos con la misma cuenta</b> de Google para compartir el jardín:</p>
-      <button class="btn primary" onclick="doSignIn()">
+      <button class="btn primary" data-action="doSignIn">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C41.4 34.9 44 30 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
         Continuar con Google
       </button>
@@ -439,13 +184,13 @@ html.dark .themeopts button.on{color:#10190f}
   <div class="sheet">
     <div class="mhead">
       <div><h2 id="ai-title">🤖 Asistente IA</h2><p style="font-style:italic;color:var(--ink2);font-size:13.5px" id="ai-sub"></p></div>
-      <button class="xbtn" onclick="closeModal('ai-modal')">✕</button>
+      <button class="xbtn" data-action="closeModal" data-arg="ai-modal" aria-label="Cerrar">✕</button>
     </div>
     <div id="ai-body" class="ai-out"></div>
-    <button class="btn primary" id="ai-apply" style="display:none">✨ Aplicar cambios sugeridos</button>
+    <button class="btn primary" id="ai-apply" style="display:none">Revisar sugerencias</button>
     <div class="actions2" style="margin-top:12px">
-      <button class="btn soft" id="ai-copy">📄 Copiar</button>
-      <button class="btn soft" onclick="closeModal('ai-modal')">Cerrar</button>
+      <button class="btn soft" id="ai-copy">Copiar</button>
+      <button class="btn soft" data-action="closeModal" data-arg="ai-modal">Cerrar</button>
     </div>
     <p class="note">La IA puede equivocarse. Ante dudas serias, consulta en un vivero.</p>
   </div>
@@ -454,18 +199,23 @@ html.dark .themeopts button.on{color:#10190f}
 <!-- ===== Visor del diario ===== -->
 <div class="modal" id="photo-modal">
   <div class="sheet">
-    <div class="mhead"><h2 id="pm-date">📷</h2><button class="xbtn" onclick="closeModal('photo-modal')">✕</button></div>
+    <div class="mhead"><h2 id="pm-date">📷</h2><button class="xbtn" data-action="closeModal" data-arg="photo-modal" aria-label="Cerrar">✕</button></div>
     <div style="border-radius:18px;overflow:hidden;background:var(--surface2)"><img id="pm-img" src="" alt="" style="width:100%;display:block"></div>
     <p class="note" id="pm-note" style="font-size:13px;margin-top:10px"></p>
-    <button class="btn soft danger" id="pm-del">🗑️ Quitar del diario</button>
+    <button class="btn soft danger" id="pm-del">Quitar del diario</button>
   </div>
 </div>
 
 <!-- ===== Ajustes ===== -->
 <div class="modal" id="settings-modal">
   <div class="sheet">
-    <div class="mhead"><h2>Ajustes</h2><button class="xbtn" onclick="closeModal('settings-modal')">✕</button></div>
+    <div class="mhead"><h2>Ajustes</h2><button class="xbtn" data-action="closeModal" data-arg="settings-modal" aria-label="Cerrar">✕</button></div>
 
+    <div class="settings-links">
+      <button class="settings-link" id="acc-btn" data-action="openModal" data-arg="account-modal">Cuenta y copias <span aria-hidden="true">›</span></button>
+      <button class="settings-link" data-action="openModal" data-arg="weather-modal">Clima de tu zona <span aria-hidden="true">›</span></button>
+      <button class="settings-link" data-action="toggleSearch">Buscar una planta <span aria-hidden="true">›</span></button>
+    </div>
     <label for="s-name">Tu apodo</label>
     <input id="s-name" placeholder="Ej: Fran" maxlength="20">
     <p class="note">Los riegos y abonos quedan firmados con este apodo en el historial.</p>
@@ -473,951 +223,53 @@ html.dark .themeopts button.on{color:#10190f}
     <label for="s-city">Ciudad para el clima</label>
     <div style="display:flex;gap:8px">
       <input id="s-city" placeholder="Escribe y busca…">
-      <button class="iconbtn" style="width:46px;height:46px" onclick="searchCity()" title="Buscar">🔍</button>
-      <button class="iconbtn" style="width:46px;height:46px" onclick="useGPS()" title="Usar mi ubicación">📍</button>
+      <button class="iconbtn" style="width:46px;height:46px" data-action="searchCity" title="Buscar">🔍</button>
+      <button class="iconbtn" style="width:46px;height:46px" data-action="useGPS" title="Usar mi ubicación">📍</button>
     </div>
     <div class="georesults" id="georesults"></div>
 
     <label>Tema</label>
     <div class="themeopts" id="themeopts">
-      <button data-v="light" onclick="setTheme('light')">☀️ Claro</button>
-      <button data-v="dark" onclick="setTheme('dark')">🌙 Oscuro</button>
-      <button data-v="auto" onclick="setTheme('auto')">🔁 Auto</button>
+      <button data-v="light" data-action="setTheme" data-arg="light">Claro</button>
+      <button data-v="dark" data-action="setTheme" data-arg="dark">Oscuro</button>
+      <button data-v="auto" data-action="setTheme" data-arg="auto">Automático</button>
     </div>
 
-    <label for="s-gkey">🤖 Clave de Gemini (IA)</label>
+    <label for="s-gkey">Clave de Gemini (opcional)</label>
     <input id="s-gkey" type="password" placeholder="AIza…" autocomplete="off">
     <p class="note">Gratis: crea tu clave en <b>aistudio.google.com/apikey</b> con tu cuenta de Google y pégala aquí. Activa el diagnóstico por foto y la revisión de fichas. Se guarda solo en este dispositivo.</p>
 
-    <label>Riego según la estación</label>
-    <button class="togglebtn" id="s-summer" onclick="toggleSummer()">
-      <span>☀️ Modo verano <span class="note" style="display:block;margin:2px 0 0">Acorta el riego de las plantas de sol (~40%) y de luz media (~20%)</span></span>
+    <label>Contexto de estación</label>
+    <button class="togglebtn" id="s-summer" data-action="toggleSummer">
+      <span>Modo verano <span class="note" style="display:block;margin:2px 0 0">Recuerda vigilar la humedad con el calor; no cambia tus frecuencias</span></span>
       <span class="sw" id="s-summer-sw">NO</span>
     </button>
 
-    <label>Avisos de riego</label>
-    <button class="togglebtn" onclick="enableNotifs()">
-      <span>🔔 Notificación al abrir la app si hay riegos pendientes</span>
+    <label>Avisos de revisión</label>
+    <button class="togglebtn" data-action="enableNotifs">
+      <span>Avisarme de plantas pendientes</span>
       <span class="sw" id="s-notif-sw">—</span>
     </button>
 
-    <p class="note">Al abrir la app verás arriba un aviso con las plantas pendientes de riego.</p>
-    <button class="btn primary" onclick="saveSettings()">Guardar ajustes</button>
+    <button class="btn primary" data-action="saveSettings">Guardar ajustes</button>
   </div>
 </div>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-/* ============ Utilidades ============ */
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const todayStr = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
-const addDays = (dStr, n) => { const d = new Date(dStr+"T12:00:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
-const diffDays = (a, b) => Math.round((new Date(b+"T12:00:00") - new Date(a+"T12:00:00")) / 864e5);
-const fmt = dStr => { if(!dStr) return "—"; const d = new Date(dStr+"T12:00:00"); return d.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"}); };
-const LIGHT = {sol:"☀️ Sol directo", media:"⛅ Luz media", sombra:"🌑 Sombra"};
-function toast(msg, actionLabel, actionFn){
-  const t = $("toast");
-  t.innerHTML = "";
-  t.appendChild(document.createTextNode(msg));
-  if(actionLabel && actionFn){
-    const b = document.createElement("button");
-    b.textContent = actionLabel;
-    b.onclick = ()=>{ actionFn(); t.classList.remove("show"); };
-    t.appendChild(b);
-  }
-  t.classList.add("show");
-  clearTimeout(t._h);
-  t._h = setTimeout(()=>t.classList.remove("show"), actionLabel ? 5000 : 2600);
-}
-function splash(el){
-  if(!el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const r = el.getBoundingClientRect();
-  for(let i=0;i<7;i++){
-    const s = document.createElement("span");
-    s.className = "drop"; s.textContent = "💧";
-    s.style.left = (r.left + r.width/2 - 8) + "px";
-    s.style.top = (r.top + r.height/2 - 8) + "px";
-    s.style.setProperty("--dx", (Math.random()*140-70)+"px");
-    s.style.setProperty("--dy", (-50-Math.random()*80)+"px");
-    s.style.animationDelay = (i*28)+"ms";
-    document.body.appendChild(s);
-    setTimeout(()=>s.remove(), 950);
-  }
-}
-
-/* ============ Ajustes locales (clima y tema) ============ */
-let settings = { city:"Granada", lat:37.1773, lon:-3.5986, theme:"auto", name:"", geminiKey:"", summerMode:false, streak:0, streakDate:"", lastNotif:"" };
-try {
-  const s = localStorage.getItem("pg3b_settings");
-  if (s) {
-    const o = JSON.parse(s);
-    if (!o.name && (o.u1 || o.u2)) o.name = (o.active===2 ? o.u2 : o.u1) || ""; // migración del formato antiguo
-    settings = Object.assign(settings, o);
-  }
-} catch(e){}
-function persistSettings(){ try{ localStorage.setItem("pg3b_settings", JSON.stringify(settings)); }catch(e){} }
-
-function applyTheme(){
-  const wantsDark = settings.theme==="dark" || (settings.theme==="auto" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.classList.toggle("dark", wantsDark);
-  document.querySelectorAll("#themeopts button").forEach(b=>b.classList.toggle("on", b.dataset.v===settings.theme));
-}
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
-function setTheme(t){ settings.theme=t; persistSettings(); applyTheme(); }
-function renderSettingsUI(){
-  $("s-city").value = settings.city;
-  $("s-name").value = settings.name || "";
-  $("s-gkey").value = settings.geminiKey || "";
-  $("s-summer").classList.toggle("on", !!settings.summerMode);
-  $("s-summer-sw").textContent = settings.summerMode ? "SÍ" : "NO";
-  $("s-notif-sw").textContent = !("Notification" in window) ? "N/D" : Notification.permission==="granted" ? "SÍ" : "NO";
-  applyTheme();
-}
-function toggleSummer(){
-  settings.summerMode = !settings.summerMode;
-  persistSettings(); renderSettingsUI(); render();
-  toast(settings.summerMode ? "☀️ Modo verano activado: riegos más frecuentes" : "Modo verano desactivado");
-}
-async function enableNotifs(){
-  if(!("Notification" in window)){ toast("Este navegador no admite notificaciones"); return; }
-  const perm = await Notification.requestPermission();
-  renderSettingsUI();
-  toast(perm==="granted" ? "🔔 Avisos activados" : "Permiso de avisos denegado");
-  if(perm==="granted") maybeNotify(true);
-}
-function maybeNotify(force){
-  if(!("Notification" in window) || Notification.permission!=="granted") return;
-  const t = todayStr();
-  if(!force && settings.lastNotif===t) return;
-  const hoy=[], tarde=[];
-  alive().forEach(p=>{ const s=plantState(p).state; if(s==="today") hoy.push(p.name); if(s==="late") tarde.push(p.name); });
-  if(!hoy.length && !tarde.length) return;
-  settings.lastNotif = t; persistSettings();
-  const body = [tarde.length?`⚠️ Atrasadas: ${tarde.join(", ")}`:"", hoy.length?`💧 Hoy: ${hoy.join(", ")}`:""].filter(Boolean).join("\n");
-  navigator.serviceWorker?.ready.then(reg=>reg.showNotification("Plantómetro 🪴", {body})).catch(()=>{
-    try{ new Notification("Plantómetro 🪴", {body}); }catch(e){}
-  });
-}
-function saveSettings(){
-  settings.name = $("s-name").value.trim();
-  settings.geminiKey = $("s-gkey").value.trim();
-  persistSettings(); renderSettingsUI(); closeModal("settings-modal"); toast("Ajustes guardados 🌿");
-}
-
-/* ============ Firebase: configuración (incrustada, proyecto misApps) ============ */
-const fbConfig = {
-  apiKey: "AIzaSyBkQ4NcoxU0V_R3jXnkH5Eu9WRDpr9eKXo",
-  authDomain: "mishoras-bb0cc.firebaseapp.com",
-  projectId: "mishoras-bb0cc",
-  storageBucket: "mishoras-bb0cc.firebasestorage.app",
-  messagingSenderId: "282064047722",
-  appId: "1:282064047722:web:24a04aabeecb4a67394413"
-};
-try { localStorage.removeItem("pg3_fbconfig"); } catch(e){} // limpieza de la config antigua guardada
-
-/* ============ Firebase: sesión y datos ============ */
-let auth=null, fs=null, user=null, unsub=null, plants=[];
-try { const b = localStorage.getItem("pg3_cache"); if(b) plants = JSON.parse(b); } catch(e){}
-
-function showGate(mode){
-  $("gate").style.display = mode ? "flex" : "none";
-  $("gate-login").style.display = mode==="login" ? "block" : "none";
-}
-
-function startFirebase(){
-  const app = initializeApp(fbConfig);
-  auth = getAuth(app);
-  try {
-    fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
-  } catch(e) { fs = initializeFirestore(app, {}); }
-
-  getRedirectResult(auth).catch(err=>{ $("gate-error").textContent = friendlyAuthError(err); });
-
-  onAuthStateChanged(auth, u => {
-    user = u;
-    if (u) {
-      showGate(null);
-      $("acc-name").textContent = u.displayName || "";
-      $("acc-email").textContent = u.email || "";
-      $("acc-photo").src = u.photoURL || "";
-      if (u.photoURL) $("acc-btn").innerHTML = '<img src="'+u.photoURL+'" alt="Cuenta" style="width:100%;height:100%;object-fit:cover" referrerpolicy="no-referrer">';
-      listenPlants();
-    } else {
-      if (unsub) { unsub(); unsub = null; }
-      showGate("login");
-    }
-  });
-}
-function friendlyAuthError(err){
-  if(!err) return "";
-  const c = err.code || "";
-  if(c.includes("unauthorized-domain")) return "Este dominio no está autorizado en Firebase → Authentication → Settings → Dominios autorizados.";
-  if(c.includes("popup-blocked")) return "El navegador bloqueó la ventana. Vuelve a intentarlo.";
-  if(c.includes("operation-not-allowed")) return "Activa el proveedor Google en Firebase → Authentication.";
-  return "No se pudo iniciar sesión ("+c+")";
-}
-async function doSignIn(){
-  $("gate-error").textContent = "";
-  const prov = new GoogleAuthProvider();
-  try { await signInWithPopup(auth, prov); }
-  catch(err){
-    if((err.code||"").includes("popup")) { try { await signInWithRedirect(auth, prov); } catch(e2){ $("gate-error").textContent = friendlyAuthError(e2); } }
-    else $("gate-error").textContent = friendlyAuthError(err);
-  }
-}
-function doSignOut(){ closeModal("account-modal"); signOut(auth); }
-
-function listenPlants(){
-  if (unsub) unsub();
-  unsub = onSnapshot(collection(fs, "users", user.uid, "plants"),
-    snap => {
-      plants = snap.docs.map(d => d.data());
-      try{ localStorage.setItem("pg3_cache", JSON.stringify(plants)); }catch(e){}
-      render();
-    },
-    err => {
-      if ((err.code||"").includes("permission-denied"))
-        toast("Sin permiso: añade tu email a las reglas de Firestore (ver LEEME) 🔒");
-      else toast("Error de conexión con la nube");
-    }
-  );
-}
-function putPlant(p){
-  // pintado optimista local + escritura en la nube (Firestore reintenta offline)
-  const i = plants.findIndex(x=>x.id===p.id);
-  if(i>=0) plants[i]=p; else plants.push(p);
-  render();
-  setDoc(doc(fs, "users", auth.currentUser.uid, "plants", p.id), p).catch(()=>toast("Se guardará al recuperar conexión 📶"));
-}
-function removePlant(id){
-  plants = plants.filter(x=>x.id!==id);
-  render();
-  deleteDoc(doc(fs, "users", auth.currentUser.uid, "plants", id)).catch(()=>{});
-}
-function whoAmI(){ return (settings.name || "").trim() || "Alguien"; }
-const alive = () => plants;
-
-/* ============ Localización y clima ============ */
-async function searchCity(){
-  const q = $("s-city").value.trim(); if(!q) return;
-  const box = $("georesults"); box.innerHTML = "<p class='note'>Buscando…</p>";
-  try{
-    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=es&format=json`);
-    const d = await r.json();
-    if(!d.results?.length){ box.innerHTML = "<p class='note'>Sin resultados. Prueba con otro nombre.</p>"; return; }
-    box.innerHTML = d.results.map((c,i)=>`<button onclick="pickCity(${i})">📍 ${esc(c.name)}${c.admin1?", "+esc(c.admin1):""} <span style="color:var(--ink2)">(${esc(c.country||"")})</span></button>`).join("");
-    box._results = d.results;
-  }catch(e){ box.innerHTML = "<p class='note'>No hay conexión ahora mismo.</p>"; }
-}
-function pickCity(i){
-  const c = $("georesults")._results[i];
-  settings.city = c.name; settings.lat = c.latitude; settings.lon = c.longitude;
-  persistSettings(); $("georesults").innerHTML=""; $("s-city").value=c.name;
-  loadWeather(); toast(`Clima fijado en ${c.name} ✅`);
-}
-function useGPS(){
-  if(!navigator.geolocation) return toast("Este navegador no da la ubicación");
-  toast("Localizando…");
-  navigator.geolocation.getCurrentPosition(async pos=>{
-    settings.lat = pos.coords.latitude; settings.lon = pos.coords.longitude;
-    try{
-      const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${settings.lat}&longitude=${settings.lon}&localityLanguage=es`);
-      const d = await r.json();
-      settings.city = d.city || d.locality || "Mi ubicación";
-    }catch(e){ settings.city = "Mi ubicación"; }
-    persistSettings(); $("s-city").value = settings.city; loadWeather(); toast(`Ubicación: ${settings.city} 📍`);
-  }, ()=>toast("No se pudo obtener la ubicación"));
-}
-const WCODE = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",61:"🌧️",63:"🌧️",65:"🌧️",71:"🌨️",80:"🌦️",95:"⛈️"};
-let forecast = null; // {probToday, sumToday, probTom}
-const isOutdoor = p => /terraz|balc|exterior|patio|jard|fuera|azotea|calle|porche/i.test(p.loc || "");
-const rainyToday = () => !!forecast && (forecast.probToday >= 60 || forecast.sumToday >= 2);
-
-async function loadWeather(){
-  $("w-city").textContent = settings.city;
-  try{
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${settings.lat}&longitude=${settings.lon}&current=temperature_2m,relative_humidity_2m,weather_code&daily=precipitation_probability_max,precipitation_sum&forecast_days=2&timezone=auto`);
-    const d = await r.json(); const c = d.current;
-    forecast = {
-      probToday: d.daily?.precipitation_probability_max?.[0] ?? 0,
-      sumToday: d.daily?.precipitation_sum?.[0] ?? 0,
-      probTom: d.daily?.precipitation_probability_max?.[1] ?? 0
-    };
-    $("w-temp").textContent = Math.round(c.temperature_2m)+"°C";
-    $("w-hum").textContent = Math.round(c.relative_humidity_2m)+"%";
-    $("w-rain").textContent = forecast.probToday+"%";
-    $("w-icon").textContent = WCODE[c.weather_code] || "🌤️";
-    let tip = "";
-    if (rainyToday()) tip = "🌧️ Se espera lluvia hoy: las de exterior quizá no necesiten riego. Comprueba la tierra mañana.";
-    else if (c.temperature_2m >= 32) tip = "🥵 Mucho calor: vigila los riegos, la tierra se seca antes. Riega al atardecer." + (settings.summerMode ? "" : " Puedes activar el ☀️ modo verano en Ajustes.");
-    else if (forecast.probTom >= 60) tip = "🌦️ Mañana lloverá: si alguna de exterior puede esperar un día, deja que la riegue el cielo.";
-    else if (c.temperature_2m >= 26 && c.relative_humidity_2m < 35) tip = "Ambiente seco y cálido: pulveriza las de interior tropical.";
-    else if (c.temperature_2m <= 8) tip = "🥶 Frío: espacia los riegos y protege las sensibles de la ventana.";
-    else if (c.relative_humidity_2m > 80) tip = "Humedad alta: cuidado con encharcar, comprueba la tierra antes de regar.";
-    $("w-tip").textContent = tip;
-    $("w-tip").style.display = tip ? "block" : "none";
-    render();
-  }catch(e){
-    $("w-temp").textContent = "--°"; $("w-hum").textContent = "--%"; $("w-rain").textContent = "--%";
-    $("w-tip").textContent = "Sin conexión: el clima se actualizará cuando la haya.";
-    $("w-tip").style.display = "block";
-  }
-}
-
-/* ============ Render ============ */
-let filterLoc = "Todas", filterState = "todo", view = "grid";
-function effectiveFreq(p){
-  let f = Math.max(1, +p.waterFreq || 7);
-  if(settings.summerMode){
-    if(p.light === "sol") f = Math.max(1, Math.round(f * 0.6));
-    else if(p.light === "media") f = Math.max(1, Math.round(f * 0.8));
-  }
-  return f;
-}
-function plantState(p){
-  const f = effectiveFreq(p);
-  const next = addDays(p.lastWater, f);
-  const d = diffDays(todayStr(), next);
-  return { next, d, f, state: d<0 ? "late" : d===0 ? "today" : "ok" };
-}
-function ring(p){
-  const {d, f, state} = plantState(p);
-  const frac = Math.max(0, Math.min(1, d / f));
-  const R=42, C=2*Math.PI*R;
-  const col = d<0 ? "var(--grana)" : d===0 ? "var(--amber)" : "var(--blue)";
-  const pill = state==="late" ? `-${Math.abs(d)} d` : state==="today" ? "HOY" : `en ${d} d`;
-  return `<svg viewBox="0 0 92 92" width="92" height="92" aria-hidden="true">
-    <circle cx="46" cy="46" r="${R}" fill="none" stroke="var(--line)" stroke-width="5.5"/>
-    <circle cx="46" cy="46" r="${R}" fill="none" stroke="${col}" stroke-width="5.5" stroke-linecap="round"
-      stroke-dasharray="${C}" stroke-dashoffset="${C*(1-frac)}"/></svg>
-    <span class="daypill ${state}">${pill}</span>`;
-}
-function tickStreak(){
-  const t = todayStr();
-  if(settings.streakDate === t || !alive().length) return;
-  const anyLate = alive().some(p=>plantState(p).state==="late");
-  settings.streak = anyLate ? 0 : (settings.streak||0) + 1;
-  settings.streakDate = t;
-  persistSettings();
-}
-
-function setView(v){
-  view = v;
-  document.querySelectorAll("#viewseg button").forEach(b=>b.classList.toggle("on", b.dataset.view===v));
-  $("grid").style.display = v==="grid" ? "grid" : "none";
-  $("week").style.display = v==="week" ? "flex" : "none";
-  render();
-}
-
-function renderWeek(){
-  const t = todayStr();
-  const byDay = {};
-  alive().forEach(p=>{
-    const {next, state} = plantState(p);
-    const day = state==="ok" ? next : t; // atrasadas y de hoy → hoy
-    if(diffDays(t, day) > 6) return;
-    (byDay[day] = byDay[day] || []).push({p, state});
-  });
-  $("week").innerHTML = Array.from({length:7}, (_,i)=>{
-    const day = addDays(t, i);
-    const dd = new Date(day+"T12:00:00");
-    const wd = i===0 ? "Hoy" : i===1 ? "Mañana" : dd.toLocaleDateString("es-ES",{weekday:"long"});
-    const items = (byDay[day]||[]).sort((a,b)=>a.p.name.localeCompare(b.p.name));
-    const inner = items.length
-      ? items.map(({p,state})=>`<button class="wp ${state==="late"?"late":""}" data-open="${p.id}">
-          <span class="mini">${p.photo?`<img src="${p.photo}" alt="">`:"🪴"}</span>
-          <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${state==="late"?"⚠️ ":""}${esc(p.name)}</span></button>`).join("")
-      : `<div class="free">Día libre 🍃</div>`;
-    return `<div class="wday ${i===0?"today":""}"><div class="wd-h">${esc(wd)}</div><div class="wd-d">${dd.toLocaleDateString("es-ES",{day:"numeric",month:"short"})} · ${items.length?items.length+" riego"+(items.length>1?"s":""):"—"}</div>${inner}</div>`;
-  }).join("");
-  $("week").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>openDetail(el.dataset.open));
-}
-
-function render(){
-  const list = alive();
-  let today=0, late=0;
-  list.forEach(p=>{ const s=plantState(p).state; if(s==="today") today++; if(s==="late") late++; });
-  tickStreak();
-  $("st-total").textContent=list.length; $("st-today").textContent=today; $("st-late").textContent=late;
-  $("st-streak").textContent = settings.streak || 0;
-  $("st-today").parentElement.classList.toggle("zero", !today);
-  $("st-late").parentElement.classList.toggle("zero", !late);
-  $("st-streak").parentElement.classList.toggle("zero", !(settings.streak||0));
-  notifyDue();
-
-  const locs = ["Todas", ...new Set(list.map(p=>p.loc).filter(Boolean))];
-  const states = [["todo","Todo"],["pend","💧 Pendientes"],["late","⚠️ Atrasadas"]];
-  $("chips").innerHTML =
-    states.map(([v,t])=>`<button class="chip ${filterState===v?'on':''}" data-fs="${v}">${t}</button>`).join("") +
-    locs.map((l,i)=>`<button class="chip ${filterLoc===l?'on':''}" data-fl="${i}">${esc(l)}</button>`).join("");
-  $("chips").querySelectorAll("[data-fs]").forEach(b=>b.onclick=()=>{filterState=b.dataset.fs;render();});
-  $("chips").querySelectorAll("[data-fl]").forEach(b=>b.onclick=()=>{filterLoc=locs[+b.dataset.fl];render();});
-  $("loclist").innerHTML = locs.slice(1).map(l=>`<option value="${esc(l)}">`).join("");
-
-  if(view === "week"){ renderWeek(); return; }
-
-  const q = $("q").value.trim().toLowerCase();
-  const shown = list.filter(p=>{
-    const s = plantState(p).state;
-    if(filterLoc!=="Todas" && p.loc!==filterLoc) return false;
-    if(filterState==="pend" && s==="ok") return false;
-    if(filterState==="late" && s!=="late") return false;
-    if(q && !(p.name+" "+(p.species||"")).toLowerCase().includes(q)) return false;
-    return true;
-  }).sort((a,b)=> plantState(a).d - plantState(b).d);
-
-  if(!shown.length){
-    $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">
-      <div class="big">🪴</div><h3>${list.length? "Nada por aquí" : "Vuestro jardín está vacío"}</h3>
-      <p>${list.length? "Prueba con otro filtro o búsqueda." : "Pulsa el botón + para añadir la primera planta. La verá tu pareja al momento."}</p></div>`;
-    return;
-  }
-  $("grid").innerHTML = shown.map(p=>{
-    const {next,d,state,f} = plantState(p);
-    const nextTxt = state==="late" ? `Debía regarse ${fmt(next)}` : state==="today" ? "Toca regar hoy" : `Próximo riego: ${fmt(next)}`;
-    const fert = p.fertFreq>0 && p.lastFert ? diffDays(todayStr(), addDays(p.lastFert, p.fertFreq))<=0 : false;
-    const rain = (state!=="ok") && isOutdoor(p) && rainyToday();
-    const summer = settings.summerMode && f !== p.waterFreq;
-    const lastBy = p.history?.[0]?.by ? `· último: ${esc(p.history[0].by)}` : "";
-    return `<article class="card ${state!=="ok"?state:""}">
-      <div class="body" data-open="${p.id}">
-        <div class="ringwrap">${ring(p)}<div class="ph">${p.photo?`<img src="${p.photo}" alt="">`:"🪴"}</div></div>
-        <div class="info">
-          <div class="name">${esc(p.name)}</div>
-          ${p.species?`<div class="species">${esc(p.species)}</div>`:""}
-          <div class="meta">
-            ${p.loc?`<span class="tag">📍 ${esc(p.loc)}</span>`:""}
-            ${summer?`<span class="tag summer">☀️ cada ${f} d</span>`:""}
-            ${rain?`<span class="tag rain">🌧️ llueve hoy</span>`:""}
-            ${fert?`<span class="tag" style="color:var(--amber);border-color:var(--amber)">🌱 abonar</span>`:""}
-          </div>
-          <div class="next ${state}">${nextTxt} <span style="color:var(--ink2);font-weight:400">${lastBy}</span></div>
-        </div>
-      </div>
-      <div class="foot">
-        <button class="waterbtn" data-water="${p.id}">💧 Regar</button>
-        <button data-open="${p.id}">Ver ficha</button>
-      </div>
-    </article>`;
-  }).join("");
-  $("grid").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>openDetail(el.dataset.open));
-  $("grid").querySelectorAll("[data-water]").forEach(el=>el.onclick=e=>{e.stopPropagation();water(el.dataset.water, el);});
-}
-
-/* ============ Formulario ============ */
-let formPhoto = null, formLight = "";
-function setLight(v){ formLight = formLight===v ? "" : v; document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight)); }
-function openForm(id){
-  const p = id ? plants.find(x=>x.id===id) : null;
-  $("form-title").textContent = p ? "Editar planta" : "Nueva planta";
-  $("f-id").value = p?.id || "";
-  $("f-name").value = p?.name || ""; $("f-species").value = p?.species || "";
-  $("f-loc").value = p?.loc || ""; $("f-desc").value = p?.desc || "";
-  $("f-freq").value = p?.waterFreq || 7; $("f-last").value = p?.lastWater || todayStr();
-  $("f-fertfreq").value = p?.fertFreq || 0; $("f-fertlast").value = p?.lastFert || "";
-  $("f-potsize").value = p?.potSize || ""; $("f-potdate").value = p?.potDate || "";
-  $("f-aistatus").style.display = "none";
-  formPhoto = p?.photo || null; formLight = p?.light || "";
-  $("f-prev").innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : "🪴";
-  $("f-photo").value = "";
-  document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight));
-  openModal("form-modal");
-}
-function pickPhoto(e){
-  const file = e.target.files[0]; if(!file) return;
-  const img = new Image();
-  img.onload = () => {
-    const MAX = 640, sc = Math.min(1, MAX/Math.max(img.width, img.height));
-    const cv = document.createElement("canvas");
-    cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc);
-    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-    formPhoto = cv.toDataURL("image/jpeg", .68);
-    $("f-prev").innerHTML = `<img src="${formPhoto}" alt="">`;
-    URL.revokeObjectURL(img.src);
-  };
-  img.src = URL.createObjectURL(file);
-}
-function savePlant(e){
-  e.preventDefault();
-  const id = $("f-id").value || (Date.now().toString(36)+Math.random().toString(36).slice(2,7));
-  const old = plants.find(x=>x.id===id);
-  const p = {
-    id,
-    name: $("f-name").value.trim(),
-    species: $("f-species").value.trim(),
-    loc: $("f-loc").value.trim(),
-    light: formLight,
-    desc: $("f-desc").value.trim(),
-    photo: formPhoto,
-    waterFreq: Math.max(1, +$("f-freq").value || 7),
-    lastWater: $("f-last").value || todayStr(),
-    fertFreq: Math.max(0, +$("f-fertfreq").value || 0),
-    lastFert: $("f-fertlast").value || "",
-    potSize: $("f-potsize").value.trim(),
-    potDate: $("f-potdate").value || "",
-    gallery: old?.gallery || [],
-    lastAI: old?.lastAI || null,
-    history: old?.history || [],
-    createdAt: old?.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    updatedBy: whoAmI()
-  };
-  putPlant(p); closeModal("form-modal"); toast(old ? "Planta actualizada ✏️" : "¡Planta añadida! 🌿");
-}
-
-/* ============ Acciones ============ */
-function trimPlant(p){
-  // Firestore limita cada documento a ~1MB: recorta diario e historial si hace falta
-  while(JSON.stringify(p).length > 850000 && (p.gallery||[]).length > 1) p.gallery.pop();
-  return p;
-}
-function water(id, el){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  const prev = { lastWater: p.lastWater, history: p.history ? [...p.history] : [] };
-  splash(el);
-  p.lastWater = todayStr();
-  p.history = [{t:"agua", date:todayStr(), by:whoAmI()}, ...(p.history||[])].slice(0,60);
-  p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-  putPlant(p);
-  toast(`💧 ${p.name} regada`, "Deshacer", ()=>{
-    p.lastWater = prev.lastWater; p.history = prev.history;
-    p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-    putPlant(p); toast("Riego deshecho ↩️");
-    if($("detail-modal").classList.contains("open")) openDetail(id);
-  });
-}
-function fertilize(id){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  p.lastFert = todayStr();
-  p.history = [{t:"abono", date:todayStr(), by:whoAmI()}, ...(p.history||[])].slice(0,60);
-  p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-  putPlant(p); openDetail(id); toast(`🌱 ${p.name} abonada`);
-}
-function delPlant(id){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  if(!confirm(`¿Eliminar "${p.name}"? Desaparecerá también del móvil de tu pareja.`)) return;
-  removePlant(id); closeModal("detail-modal"); toast("Planta eliminada 🗑️");
-}
-function openDetail(id){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  const {next,d,state,f} = plantState(p);
-  $("d-name").textContent = p.name; $("d-species").textContent = p.species || "";
-  $("d-photo").innerHTML = p.photo ? `<img src="${p.photo}" alt="${esc(p.name)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : "🪴";
-  $("d-hero").classList.toggle("noimg", !p.photo);
-  const st = $("d-state");
-  st.className = "hstate " + (state!=="ok" ? state : "");
-  st.textContent = state==="late" ? `RIÉGAME · ${Math.abs(d)} D` : state==="today" ? "REGAR HOY" : "AL DÍA";
-  $("d-rain").style.display = (state!=="ok" && isOutdoor(p) && rainyToday()) ? "block" : "none";
-  $("d-desc").style.display = p.desc ? "block" : "none"; $("d-desc").textContent = p.desc || "";
-  $("d-loc").textContent = p.loc || "—";
-  $("d-light").textContent = LIGHT[p.light] || "—";
-  $("d-freq").textContent = `Cada ${p.waterFreq} días` + (f!==p.waterFreq ? ` · ☀️ verano: cada ${f}` : "");
-  $("d-last").textContent = fmt(p.lastWater);
-  $("d-next").innerHTML = `<span style="color:${state==='late'?'var(--grana)':state==='today'?'var(--amber)':'var(--blue)'}">${fmt(next)}${state==='late'?` · ${Math.abs(d)} d de retraso`:state==='today'?' · hoy':''}</span>`;
-  if(p.fertFreq>0){
-    $("d-fertrow").style.display="flex";
-    $("d-fert").textContent = p.lastFert ? fmt(addDays(p.lastFert, p.fertFreq)) : "Sin registrar";
-  } else $("d-fertrow").style.display="none";
-  // Maceta y trasplante
-  if(p.potSize || p.potDate){
-    $("d-potrow").style.display="flex";
-    let v = p.potSize || "";
-    if(p.potDate){
-      const meses = Math.floor(diffDays(p.potDate, todayStr())/30);
-      v += (v?" · ":"") + (meses<1 ? "trasplantada este mes" : `hace ${meses} mes${meses>1?"es":""}`);
-      if(meses>=18) v += " ⚠️";
-    }
-    $("d-pot").textContent = v;
-    $("d-pot").style.color = (p.potDate && diffDays(p.potDate, todayStr())>=540) ? "var(--amber)" : "";
-  } else $("d-potrow").style.display="none";
-  // Última revisión IA
-  if(p.lastAI?.text){
-    $("d-lastai").style.display="flex";
-    $("d-lastai-txt").textContent = `🤖 Última revisión: ${fmt(p.lastAI.date)}`;
-    $("d-lastai-btn").onclick = ()=>{
-      $("ai-title").textContent = "🤖 " + p.name;
-      $("ai-sub").textContent = `Revisión guardada · ${fmt(p.lastAI.date)}`;
-      $("ai-body").innerHTML = mdToHtml(p.lastAI.text);
-      $("ai-apply").style.display="none";
-      $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(p.lastAI.text).then(()=>toast("Copiado 📄")).catch(()=>{}); };
-      openModal("ai-modal");
-    };
-  } else $("d-lastai").style.display="none";
-  renderGallery(p);
-  $("d-hist").innerHTML = (p.history?.length)
-    ? p.history.map(h=>`<div class="h">${h.t==="agua"?"💧 Riego":"🌱 Abono"} · <b>${esc(h.by||"")}</b><span class="d">${fmt(h.date)}</span></div>`).join("")
-    : "<p class='note'>Aún sin registros. El primer riego lo estrena.</p>";
-  $("d-water").onclick = e=>{ water(id, e.currentTarget); openDetail(id); };
-  $("d-aiphoto").onclick = ()=>aiPhotoDiag(id);
-  $("d-aicard").onclick = ()=>aiReviewCard(id);
-  $("d-fertbtn").onclick = ()=>fertilize(id);
-  $("d-edit").onclick = ()=>{ closeModal("detail-modal"); openForm(id); };
-  $("d-del").onclick = ()=>delPlant(id);
-  openModal("detail-modal");
-}
-
-/* ============ Diario fotográfico ============ */
-function renderGallery(p){
-  const g = p.gallery || [];
-  $("d-gal").innerHTML = g.map((e,i)=>`<button class="gph" data-g="${i}"><img src="${e.img}" alt=""><span class="gd">${fmt(e.date)}</span></button>`).join("")
-    + `<button class="gadd" data-gadd="1" title="Añadir foto al diario">➕</button>`;
-  $("d-gal").querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openDiaryPhoto(p.id, +b.dataset.g));
-  $("d-gal").querySelector("[data-gadd]").onclick = ()=>galleryAdd(p.id);
-}
-function openDiaryPhoto(id, i){
-  const p = plants.find(x=>x.id===id); const e = p?.gallery?.[i]; if(!e) return;
-  $("pm-date").textContent = "📷 " + fmt(e.date);
-  $("pm-img").src = e.img;
-  $("pm-note").textContent = e.note || "";
-  $("pm-del").onclick = ()=>{
-    p.gallery.splice(i,1);
-    p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-    putPlant(p); closeModal("photo-modal"); renderGallery(p); toast("Foto quitada del diario");
-  };
-  openModal("photo-modal");
-}
-function shrinkImage(file, max, q){
-  return new Promise((res, rej)=>{
-    const img = new Image();
-    img.onload = ()=>{
-      const sc = Math.min(1, max/Math.max(img.width, img.height));
-      const cv = document.createElement("canvas");
-      cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc);
-      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-      URL.revokeObjectURL(img.src);
-      res(cv.toDataURL("image/jpeg", q));
-    };
-    img.onerror = rej;
-    img.src = URL.createObjectURL(file);
-  });
-}
-function pushDiary(p, dataUrl, note){
-  p.gallery = [{date: todayStr(), img: dataUrl, note: (note||"").slice(0,140)}, ...(p.gallery||[])].slice(0,6);
-  p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-  putPlant(trimPlant(p));
-}
-let galAddPlantId = null;
-function galleryAdd(id){ galAddPlantId = id; $("g-file").value=""; $("g-file").click(); }
-async function galleryPicked(e){
-  const file = e.target.files[0]; if(!file) return;
-  const p = plants.find(x=>x.id===galAddPlantId); if(!p) return;
-  try{
-    const small = await shrinkImage(file, 480, .6);
-    pushDiary(p, small, "");
-    renderGallery(p); toast("Foto añadida al diario 📷");
-  }catch(err){ toast("No se pudo leer la imagen ❌"); }
-}
-
-/* ============ IA (Gemini, capa gratuita) ============ */
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]; // si el primero falla, prueba el segundo
-
-async function callGemini(parts){
-  const key = (settings.geminiKey || "").trim();
-  if(!key){
-    closeModal("ai-modal");
-    toast("Añade tu clave de Gemini en Ajustes ⚙️");
-    setTimeout(()=>openModal("settings-modal"), 400);
-    return null;
-  }
-  let lastErr = null;
-  for(const model of GEMINI_MODELS){
-    try{
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type":"application/json", "x-goog-api-key": key },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 1500 }
-        })
-      });
-      if(!r.ok){
-        const e = await r.json().catch(()=>({}));
-        lastErr = new Error(e.error?.message || ("Error HTTP " + r.status));
-        if(r.status === 404 || r.status === 429) continue; // prueba el siguiente modelo
-        throw lastErr;
-      }
-      const d = await r.json();
-      const txt = (d.candidates?.[0]?.content?.parts || []).map(p=>p.text || "").join("").trim();
-      if(txt) return txt;
-      lastErr = new Error("Respuesta vacía de la IA");
-    }catch(err){ lastErr = err; }
-  }
-  throw lastErr || new Error("No se pudo contactar con Gemini");
-}
-
-// Markdown ligero → HTML seguro (negritas, listas, títulos)
-function mdToHtml(t){
-  const lines = esc(t).split("\n");
-  let html = "", inList = false;
-  for(let ln of lines){
-    ln = ln.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-    const trimmed = ln.trim();
-    if(/^#{1,4}\s/.test(trimmed)){
-      if(inList){ html += "</ul>"; inList = false; }
-      html += `<h4>${trimmed.replace(/^#{1,4}\s*/, "")}</h4>`;
-    } else if(/^[-*•]\s/.test(trimmed)){
-      if(!inList){ html += "<ul>"; inList = true; }
-      html += `<li>${trimmed.replace(/^[-*•]\s*/, "")}</li>`;
-    } else if(trimmed === ""){
-      if(inList){ html += "</ul>"; inList = false; }
-    } else {
-      if(inList){ html += "</ul>"; inList = false; }
-      html += `<p>${trimmed}</p>`;
-    }
-  }
-  if(inList) html += "</ul>";
-  return html;
-}
-
-// Ficha completa en texto: todos los campos + estado calculado + historial
-function fichaText(p){
-  const {next, d, state, f} = plantState(p);
-  const estado = state==="late" ? `ATRASADA ${Math.abs(d)} día(s) (debía regarse el ${next})`
-               : state==="today" ? "toca regar HOY"
-               : `al día, próximo riego el ${next} (en ${d} día(s))`;
-  const hist = (p.history || []).slice(0, 20)
-    .map(h=>`  - ${h.date}: ${h.t==="agua"?"riego":"abono"}${h.by?` (por ${h.by})`:""}`).join("\n") || "  (sin registros)";
-  const clima = forecast ? `- Clima de hoy: prob. de lluvia ${forecast.probToday}% (${forecast.sumToday} mm previstos)` : "";
-  return [
-    `FICHA DE LA PLANTA (datos guardados en la app):`,
-    `- Nombre: ${p.name || "—"}`,
-    `- Especie/tipo: ${p.species || "no indicada"}`,
-    `- Ubicación: ${p.loc || "no indicada"}${isOutdoor(p) ? " (exterior)" : ""}`,
-    `- Luz que recibe: ${LIGHT[p.light] || "no indicada"}`,
-    `- Descripción/notas: ${p.desc || "sin notas"}`,
-    `- Frecuencia de riego configurada: cada ${p.waterFreq} días${settings.summerMode && f!==p.waterFreq ? ` (con modo verano activo: cada ${f} días)` : ""}`,
-    `- Último riego: ${p.lastWater || "—"} · Estado hoy (${todayStr()}): ${estado}`,
-    `- Abono: ${p.fertFreq>0 ? `cada ${p.fertFreq} días, último el ${p.lastFert || "sin registrar"}` : "sin pauta de abono"}`,
-    `- Maceta: ${p.potSize || "tamaño no indicado"}${p.potDate ? `, último trasplante el ${p.potDate}` : ""}`,
-    clima,
-    `- Historial reciente:`,
-    hist
-  ].filter(Boolean).join("\n");
-}
-
-const SUG_JSON = `\nMUY IMPORTANTE: termina tu respuesta con EXACTAMENTE un bloque de código JSON con tus valores sugeridos para la ficha (usa null en lo que no cambiarías):\n\`\`\`json\n{"riegoCadaDias": número o null, "abonoCadaDias": número o null, "luz": "sol" | "media" | "sombra" | null}\n\`\`\``;
-
-// dataURL → parte inline_data para Gemini
-function dataUrlToPart(dataUrl){
-  const m = /^data:(image\/[a-z+.-]+);base64,(.+)$/i.exec(dataUrl || "");
-  return m ? { inline_data: { mime_type: m[1], data: m[2] } } : null;
-}
-
-// Extrae el bloque JSON final de sugerencias y lo separa del texto visible
-function extractSuggestions(txt){
-  const m = /```json\s*(\{[\s\S]*?\})\s*```/i.exec(txt);
-  if(!m) return { clean: txt, sug: null };
-  let sug = null;
-  try{ sug = JSON.parse(m[1]); }catch(e){}
-  return { clean: txt.replace(m[0], "").trim(), sug };
-}
-
-let aiBusy = false;
-async function runAI(p, subtitle, parts){
-  if(aiBusy) return null;
-  aiBusy = true;
-  $("ai-title").textContent = "🤖 " + p.name;
-  $("ai-sub").textContent = subtitle;
-  $("ai-apply").style.display = "none";
-  $("ai-body").innerHTML = `<div class="ai-spin"><span class="leafspin">🌿</span>Analizando… puede tardar unos segundos</div>`;
-  openModal("ai-modal");
-  let clean = null;
-  try{
-    const txt = await callGemini(parts);
-    if(txt === null){ aiBusy = false; return null; } // faltaba la clave
-    const ex = extractSuggestions(txt);
-    clean = ex.clean;
-    $("ai-body").innerHTML = mdToHtml(clean);
-    $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(clean).then(()=>toast("Copiado 📄")).catch(()=>toast("No se pudo copiar")); };
-    // Guardar como última revisión en la ficha
-    p.lastAI = { date: todayStr(), text: clean.slice(0, 4000) };
-    p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-    putPlant(trimPlant(p));
-    if($("detail-modal").classList.contains("open")){
-      $("d-lastai").style.display="flex";
-      $("d-lastai-txt").textContent = `🤖 Última revisión: ${fmt(p.lastAI.date)}`;
-    }
-    // Cambios sugeridos aplicables
-    const s = ex.sug || {};
-    const nf = Number.isFinite(+s.riegoCadaDias) && +s.riegoCadaDias>=1 && +s.riegoCadaDias<=120 ? Math.round(+s.riegoCadaDias) : null;
-    const na = Number.isFinite(+s.abonoCadaDias) && +s.abonoCadaDias>=0 && +s.abonoCadaDias<=365 ? Math.round(+s.abonoCadaDias) : null;
-    const nl = ["sol","media","sombra"].includes(s.luz) ? s.luz : null;
-    const cambios = [];
-    if(nf !== null && nf !== p.waterFreq) cambios.push(`riego cada ${nf} d`);
-    if(na !== null && na !== (p.fertFreq||0)) cambios.push(na===0 ? "sin abono" : `abono cada ${na} d`);
-    if(nl && nl !== p.light) cambios.push(`luz: ${LIGHT[nl]}`);
-    if(cambios.length){
-      const btn = $("ai-apply");
-      btn.textContent = "✨ Aplicar: " + cambios.join(" · ");
-      btn.style.display = "flex";
-      btn.onclick = ()=>{
-        if(nf !== null) p.waterFreq = nf;
-        if(na !== null) p.fertFreq = na;
-        if(nl) p.light = nl;
-        p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-        putPlant(p);
-        btn.style.display = "none";
-        toast("Ficha actualizada con la sugerencia ✨");
-        if($("detail-modal").classList.contains("open")) openDetail(p.id);
-      };
-    }
-  }catch(err){
-    $("ai-body").innerHTML = `<p><b>❌ No se pudo completar el análisis.</b></p><p class="note">${esc(err.message || err)}</p><p class="note">Comprueba tu clave de Gemini en Ajustes ⚙️ y tu conexión.</p>`;
-  }
-  aiBusy = false;
-  return clean;
-}
-
-// 📋 Revisión de la ficha guardada (detecta fallos en riegos, descripción, cuidados…)
-function aiReviewCard(id){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  const prompt =
-`Eres un experto jardinero. Te paso la ficha completa de una planta guardada en mi app de riegos (estamos en ${settings.city || "España"}, fecha de hoy: ${todayStr()}).
-Revisa TODOS los campos de la ficha y detecta posibles fallos o mejoras. En concreto:
-1. ¿La frecuencia de riego es adecuada para esta especie, su luz y la época del año? Si no, indica cuál pondrías.
-2. ¿Hay retrasos o irregularidades en el historial de riegos/abonos que deba corregir?
-3. ¿La pauta de abono es correcta (o falta)?
-4. ¿La ubicación, la luz y la maceta son adecuadas para la especie? ¿Toca trasplante?
-5. ¿Falta algo importante en la descripción/cuidados o hay algún dato incoherente en la ficha?
-Si adjunto foto, úsala también para valorar el estado.
-Responde en español, breve y práctico, con títulos (##) y listas con guiones. Incluye una sección "## Cambios sugeridos en la ficha" con valores concretos.${SUG_JSON}
-
-${fichaText(p)}`;
-  const parts = [{ text: prompt }];
-  const photo = dataUrlToPart(p.photo);
-  if(photo) parts.push(photo);
-  runAI(p, "Revisión de la ficha 📋", parts);
-}
-
-// 📸 Diagnóstico por foto nueva (cámara o galería) → se guarda en el diario
-let aiPhotoPlantId = null;
-function aiPhotoDiag(id){
-  aiPhotoPlantId = id;
-  $("ai-file").value = "";
-  $("ai-file").click();
-}
-async function aiPhotoPicked(e){
-  const file = e.target.files[0]; if(!file) return;
-  const p = plants.find(x=>x.id===aiPhotoPlantId); if(!p) return;
-  let big, small;
-  try{
-    big = await shrinkImage(file, 1024, .85);   // para la IA
-    small = await shrinkImage(file, 480, .6);   // para el diario
-  }catch(err){ toast("No se pudo leer la imagen ❌"); return; }
-  const prompt =
-`Eres un experto jardinero. Te envío una FOTO ACTUAL de mi planta junto con su ficha de la app (estamos en ${settings.city || "España"}, hoy es ${todayStr()}).
-Analiza la foto y dime:
-1. **Estado general** de la planta (¿está sana?). Empieza con una frase corta resumen.
-2. **Problemas visibles**: hojas amarillas/marrones, plagas, hongos, falta o exceso de riego, falta de luz, maceta pequeña…
-3. **Causa más probable** de cada problema, cruzando la foto con los datos de la ficha (frecuencia de riego, luz, retrasos del historial…).
-4. **Qué hacer esta semana**, en pasos concretos.
-Responde en español, claro y breve, con títulos (##) y listas con guiones.${SUG_JSON}
-
-${fichaText(p)}`;
-  const txt = await runAI(p, "Diagnóstico por foto 📸", [{ text: prompt }, dataUrlToPart(big)]);
-  if(txt){
-    const firstLine = txt.split("\n").map(s=>s.replace(/[#*]/g,"").trim()).filter(s=>s && !/^(estado|problemas|causa|qué hacer)/i.test(s))[0] || "";
-    pushDiary(p, small, firstLine);
-    toast("Diagnóstico guardado en el diario 📷");
-  }
-}
-
-// 🔮 Identificar especie desde el formulario y rellenar la ficha
-async function identifyPlant(){
-  if(!formPhoto){ toast("Primero elige una foto de la planta 📷"); return; }
-  const key = (settings.geminiKey || "").trim();
-  if(!key){ toast("Añade tu clave de Gemini en Ajustes ⚙️"); return; }
-  const st = $("f-aistatus");
-  st.style.display = "block"; st.textContent = "🔮 Identificando…";
-  try{
-    const prompt = `Identifica la planta de la foto. Responde SOLO con un JSON, sin texto adicional ni backticks:
-{"nombreComun": "...", "especie": "nombre científico", "riegoCadaDias": número, "luz": "sol"|"media"|"sombra", "consejo": "un consejo de cuidado en una frase"}
-Si no puedes identificarla con seguridad, pon tu mejor hipótesis en "especie" con un signo de interrogación. Contexto: ${settings.city || "España"}, ${todayStr()}.`;
-    const txt = await callGemini([{ text: prompt }, dataUrlToPart(formPhoto)]);
-    if(txt === null){ st.style.display="none"; return; }
-    const j = JSON.parse(txt.replace(/```json|```/g, "").trim());
-    if(j.especie) $("f-species").value = j.especie;
-    if(!$("f-name").value.trim() && j.nombreComun) $("f-name").value = j.nombreComun;
-    if(Number.isFinite(+j.riegoCadaDias) && +j.riegoCadaDias>=1) $("f-freq").value = Math.round(+j.riegoCadaDias);
-    if(["sol","media","sombra"].includes(j.luz)){ formLight = j.luz; document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight)); }
-    if(j.consejo && !$("f-desc").value.trim()) $("f-desc").value = j.consejo;
-    st.textContent = `✅ ${j.nombreComun || j.especie || "Identificada"} · revisa los datos y guarda`;
-  }catch(err){
-    st.textContent = "❌ No se pudo identificar. Prueba con una foto más clara.";
-  }
-}
-
-/* ============ Copia de seguridad ============ */
-function exportDownload(){
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify({app:"plantometro",v:3,exported:new Date().toISOString(),plants})],{type:"application/json"}));
-  a.download = `plantometro_${todayStr()}.json`; a.click();
-  toast("Copia descargada 💾");
-}
-function importData(e){
-  const file = e.target.files[0]; e.target.value=""; if(!file) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    try{
-      const d = JSON.parse(ev.target.result);
-      const list = Array.isArray(d) ? d : d.plants;
-      if(!Array.isArray(list)) throw 0;
-      let n=0;
-      list.forEach(np=>{
-        const local = plants.find(x=>x.id===np.id);
-        if(!local || (np.updatedAt||"") > (local.updatedAt||"")){ delete np.deleted; putPlant(np); n++; }
-      });
-      closeModal("account-modal");
-      toast(`Restauradas ${n} plantas ✅`);
-    }catch(err){ toast("Ese archivo no es un jardín válido ❌"); }
-  };
-  r.readAsText(file);
-}
-
-/* ============ Aviso interno de riegos pendientes ============ */
-function notifyDue(){
-  const el = $("due-banner");
-  const hoy=[], tarde=[];
-  alive().forEach(p=>{ const s=plantState(p).state; if(s==="today") hoy.push(p); if(s==="late") tarde.push(p); });
-  if(!hoy.length && !tarde.length){ el.style.display="none"; return; }
-  const head = tarde.length
-    ? `⚠️ <b>${tarde.length}</b> atrasada${tarde.length>1?"s":""}${hoy.length?` · <b>${hoy.length}</b> para hoy`:""}`
-    : `💧 <b>${hoy.length}</b> para regar hoy`;
-  el.innerHTML = head + ` <span style="font-weight:400;font-size:12.5px;color:var(--ink2)">· toca una para abrir su ficha</span><div class="duechips">`
-    + tarde.map(p=>`<button class="late" data-open="${p.id}">💧 ${esc(p.name)}</button>`).join("")
-    + hoy.map(p=>`<button class="today" data-open="${p.id}">💧 ${esc(p.name)}</button>`).join("")
-    + `</div>`;
-  el.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openDetail(b.dataset.open));
-  el.style.background = tarde.length ? "color-mix(in srgb, var(--grana) 12%, var(--surface))" : "color-mix(in srgb, var(--amber) 12%, var(--surface))";
-  el.style.border = "1.5px solid " + (tarde.length ? "var(--grana)" : "var(--amber)");
-  el.style.color = "var(--ink)";
-  el.style.fontSize = "13.5px";
-  el.style.display = "block";
-  maybeNotify();
-}
-
-/* ============ Modales e inicio ============ */
-function openModal(id){ $(id).classList.add("open"); if(id==="settings-modal") renderSettingsUI(); }
-function closeModal(id){ $(id).classList.remove("open"); }
-document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) m.classList.remove("open"); }));
-
-// Exponer funciones usadas en atributos onclick del HTML
-Object.assign(window, { openModal, closeModal, openForm, savePlant, pickPhoto, setLight, setTheme, saveSettings, searchCity, pickCity, useGPS, loadWeather, doSignIn, doSignOut, exportDownload, importData, render, aiReviewCard, aiPhotoDiag, setView, toggleSummer, enableNotifs, identifyPlant, galleryAdd });
-$("ai-file").addEventListener("change", aiPhotoPicked);
-$("g-file").addEventListener("change", galleryPicked);
-
-if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
-
-(function init(){
-  renderSettingsUI();
-  render();
-  loadWeather();
-  try { startFirebase(); } catch(e){ showGate("login"); $("gate-error").textContent = "Error al iniciar Firebase. Recarga la página."; }
-})();
-</script>
+<!-- ===== Clima, fuera del camino diario ===== -->
+<div class="modal" id="weather-modal">
+  <div class="sheet">
+    <div class="mhead"><h2>Clima de tu zona</h2><button class="xbtn" data-action="closeModal" data-arg="weather-modal" aria-label="Cerrar">✕</button></div>
+    <p class="weather-summary" id="w-summary">Cargando…</p>
+    <div class="wbar">
+      <span id="w-icon" aria-hidden="true">—</span><span class="wcity" id="w-city">—</span>
+      <span class="wdat">Temperatura <b id="w-temp">—</b></span>
+      <span class="wdat">Humedad <b id="w-hum">—</b></span>
+      <span class="wdat">Lluvia <b id="w-rain">—</b></span>
+    </div>
+    <p class="wtip" id="w-tip">Cargando el clima…</p>
+    <button class="btn soft wrefresh" data-action="loadWeather">Actualizar clima</button>
+  </div>
+</div>
+<script type="module" src="./js/app.js"></script>
 
 </body>
 </html>
