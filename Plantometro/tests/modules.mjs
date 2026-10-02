@@ -9,7 +9,7 @@ import { webcrypto } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const elements=new Map();
-elements.set('due-action',{onclick:null});
+
 class Element{
   constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.style={};this.dataset={};this.value='';this.hidden=false;this.checked=false;this.open=false;this.textContent='';this.innerHTML='';this.classList={items:new Set(),add(...x){x.forEach(v=>this.items.add(v));},remove(...x){x.forEach(v=>this.items.delete(v));},contains(x){return this.items.has(x);},toggle(x,enabled){if(enabled)this.add(x);else this.remove(x);}};}
   set id(v){this._id=v;elements.set(v,this);} get id(){return this._id;}
@@ -56,7 +56,7 @@ const ui=ns('ui.js'),plants=ns('plants.js'),sync=ns('sync.js'),settings=ns('sett
 const el=id=>elements.get(id);
 assert.equal(sync.plants.length,1);
 assert.equal(plants.plantState(existing).state,'late');
-assert.match(el('grid').innerHTML,/Revisión pendiente/);
+assert.match(el('grid').innerHTML,/Pendiente desde el/);
 settings.settings.name='Fran';settings.settings.summerMode=true;
 assert.equal(plants.effectiveFreq(existing),7);
 await weather.loadWeather();
@@ -100,7 +100,7 @@ const events={},cacheKeys=new Set(['plantometro-v7','horas-v1','parte-v2']),core
 const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async paths=>core.push(...paths)};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL});
 vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),swcontext);
 let pending;events.install({waitUntil:p=>pending=p});await pending;events.activate({waitUntil:p=>pending=p});await pending;
-assert(cacheKeys.has('plantometro-v10'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
+assert(cacheKeys.has('plantometro-v11'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
 for(const file of core.filter(f=>f!=='./' && !f.startsWith('https:')))assert(fs.existsSync(path.join(root,file)),`Missing cache asset ${file}`);
 for(const file of ['styles.css',...fs.readdirSync(path.join(root,'js')).map(n=>'js/'+n)])assert(core.includes('./'+file),`Uncached asset ${file}`);
 let intercepted=false;events.fetch({request:{method:'POST',url:'https://generativelanguage.googleapis.com/'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);

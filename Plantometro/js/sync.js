@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { $ } from "./utils.js";
+import { $, PLANT_ART } from "./utils.js";
 import { toast, render, closeModal } from "./ui.js";
 
 /* ============ Firebase: configuración (incrustada, proyecto misApps) ============ */
@@ -26,10 +26,11 @@ function clearGarden(uid){
   plants=[]; confirmed.clear(); operations.clear();
   try{localStorage.removeItem("pg3_cache");if(uid)localStorage.removeItem(cacheKey(uid));}catch(e){}
   document.querySelectorAll(".modal.open").forEach(m=>closeModal(m.id));
-  $("acc-btn").textContent="👤"; $("acc-name").textContent=""; $("acc-email").textContent=""; $("acc-photo").src="";
+  $("acc-name").textContent=""; $("acc-email").textContent=""; $("acc-photo").src="";
   for(const id of ["d-name","d-species","d-desc","d-photo","d-gal","d-hist","d-lastai-txt","ai-title","ai-sub","ai-body","pm-note","f-suggestions"]){$(id).replaceChildren();}
-  $("pm-img").src="";$("f-prev").textContent="🪴";
+  $("pm-img").src="";$("f-prev").innerHTML=PLANT_ART;
   for(const id of ["f-id","f-name","f-species","f-loc","f-desc"]){$(id).value="";}
+  $("q").value="";$("search-panel").hidden=true;$("search-toggle").setAttribute("aria-expanded","false");
   render();
 }
 function saveCache(){

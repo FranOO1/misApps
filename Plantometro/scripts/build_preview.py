@@ -4,12 +4,15 @@ Run: python Plantometro/scripts/build_preview.py
 """
 from pathlib import Path
 import re
+import base64
 root=Path(__file__).resolve().parents[1]
 html=(root/'index.html').read_text()
 mock=r'''
 // Preview adapters only: all garden, login, climate and Gemini data are simulated.
+Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition:ok=>ok({coords:{latitude:37.17,longitude:-3.59}})},configurable:true});
+const Notification={permission:'denied',requestPermission:async()=> 'denied'};
 const demoDate=(days)=>{const d=new Date();d.setDate(d.getDate()+days);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
-let demoPlants=[{id:'bob-demo',name:'Bob · ejemplo',species:'Monstera deliciosa',loc:'Salón',light:'media',waterFreq:7,lastWater:demoDate(-84),history:[],gallery:[],createdAt:new Date().toISOString()}, {id:'aloe-demo',name:'Aloe · ejemplo',species:'Aloe vera',loc:'Terraza',light:'sol',waterFreq:14,lastWater:demoDate(-14),history:[],gallery:[],createdAt:new Date().toISOString()}];
+let demoPlants=[{id:'bob-demo',name:'Bob',species:'Ficus elastica (ejemplo)',photo:DEMO_FICUS,loc:'Salón',light:'media',waterFreq:7,lastWater:demoDate(-84),history:[],gallery:[],createdAt:new Date().toISOString()}, {id:'aloe-demo',name:'La de la ventana',species:'Haworthia (ejemplo)',photo:DEMO_PLANT,loc:'Terraza',light:'sol',waterFreq:14,lastWater:demoDate(-14),history:[],gallery:[],createdAt:new Date().toISOString()}];
 const demoAuth={currentUser:{uid:'preview-only',displayName:'Vista previa',email:'sin-cuenta-real'}};
 let demoAuthChanged, demoSnapshot;
 const emitDemo=()=>demoSnapshot?.({docs:demoPlants.map(p=>({data:()=>JSON.parse(JSON.stringify(p))})),metadata:{hasPendingWrites:false}});
@@ -35,13 +38,16 @@ const fetch=async url=>{
  return {ok:true,json:async()=>({candidates:[{content:{parts:[{text}]}}]})};
 };
 '''
+# Embedded sample photos keep the preview self-contained, including in a downloaded HTML.
+photos='\n'.join('const '+constant+'='+repr('data:image/jpeg;base64,'+base64.b64encode((root/'preview-assets'/name).read_bytes()).decode())+';' for constant,name in [('DEMO_FICUS','ficus.jpg'),('DEMO_PLANT','plant.jpg')])
+mock=photos+'\n'+mock
 codes=[]
 for name in ['utils','backup','settings','sync','weather','plants','photos','gemini','ui','app']:
     text=(root/'js'/f'{name}.js').read_text()
     text=re.sub(r'^import .*?;\s*','',text,flags=re.M)
     text=re.sub(r'^export \{[^}]*\};?\s*','',text,flags=re.M)
     if name=='sync':text=re.sub(r'const fbConfig = \{[\s\S]*?\};','const fbConfig = {};',text,count=1)
-    if name=='settings':text=text.replace('geminiKey:""','geminiKey:"preview-only"')
+    if name=='settings':text=text.replace('geminiKey:""','geminiKey:"preview-only"').replace('pg3b_settings','pg3b_preview_settings')
     if name=='app':text=re.sub(r'if\("serviceWorker" in navigator\).*?;\n','',text)
     codes.append(text)
 html=html.replace('<link rel="stylesheet" href="./styles.css">','<style>'+(root/'styles.css').read_text()+'</style>')
@@ -49,6 +55,7 @@ html=re.sub(r'<link rel="manifest"[^>]+>','',html)
 html=re.sub(r'<link[^>]+(?:fonts.googleapis|fonts.gstatic)[^>]+>','',html)
 html=html.replace('<script type="module" src="./js/app.js"></script>','<script type="module">'+mock+'\n'+ '\n'.join(codes)+'</script>')
 html=re.sub(r'<label for="s-gkey">[\s\S]*?<p class="note">[\s\S]*?</p>', '<input id="s-gkey" type="hidden" value="preview-only"><p class="note">Gemini simulado: no introduzcas una clave en esta demostración.</p>', html)
-html=html.replace('<body>','<body><aside style="padding:14px;background:#17482E;color:white;font:14px system-ui;line-height:1.5">Vista previa del PR #1 · Datos, login, clima y Gemini simulados. No usa vuestro jardín ni claves reales. Bob es un ejemplo para comprobar 77 días. Esta página no permite probar la instalación PWA real.</aside>')
+html=html.replace('<body>','<body><aside class="preview-notice">Vista previa · jardín de ejemplo<details><summary>Sobre esta prueba</summary><p>Datos, login, clima y Gemini simulados. No usa vuestro jardín ni claves reales. Bob es un ejemplo de 77 días pendientes, visible en su ficha. Esta demostración no prueba servicios ni instalación PWA reales.</p></details></aside>')
+html=html.replace('</style>','\n.preview-notice{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 18px;padding:6px 18px;background:var(--surface2);color:var(--ink2);font:12px system-ui;line-height:1.5}.preview-notice summary{min-height:32px;padding:4px 0;font:inherit;text-decoration:underline;text-underline-offset:3px}.preview-notice summary::after{display:none}.preview-notice details[open]{width:min(100%,700px)}.preview-notice p{padding-bottom:10px}</style>',1)
 (root/'preview.html').write_text(html)
 print('Generated Plantometro/preview.html (simulated, self-contained)')

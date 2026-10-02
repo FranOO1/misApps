@@ -4,11 +4,11 @@ import { searchCity, useGPS, loadWeather } from "./weather.js";
 import { openForm, savePlant, pickPhoto, setLight, exportDownload, importData, invalidateForm } from "./plants.js";
 import { aiPhotoPicked, identifyPlant } from "./gemini.js";
 import { galleryPicked } from "./photos.js";
-import { openModal, closeModal, render, setView } from "./ui.js";
+import { openModal, closeModal, render, toggleSearch, closeSearch } from "./ui.js";
 import { $ } from "./utils.js";
 
 // Location search results are bound in weather.js, rather than inline handlers.
-const actions = { openModal, closeModal, openForm, setLight, setTheme, saveSettings, searchCity, useGPS, loadWeather, doSignIn, doSignOut, exportDownload, setView, toggleSummer, enableNotifs, identifyPlant };
+const actions = { openModal, closeModal, openForm, setLight, setTheme, saveSettings, searchCity, useGPS, loadWeather, doSignIn, doSignOut, exportDownload, toggleSearch, closeSearch, toggleSummer, enableNotifs, identifyPlant };
 document.querySelectorAll("[data-action]").forEach(button=>button.addEventListener("click",()=>{
   actions[button.dataset.action]?.(button.dataset.arg);
 }));

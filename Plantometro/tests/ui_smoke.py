@@ -87,6 +87,13 @@ def route_external(route):
     else:
         route.fulfill(body="",content_type="text/css" if "fonts.googleapis" in url else "text/plain")
 
+def open_section(page, section):
+    if not page.locator('#'+section).evaluate('e=>e.open'):
+        page.locator('#'+section+' > summary').click()
+
+def open_settings(page):
+    page.locator('#settings-btn').click()
+
 def overflow(page):
     return page.evaluate("document.documentElement.scrollWidth > innerWidth")
 
@@ -115,14 +122,15 @@ with sync_playwright() as pw:
         page.goto(URL)
         expect(page.locator("#grid .card")).to_have_count(1)
         expect(page.locator("#gate")).to_be_hidden()
-        expect(page.locator(".brand h1")).to_have_text("🌿Plantómetro")
-        expect(page.locator("#grid .next")).to_contain_text("Revisión pendiente")
+        expect(page.locator("h1.brand")).to_have_text("Plantómetro")
+        expect(page.locator("#grid .next")).to_contain_text("Pendiente desde el")
         assert not overflow(page)
         for theme in ["light","dark"]:
             page.evaluate(f"import('./js/settings.js').then(m=>m.setTheme('{theme}'))")
             check_contrast(page)
             page.screenshot(path=str(OUT/f"home-{width}-{theme}.png"),full_page=True)
         page.locator("#grid [data-open]").first.click()
+        open_section(page,"d-care-section")
         expect(page.locator("#d-rain")).to_contain_text("Exterior")
         expect(page.locator("#d-rain")).to_contain_text("Lluvia prevista")
         expect(page.locator("#d-freq")).to_contain_text("Cada 7 días")
@@ -135,6 +143,7 @@ with sync_playwright() as pw:
         page.locator("#toast button").click()
         page.wait_for_function("testWrites.at(-1).plant.history.length === 65")
         assert page.evaluate("testWrites.at(-1).plant.history.length")==65
+        open_section(page,"d-manage-section")
         page.locator("#d-edit").click()
         expect(page.locator("#f-details")).to_have_attribute("open", "")
         page.locator("#f-name").fill("Mi planta editada")
@@ -180,20 +189,20 @@ with sync_playwright() as pw:
         saved=page.evaluate("testWrites.at(-1).plant")
         assert saved["lastWater"]=="" and saved["history"]==[] and saved["photo"].startswith("data:image/jpeg")
         assert saved["waterFreq"]==9
-        page.locator("[data-view=week]").click()
-        expect(page.locator("#week")).to_be_visible()
-        assert "regar" not in page.locator("#week").inner_text().lower()
-        page.locator(".weather summary").click()
+        open_settings(page)
+        page.get_by_role("button",name="Clima de tu zona").click()
+        expect(page.locator("#weather-modal")).to_be_visible()
         expect(page.locator("#w-tip")).to_contain_text("Lluvia prevista")
         page.locator(".wrefresh").click()
-        page.evaluate("import('./js/ui.js').then(m=>m.openModal('settings-modal'))")
+        page.locator("#weather-modal .xbtn").click()
+        open_settings(page)
         page.locator("#s-city").fill("Granada")
         page.get_by_title("Buscar",exact=True).click()
         expect(page.locator("#georesults button")).to_have_count(1)
         page.locator("#georesults button").click()
         page.locator("#settings-modal .xbtn").click()
         assert not errors, errors
-        print(f"PASS {width}x{height}: open, edit, history, undo, name/photo suggestions, discard, correction, add, weather, calendar, contrast")
+        print(f"PASS {width}x{height}: open, edit, history, undo, name/photo suggestions, discard, correction, add, weather, contrast")
         context.close()
     # Regression scenarios on real DOM, with explicit service failure and account changes.
     for width,height in [(390,844),(768,1024)]:
@@ -202,28 +211,24 @@ with sync_playwright() as pw:
         context.add_init_script("window.testPlants="+json.dumps([{**PLANT,"name":"Bob","gallery":[]}])+";window.testWrites=[];")
         page=context.new_page();errors=[];page.on("pageerror",lambda e:errors.append(str(e)));page.goto(URL)
         expect(page.locator("#grid .card")).to_have_count(1)
-        expect(page.locator("#st-total-label")).to_have_text("planta")
-        expect(page.locator("#st-late-label")).to_have_text("revisión pendiente")
-        page.locator("#due-action").click();expect(page.locator("#d-name")).to_have_text("Bob")
-        page.locator("#detail-modal .xbtn").click()
-        for view in ["grid","week"]:
-            page.locator(f"[data-view={view}]").click()
-            page.locator("#q").fill("No existe")
-            expect(page.locator("#grid .card" if view=="grid" else "#week [data-open]")).to_have_count(0)
-            page.locator("#q").fill("Bob")
-            expect(page.locator("#grid .card" if view=="grid" else "#week [data-open]")).to_have_count(1)
-            page.locator("[data-fs=today]").click()
-            expect(page.locator("#grid .card" if view=="grid" else "#week [data-open]")).to_have_count(0)
-            page.locator("[data-fs=pend]").click()
-            expect(page.locator("#grid .card" if view=="grid" else "#week [data-open]")).to_have_count(1)
-        page.locator("[data-view=grid]").click()
+        expect(page.locator("#garden-summary")).to_have_text("Hoy toca cuidar una planta.")
+        expect(page.locator("#search-panel")).to_be_hidden()
+        open_settings(page)
+        page.get_by_role("button",name="Buscar una planta",exact=True).click()
+        page.locator("#q").fill("No existe")
+        expect(page.locator("#grid .card")).to_have_count(0)
+        page.locator("#q").fill("Bob")
+        expect(page.locator("#grid .card")).to_have_count(1)
+        page.get_by_role("button",name="Cerrar búsqueda").click()
         page.locator("#grid [data-open]").first.click()
         # Two waterings plus fertilizer: correct the earlier exact event after toast expiry.
         page.locator("#d-water").click();page.wait_for_function("testWrites.length===1")
         first=page.evaluate("testWrites[0].plant.history[0].eventId")
         page.locator("#d-water").click();page.wait_for_function("testWrites.length===2")
         second=page.evaluate("testWrites[1].plant.history[0].eventId")
+        open_section(page,"d-care-section")
         page.locator("#d-fertbtn").click();page.wait_for_function("testWrites.length===3")
+        open_section(page,"d-history-section")
         page.wait_for_timeout(5100)
         page.once("dialog",lambda d:d.accept())
         page.locator(f'[data-correct="{first}"]').click()
@@ -242,17 +247,19 @@ with sync_playwright() as pw:
             assert page.evaluate("testWrites.length")==before
         # Genuine permission errors must rollback and must not promise future synchronization.
         page.evaluate("window.testWriteError='permission-denied'")
+        open_section(page,"d-manage-section")
         page.locator("#d-edit").click();page.locator("#f-name").fill("Nombre que no se guardó");page.locator("#f-save").click()
         expect(page.locator("#sync-status")).to_contain_text("rechazó el permiso")
         expect(page.locator("#f-name")).to_have_value("Bob")
         page.locator("#form-modal .xbtn").click()
         page.locator("#grid [data-open]").first.click()
+        open_section(page,"d-manage-section")
         page.once("dialog",lambda d:d.accept());page.locator("#d-del").click()
         expect(page.locator("#sync-status")).to_contain_text("rechazó el permiso")
         expect(page.locator("#grid .card")).to_have_count(1)
         page.evaluate("window.testWriteError=null")
         page.locator("#detail-modal .xbtn").click()
-        page.locator("#q").fill("")
+        assert page.locator("#q").input_value()==""
         # Valid restore is one batch; rejected batch rolls back every optimistic document.
         copied={**PLANT,"id":"copy","name":"Copia","gallery":[],"updatedAt":"2026-10-01T12:00:00Z"}
         page.once("dialog",lambda d:d.accept())
@@ -276,13 +283,16 @@ with sync_playwright() as pw:
         assert page.evaluate("""async()=>{const s=await import('./js/sync.js'),p=await import('./js/photos.js');for(let i=0;i<7;i++)await p.pushDiary(s.plants.find(p=>p.id==='existing'),'data:image/png;base64,AAAA','Foto '+i);return s.plants.find(p=>p.id==='existing').gallery.length===7;}""")
         page.locator("#grid [data-open]").first.click()
         expect(page.locator("#d-gal .gph")).to_have_count(7)
+        open_section(page,"d-ai-section")
         page.locator("#d-aicard").click()
         expect(page.locator("#ai-body .ai-spin")).to_have_count(0)
         page.locator("#ai-modal .xbtn").click()
         page.locator("#detail-modal .xbtn").click()
         page.locator("#grid [data-open]").first.click()
+        open_section(page,"d-ai-section")
         page.locator("#d-lastai-btn").click();expect(page.locator("#ai-body")).not_to_be_empty()
         page.locator("#ai-modal .xbtn").click();page.locator("#detail-modal .xbtn").click()
+        open_settings(page)
         page.locator("#acc-btn").click()
         with page.expect_download() as download:
             page.get_by_role("button",name="Descargar copia de seguridad").click()
@@ -315,19 +325,73 @@ with sync_playwright() as pw:
         expect(page.locator("#gate")).to_be_hidden()
         expect(page.locator("#grid .card")).to_have_count(0)
         assert not errors,errors
-        print(f"PASS regressions {width}x{height}: singulars, useful notice, shared search/filters, exact durable watering correction, failed write/delete, atomic restore, logout/account isolation")
+        print(f"PASS regressions {width}x{height}: singular summary, discreet search, exact durable watering correction, failed write/delete, atomic restore, logout/account isolation")
         context.close()
-    # The self-contained preview is also tested; no live service is used.
-    context=browser.new_context(viewport=dict(width=390,height=844),service_workers="block")
-    context.route("https://**/*",lambda r:r.abort())
+    # Minimal home ordering and "check, do nothing" behavior, with mock services.
+    context=browser.new_context(viewport=dict(width=320,height=740),service_workers="block")
+    context.route("https://**/*",route_external)
     page=context.new_page();errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
-    page.goto(URL+"preview.html")
-    expect(page.locator("#grid .card")).to_have_count(2)
-    expect(page.locator("aside")).to_contain_text("simulados")
-    expect(page.locator("#grid .next").first).to_contain_text("77 días")
-    page.screenshot(path=str(OUT/"preview-mobile.png"),full_page=True)
-    assert not errors,errors
+    from datetime import date,timedelta
+    today=date.today()
+    garden=[{**PLANT,"id":id,"name":name,"history":[],"gallery":[],"lastWater":str(today+timedelta(days=offset))} for id,name,offset in [('soon','La próxima',-3),('due','La de hoy',-7),('late','La pendiente',-10)]]
+    garden += [{**PLANT,"id":"new","name":"Nueva sin riego","history":[],"gallery":[],"lastWater":"","createdAt":str(today)+'T12:00:00Z'}]
+    context.add_init_script("window.testPlants="+json.dumps(garden)+";window.testWrites=[];")
+    page.goto(URL)
+    expect(page.locator("#garden-summary")).to_have_text("Hoy toca cuidar 2 plantas.")
+    assert page.locator("#grid .card").evaluate_all("cards=>cards.map(c=>c.dataset.plant)")==['late','due','soon','new']
+    expect(page.locator("#search-toggle")).to_be_hidden()
+    expect(page.locator("#q")).to_be_hidden()
+    assert not page.locator('#week,#chips,#due-banner,.statbar').count()
+    assert page.locator('#grid .card').evaluate_all("cards=>cards.every(c=>c.querySelectorAll('[data-water]').length===1&&c.querySelectorAll('button').length===2)")
+    assert 'hoy' in page.locator('[data-plant=due] .next').inner_text().lower()
+    # Opening and leaving a ficha records nothing and does not postpone a plant.
+    page.locator('[data-open=late]').click()
+    page.locator('#detail-modal .xbtn').click()
+    assert page.evaluate('testWrites.length')==0
+    assert page.locator('[data-plant=late]').get_attribute('class')=='card late'
+    page.locator('[data-open=new]').click()
+    expect(page.locator('#d-last')).to_have_text('Sin riegos registrados')
+    page.locator('#detail-modal .xbtn').click()
+    page.locator('[data-water=due]').click()
+    page.wait_for_function('testWrites.length===1')
+    saved=page.evaluate('testWrites.at(-1).plant')
+    assert saved['lastWater']==str(today) and len(saved['history'])==1
+    assert page.locator('#grid .card').evaluate_all("cards=>cards.map(c=>c.dataset.plant)")==['late','soon','due','new']
+    page.locator('#toast button').click()
+    page.wait_for_function('testWrites.length===2')
+    assert page.evaluate('testWrites.at(-1).plant.lastWater')==str(today-timedelta(days=7))
+    # Larger gardens get a discreet search button, never an always-open input.
+    page.evaluate("""() => {testSnapshot({docs:Array.from({length:9},(_,i)=>({data:()=>({...testPlants[0],id:'many-'+i,name:'Planta '+i})}))});}""")
+    expect(page.locator('#search-toggle')).to_be_visible()
+    page.locator('#search-toggle').click();page.locator('#q').fill('Planta 8')
+    expect(page.locator('#grid .card')).to_have_count(1)
+    page.get_by_role('button',name='Cerrar búsqueda').click()
+    expect(page.locator('#grid .card')).to_have_count(9)
+    assert not overflow(page) and not errors,errors
+    print('PASS minimal home: chronological order, one watering action, no changes on inspection, new plant without invented water, discreet search')
     context.close()
+    # Self-contained preview with embedded photographs; network deliberately blocked.
+    for width,height in [(320,740),(390,844),(768,1024),(820,1180)]:
+        context=browser.new_context(viewport=dict(width=width,height=height),service_workers="block")
+        context.route("https://**/*",lambda r:r.abort())
+        page=context.new_page();errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
+        page.goto(URL+"preview.html")
+        expect(page.locator("#grid .card")).to_have_count(2)
+        expect(page.locator("aside")).to_contain_text("simulados")
+        page.wait_for_function("[...document.querySelectorAll('#grid .card-photo img')].every(i=>i.complete&&i.naturalWidth>0)")
+        for theme in ['light','dark']:
+            open_settings(page)
+            page.get_by_role('button',name='Claro' if theme=='light' else 'Oscuro',exact=True).click()
+            page.locator('#settings-modal .xbtn').click()
+            check_contrast(page)
+            assert not overflow(page)
+            page.screenshot(path=str(OUT/f"preview-{width}-{theme}.png"),full_page=True)
+        page.locator("#grid [data-open]").first.click()
+        expect(page.locator('#d-next')).to_contain_text('77 días pendiente')
+        expect(page.locator('#d-water')).to_be_visible()
+        assert not errors,errors
+        context.close()
+    print('PASS preview: embedded photos, mobile/tablet layouts, both themes, services explicitly simulated')
     # Real service worker and offline app shell, without a production sign-in.
     context=browser.new_context(viewport=dict(width=390,height=844))
     context.route("https://**/*",route_external)
@@ -337,8 +401,8 @@ with sync_playwright() as pw:
     page.reload()
     page.wait_for_function("navigator.serviceWorker.controller !== null")
     keys=page.evaluate("caches.keys()")
-    assert "plantometro-v10" in keys
-    assert page.evaluate("caches.open('plantometro-v10').then(c=>c.match(location.href).then(Boolean))")
+    assert "plantometro-v11" in keys
+    assert page.evaluate("caches.open('plantometro-v11').then(c=>c.match(location.href).then(Boolean))")
     # Preserve caches belonging to the other apps on the same GitHub Pages origin.
     page.evaluate("caches.open('horas-v1')")
     sw=page.evaluate("navigator.serviceWorker.getRegistration().then(r=>r.active.scriptURL)")
@@ -346,9 +410,9 @@ with sync_playwright() as pw:
     manifest=page.evaluate("fetch('./manifest.json').then(r=>r.json())")
     assert manifest["display"]=="standalone" and manifest["start_url"]=="./index.html"
     context.set_offline(True);page.reload()
-    expect(page.locator(".brand h1")).to_have_text("🌿Plantómetro")
+    expect(page.locator("h1.brand")).to_have_text("Plantómetro")
     assert "horas-v1" in page.evaluate("caches.keys()")
-    print("PASS PWA: scoped worker v10, app cache, offline shell, standalone manifest, other-app cache retained")
+    print("PASS PWA: scoped worker v11, app cache, offline shell, standalone manifest, other-app cache retained")
     context.close();browser.close()
 server.shutdown()
 print(f"Screenshots: {OUT}")

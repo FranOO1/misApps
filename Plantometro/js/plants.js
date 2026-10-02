@@ -1,5 +1,5 @@
 import { validateBackup } from "./backup.js";
-import { $, todayStr, addDays, diffDays, dateNumber } from "./utils.js";
+import { $, todayStr, addDays, diffDays, dateNumber, PLANT_ART } from "./utils.js";
 import { whoAmI } from "./settings.js";
 import { plants, putPlant, removePlant, putPlantsBatch, updatePlantTransaction, sessionToken } from "./sync.js";
 import { shrinkImage } from "./photos.js";
@@ -34,7 +34,7 @@ function openForm(id){
   $("f-details").open = !!p;
   $("f-aistatus").style.display = "none";
   formPhoto = p?.photo || null; formLight = p?.light || "";
-  $("f-prev").innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : "🪴";
+  $("f-prev").innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : PLANT_ART;
   $("f-photo").value = "";
   document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight));
   openModal("form-modal");
@@ -95,7 +95,7 @@ function water(id, el){
   splash(el);p.lastWater=todayStr();p.history=[event,...(p.history||[])];
   p.updatedAt=new Date().toISOString();p.updatedBy=whoAmI();
   const pending=putPlant(p);
-  toast(`💧 ${p.name}: riego registrado en este dispositivo`,"Deshacer",()=>correctWater(id,eventId));
+  toast("Riego anotado. Gracias por cuidarla.","Deshacer",()=>correctWater(id,eventId));
   return pending;
 }
 function removeWaterEvent(p,eventId){
@@ -115,7 +115,7 @@ function fertilize(id){
   p.lastFert = todayStr();
   p.history = [{t:"abono", date:todayStr(), by:whoAmI()}, ...(p.history||[])];
   p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-  putPlant(p); openDetail(id); toast(`🌱 ${p.name} abonada`);
+  putPlant(p); openDetail(id); toast("Abono anotado.");
 }
 async function delPlant(id){
   const p = plants.find(x=>x.id===id); if(!p) return;

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Plantómetro · El jardín compartido</title>
-<meta name="theme-color" content="#173B24">
+<meta name="theme-color" content="#214B38">
 <link rel="manifest" href="./manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,53 +12,32 @@
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+<svg class="svg-defs" aria-hidden="true" width="0" height="0"><defs>
+  <symbol id="plant-art" viewBox="0 0 160 160">
+    <path d="M80 103V52M80 78L58 61M80 91l25-22" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+    <path d="M79 61C61 42 79 25 93 22c9 22 0 34-14 39ZM68 72C45 76 34 56 37 42c23-1 35 12 31 30ZM92 87c-1-25 16-37 34-35 0 24-12 39-34 35Z" fill="currentColor" opacity=".75"/>
+    <path d="M55 103h50l-7 34H62Z" fill="currentColor" opacity=".35"/><path d="M53 103h54" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+  </symbol>
+</defs></svg>
 <div class="wrap">
-
   <header class="top">
     <div class="headrow">
-      <div class="brand">
-        <h1><span class="brand-leaf" aria-hidden="true">🌿</span>Plantómetro</h1><p class="brand-sub">Tu jardín, a tu ritmo</p>
-      </div>
+      <h1 class="brand"><svg class="brand-leaf" viewBox="0 0 28 32" aria-hidden="true"><path d="M7 29c1-12 4-19 13-25M9 20C0 19 0 9 2 5c10 0 14 7 7 15ZM12 15C10 5 19 1 26 2c0 9-4 16-14 13Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Plantómetro</h1>
       <div class="topbtns">
-        <button class="iconbtn" id="acc-btn" data-action="openModal" data-arg="account-modal" title="Cuenta" style="overflow:hidden">👤</button>
-        <button class="iconbtn" data-action="openModal" data-arg="settings-modal" title="Ajustes">⚙️</button>
+        <button class="iconbtn" id="search-toggle" data-action="toggleSearch" title="Buscar una planta" aria-label="Buscar una planta" aria-controls="search-panel" aria-expanded="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+        <button class="iconbtn" id="settings-btn" data-action="openModal" data-arg="settings-modal" title="Ajustes" aria-label="Ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 3-1 2 2 3-2 1-3 3-1-1-4-3-1-1-3Z"/><circle cx="12" cy="11" r="3"/></svg></button>
       </div>
     </div>
-
-    <details class="weather"><summary>Clima de tu zona <span id="w-summary">Cargando…</span></summary><div class="wbar">
-      <span id="w-icon">🌤️</span>
-      <span class="wcity" id="w-city">—</span>
-      <span class="wdat">🌡️ <b id="w-temp">--°</b></span>
-      <span class="wdat">💧 <b id="w-hum">--%</b></span>
-      <span class="wdat">🌧️ <b id="w-rain">--%</b></span>
-      <button class="wrefresh" data-action="loadWeather" title="Actualizar clima">↻</button>
-    </div>
-    <p class="wtip" id="w-tip">Cargando el clima de tu zona…</p></details>
-
-    <div class="statbar">
-      <span class="sp">🪴 <b id="st-total">0</b> <span id="st-total-label">plantas</span></span>
-      <span class="sp warn">🌱 <b id="st-today">0</b> <span id="st-today-label">revisiones hoy</span></span>
-      <span class="sp bad">🌱 <b id="st-late">0</b> <span id="st-late-label">revisiones pendientes</span></span>
-      <span class="sp fire" hidden><b id="st-streak">0</b></span>
-    </div>
-
-    <div id="due-banner" style="display:none;margin-top:10px;border-radius:var(--r);padding:12px 16px;box-shadow:var(--shadow)"></div>
+    <p class="garden-summary" id="garden-summary">Tu jardín, a tu ritmo.</p>
   </header>
-
-  <div class="tools">
-    <div class="seg" id="viewseg">
-      <button class="on" data-view="grid" data-action="setView" data-arg="grid">🪴 Plantas</button>
-      <button data-view="week" data-action="setView" data-arg="week">📅 Revisiones</button>
-    </div>
-    <div class="search"><input type="search" aria-label="Buscar planta o especie" id="q" placeholder="Buscar planta o especie…" ></div>
-    <p class="note" id="filter-help">«Hoy y pendientes» incluye hoy y las revisiones de días anteriores. Ubicación y búsqueda se aplican en ambas vistas.</p><div class="chips" id="chips" role="group" aria-label="Filtros"></div>
+  <div class="search-panel" id="search-panel" hidden>
+    <label class="sr-only" for="q">Buscar planta o especie</label>
+    <input type="search" id="q" placeholder="Buscar una planta…" autocomplete="off">
+    <button class="text-button" data-action="closeSearch" aria-label="Cerrar búsqueda">Cerrar</button>
   </div>
-
-  <main class="grid" id="grid"></main>
-  <section class="week" id="week" style="display:none" aria-label="Calendario orientativo de revisión de humedad"></section>
+  <main class="grid" id="grid" aria-label="Tus plantas"></main>
 </div>
-
-<button class="fab" data-action="openForm" aria-label="Añadir planta">+</button>
+<button class="fab" data-action="openForm" aria-label="Añadir planta"><span aria-hidden="true">+</span><span class="fab-label">Añadir planta</span></button>
 <div class="toast" id="toast"></div>
 
 <!-- ===== Formulario ===== -->
@@ -71,16 +50,15 @@
     <input id="f-name" required placeholder="Ej: Monstera del salón">
     <label>Foto (opcional)</label>
     <div class="photopick">
-      <div class="prev" id="f-prev">🪴</div>
+      <div class="prev" id="f-prev"><svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg></div>
       <input type="file" accept="image/*" id="f-photo" >
     </div>
-    <button type="button" class="btn soft" id="f-identify" data-action="identifyPlant">🌿 Sugerir cuidados con Gemini</button>
-    <p class="note">Usa el nombre, la foto o ambos. Verás las sugerencias antes de elegir qué aplicar.</p>
+    <label for="f-freq">Mirar la tierra cada… (días)</label>
+    <input id="f-freq" type="number" min="1" max="120" required value="7">
+    <p class="note">La fecha es orientativa. Tú decides si necesita agua.</p>
+    <button type="button" class="text-button identify" id="f-identify" data-action="identifyPlant">Pedir ayuda a Gemini</button>
     <p class="note" id="f-aistatus" role="status" style="display:none"></p>
     <section id="f-suggestions" class="suggestions" hidden aria-label="Sugerencias de Gemini"></section>
-    <label for="f-freq">Revisar humedad cada (días) *</label>
-    <input id="f-freq" type="number" min="1" max="120" required value="7">
-    <p class="note">Es un recordatorio orientativo. Comprueba la tierra antes de regar; si sigue húmeda, espera. Puedes ajustar estos días cuando quieras.</p>
     <details id="f-details" class="more-details"><summary>Más detalles</summary>
       <label for="f-species">Especie / tipo</label><input id="f-species" placeholder="Ej: Monstera deliciosa">
       <label for="f-loc">Ubicación</label><input id="f-loc" list="loclist" placeholder="Ej: Salón, Terraza, Baño…"><datalist id="loclist"></datalist>
@@ -106,65 +84,68 @@
   </form>
 </div>
 
-<!-- ===== Detalle ===== -->
+<!-- ===== Ficha ===== -->
 <div class="modal" id="detail-modal">
-  <div class="sheet">
+  <div class="sheet detail-sheet">
     <div class="hero" id="d-hero">
-      <span id="d-photo">🪴</span>
-      <div class="shade"></div>
-      <span class="hstate" id="d-state">AL DÍA</span>
+      <span id="d-photo"></span>
       <button class="xbtn" data-action="closeModal" data-arg="detail-modal" aria-label="Cerrar">✕</button>
-      <div class="htitle"><h2 id="d-name">—</h2><p id="d-species"></p></div>
     </div>
-    <div class="actions2">
-      <button class="btn primary" id="d-water">💧 Ya la he regado</button>
-      <button class="btn soft" id="d-fertbtn">🌱 Abonar</button>
-      <button class="btn soft" id="d-edit">✏️ Editar</button>
-      <button class="btn soft danger" id="d-del">🗑️ Eliminar</button>
-    </div>
-    <p class="note">Revisa la humedad de la tierra. La fecha orientativa no significa que necesite agua.</p><div class="rainhint" id="d-rain"></div>
-    <div id="d-desc" class="desc" style="display:none"></div>
-    <div class="kv"><span class="k">Ubicación</span><span class="v" id="d-loc">—</span></div>
-    <div class="kv"><span class="k">Luz</span><span class="v" id="d-light">—</span></div>
-    <div class="kv"><span class="k">Revisar humedad</span><span class="v" id="d-freq">—</span></div>
+    <div class="detail-heading"><h2 id="d-name">—</h2><p id="d-species"></p><p class="detail-date" id="d-state"></p></div>
+    <button class="btn primary" id="d-water">Ya la he regado</button>
+    <p class="note care-note">Si la tierra sigue húmeda, puedes esperar.</p>
     <div class="kv"><span class="k">Último riego</span><span class="v" id="d-last">—</span></div>
-    <div class="kv"><span class="k">Próxima revisión</span><span class="v" id="d-next">—</span></div>
-    <div class="kv" id="d-fertrow"><span class="k">Próximo abono</span><span class="v" id="d-fert">—</span></div>
-    <div class="kv" id="d-potrow" style="display:none"><span class="k">Maceta</span><span class="v" id="d-pot">—</span></div>
-    <div class="aibox">
-      <h3>🤖 Asistente de jardinería (IA)</h3>
+    <div class="kv"><span class="k">Para mirar la tierra</span><span class="v" id="d-next">—</span></div>
+
+    <details class="detail-section" id="d-photo-section">
+      <summary>Fotos</summary><div class="gal" id="d-gal"></div>
+    </details>
+    <details class="detail-section" id="d-care-section">
+      <summary>Cuidados</summary>
+      <div id="d-desc" class="desc" style="display:none"></div>
+      <div class="kv"><span class="k">Ubicación</span><span class="v" id="d-loc">—</span></div>
+      <div class="kv"><span class="k">Luz</span><span class="v" id="d-light">—</span></div>
+      <div class="kv"><span class="k">Mirar la tierra</span><span class="v" id="d-freq">—</span></div>
+      <div class="kv" id="d-fertrow"><span class="k">Próximo abono</span><span class="v" id="d-fert">—</span></div>
+      <div class="kv" id="d-potrow" style="display:none"><span class="k">Maceta</span><span class="v" id="d-pot">—</span></div>
+      <div class="rainhint" id="d-rain"></div>
+      <button class="text-button" id="d-fertbtn">He añadido abono</button>
+    </details>
+    <details class="detail-section" id="d-history-section">
+      <summary>Historial</summary><div class="hist" id="d-hist"></div>
+    </details>
+    <details class="detail-section" id="d-ai-section">
+      <summary>Ayuda con Gemini</summary>
       <div class="aibtns">
-        <button class="btn soft" id="d-aiphoto">📸 Diagnóstico por foto</button>
-        <button class="btn soft" id="d-aicard">📋 Revisar ficha</button>
+        <button class="btn soft" id="d-aiphoto">Consultar una foto</button>
+        <button class="btn soft" id="d-aicard">Revisar los cuidados</button>
       </div>
       <div class="lastai" id="d-lastai"><span id="d-lastai-txt"></span><button id="d-lastai-btn">Ver</button></div>
-      <input type="file" accept="image/*" capture="environment" id="ai-file" hidden>
-      <input type="file" accept="image/*" id="g-file" hidden>
-    </div>
-
-    <h3 style="font-size:16px;margin-top:14px">📷 Evolución</h3>
-    <div class="gal" id="d-gal"></div>
-
-    <h3 style="font-size:16px;margin-top:10px">Historial</h3>
-    <div class="hist" id="d-hist"></div>
-
+    </details>
+    <details class="detail-section" id="d-manage-section">
+      <summary>Editar planta</summary>
+      <button class="btn soft" id="d-edit">Editar los datos</button>
+      <button class="text-button danger" id="d-del">Eliminar planta</button>
+    </details>
+    <input type="file" accept="image/*" capture="environment" id="ai-file" hidden>
+    <input type="file" accept="image/*" id="g-file" hidden>
   </div>
 </div>
 
 <!-- ===== Cuenta ===== -->
 <div class="modal" id="account-modal">
   <div class="sheet">
-    <div class="mhead"><h2>Cuenta</h2><p id="sync-status" class="note" role="status"></p><button class="xbtn" data-action="closeModal" data-arg="account-modal" aria-label="Cerrar">✕</button></div>
-    <div style="display:flex;align-items:center;gap:14px;background:var(--surface2);border-radius:16px;padding:14px">
+    <div class="mhead"><h2>Cuenta y copias</h2><p id="sync-status" class="note" role="status"></p><button class="xbtn" data-action="closeModal" data-arg="account-modal" aria-label="Cerrar">✕</button></div>
+    <div class="account-card">
       <img id="acc-photo" src="" alt="" style="width:52px;height:52px;border-radius:50%;background:var(--line)" referrerpolicy="no-referrer">
       <div style="min-width:0">
-        <div style="font-weight:700" id="acc-name">—</div>
+        <div id="acc-name">—</div>
         <div class="note" id="acc-email" style="margin:0;overflow:hidden;text-overflow:ellipsis">—</div>
       </div>
     </div>
-    <p class="note" style="margin-top:10px">✅ Sincronización en tiempo real activa. Las plantas pertenecen a esta cuenta: entra con ella en el otro móvil y veréis lo mismo al instante.</p>
-    <button class="btn soft" data-action="exportDownload">💾 Descargar copia de seguridad</button>
-    <label class="btn soft" style="cursor:pointer">📥 Restaurar copia
+    <p class="note" style="margin-top:10px">Para compartir el jardín, usa esta misma cuenta en el otro móvil.</p>
+    <button class="btn soft" data-action="exportDownload">Descargar copia de seguridad</button>
+    <label class="btn soft" style="cursor:pointer">Restaurar copia
       <input type="file" accept=".json,application/json" hidden id="backup-file">
     </label>
     <button class="btn soft danger" data-action="doSignOut">Cerrar sesión</button>
@@ -199,9 +180,9 @@
       <button class="xbtn" data-action="closeModal" data-arg="ai-modal" aria-label="Cerrar">✕</button>
     </div>
     <div id="ai-body" class="ai-out"></div>
-    <button class="btn primary" id="ai-apply" style="display:none">✨ Aplicar cambios sugeridos</button>
+    <button class="btn primary" id="ai-apply" style="display:none">Revisar sugerencias</button>
     <div class="actions2" style="margin-top:12px">
-      <button class="btn soft" id="ai-copy">📄 Copiar</button>
+      <button class="btn soft" id="ai-copy">Copiar</button>
       <button class="btn soft" data-action="closeModal" data-arg="ai-modal">Cerrar</button>
     </div>
     <p class="note">La IA puede equivocarse. Ante dudas serias, consulta en un vivero.</p>
@@ -214,7 +195,7 @@
     <div class="mhead"><h2 id="pm-date">📷</h2><button class="xbtn" data-action="closeModal" data-arg="photo-modal" aria-label="Cerrar">✕</button></div>
     <div style="border-radius:18px;overflow:hidden;background:var(--surface2)"><img id="pm-img" src="" alt="" style="width:100%;display:block"></div>
     <p class="note" id="pm-note" style="font-size:13px;margin-top:10px"></p>
-    <button class="btn soft danger" id="pm-del">🗑️ Quitar del diario</button>
+    <button class="btn soft danger" id="pm-del">Quitar del diario</button>
   </div>
 </div>
 
@@ -223,6 +204,11 @@
   <div class="sheet">
     <div class="mhead"><h2>Ajustes</h2><button class="xbtn" data-action="closeModal" data-arg="settings-modal" aria-label="Cerrar">✕</button></div>
 
+    <div class="settings-links">
+      <button class="settings-link" id="acc-btn" data-action="openModal" data-arg="account-modal">Cuenta y copias <span aria-hidden="true">›</span></button>
+      <button class="settings-link" data-action="openModal" data-arg="weather-modal">Clima de tu zona <span aria-hidden="true">›</span></button>
+      <button class="settings-link" data-action="toggleSearch">Buscar una planta <span aria-hidden="true">›</span></button>
+    </div>
     <label for="s-name">Tu apodo</label>
     <input id="s-name" placeholder="Ej: Fran" maxlength="20">
     <p class="note">Los riegos y abonos quedan firmados con este apodo en el historial.</p>
@@ -237,29 +223,43 @@
 
     <label>Tema</label>
     <div class="themeopts" id="themeopts">
-      <button data-v="light" data-action="setTheme" data-arg="light">☀️ Claro</button>
-      <button data-v="dark" data-action="setTheme" data-arg="dark">🌙 Oscuro</button>
-      <button data-v="auto" data-action="setTheme" data-arg="auto">🔁 Auto</button>
+      <button data-v="light" data-action="setTheme" data-arg="light">Claro</button>
+      <button data-v="dark" data-action="setTheme" data-arg="dark">Oscuro</button>
+      <button data-v="auto" data-action="setTheme" data-arg="auto">Automático</button>
     </div>
 
-    <label for="s-gkey">🤖 Clave de Gemini (IA)</label>
+    <label for="s-gkey">Clave de Gemini (opcional)</label>
     <input id="s-gkey" type="password" placeholder="AIza…" autocomplete="off">
     <p class="note">Gratis: crea tu clave en <b>aistudio.google.com/apikey</b> con tu cuenta de Google y pégala aquí. Activa el diagnóstico por foto y la revisión de fichas. Se guarda solo en este dispositivo.</p>
 
     <label>Contexto de estación</label>
     <button class="togglebtn" id="s-summer" data-action="toggleSummer">
-      <span>☀️ Modo verano <span class="note" style="display:block;margin:2px 0 0">Recuerda vigilar la humedad con el calor; no cambia tus frecuencias</span></span>
+      <span>Modo verano <span class="note" style="display:block;margin:2px 0 0">Recuerda vigilar la humedad con el calor; no cambia tus frecuencias</span></span>
       <span class="sw" id="s-summer-sw">NO</span>
     </button>
 
     <label>Avisos de revisión</label>
     <button class="togglebtn" data-action="enableNotifs">
-      <span>🔔 Notificación al abrir la app si hay revisiones pendientes</span>
+      <span>Avisarme de plantas pendientes</span>
       <span class="sw" id="s-notif-sw">—</span>
     </button>
 
-    <p class="note">Al abrir la app verás arriba un aviso con las plantas pendientes de revisar.</p>
     <button class="btn primary" data-action="saveSettings">Guardar ajustes</button>
+  </div>
+</div>
+<!-- ===== Clima, fuera del camino diario ===== -->
+<div class="modal" id="weather-modal">
+  <div class="sheet">
+    <div class="mhead"><h2>Clima de tu zona</h2><button class="xbtn" data-action="closeModal" data-arg="weather-modal" aria-label="Cerrar">✕</button></div>
+    <p class="weather-summary" id="w-summary">Cargando…</p>
+    <div class="wbar">
+      <span id="w-icon" aria-hidden="true">—</span><span class="wcity" id="w-city">—</span>
+      <span class="wdat">Temperatura <b id="w-temp">—</b></span>
+      <span class="wdat">Humedad <b id="w-hum">—</b></span>
+      <span class="wdat">Lluvia <b id="w-rain">—</b></span>
+    </div>
+    <p class="wtip" id="w-tip">Cargando el clima…</p>
+    <button class="btn soft wrefresh" data-action="loadWeather">Actualizar clima</button>
   </div>
 </div>
 <script type="module" src="./js/app.js"></script>

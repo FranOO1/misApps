@@ -13,3 +13,6 @@ const fmt = dStr => { if(!dStr) return "—"; const d = new Date(dStr+"T12:00:00
 const LIGHT = {sol:"☀️ Sol directo", media:"⛅ Luz media", sombra:"🌑 Sombra"};
 
 export { $, esc, todayStr, addDays, diffDays, dateNumber, fmt, LIGHT };
+
+const PLANT_ART = `<svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg>`;
+export { PLANT_ART };
