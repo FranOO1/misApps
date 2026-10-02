@@ -37,7 +37,7 @@ usan servicios simulados y no alteran datos de producción.
 - Registrar un riego: «Ya la he regado», desde la tarjeta. Deshacer desde el aviso.
 - Abrir una ficha: tocar la foto o el nombre. Cerrar si no hace falta agua, sin
   registrar una revisión ni posponer.
-- Añadir: botón «+ Añadir planta», escribir nombre/frecuencia y guardar; la foto
+- Añadir: botón fijo terracota «+ Añadir planta», escribir nombre/frecuencia y guardar; la foto
   es opcional: «Añadir foto» muestra la vista previa y «Cambiar foto» permite
   reemplazarla; cancelar deja la anterior. «Recordarme cada 7 días» configura la
   frecuencia orientativa. Más detalles y Gemini se usan solo si hacen falta.
@@ -46,3 +46,10 @@ usan servicios simulados y no alteran datos de producción.
 Se han retirado la vista semanal, filtros, contadores, grandes avisos y botones
 secundarios de la portada. El campo de búsqueda permanece cerrado; con nueve
 plantas o más aparece un acceso discreto en la cabecera, además de Ajustes.
+
+El botón de añadir tiene espacio propio, separado del desplazamiento de las
+plantas, y se oculta mientras hay una ventana abierta. Las fotos se muestran
+completas; una ficha sin foto utiliza un dibujo. «Recordatorio del…» indica una
+fecha orientativa pasada, sin asegurar que la tierra esté seca. Se han comprobado
+ambos temas, texto ampliado, las dos orientaciones de tablet y márgenes del
+sistema/teclado simulados; falta verificarlos en dispositivos físicos.

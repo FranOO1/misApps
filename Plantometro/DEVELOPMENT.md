@@ -37,6 +37,17 @@ frecuencia; los demás datos están en «Más detalles». La foto se elige con
 vista previa anterior y no escribe nada. «Recordarme cada 7 días» explica la
 frecuencia, con la única aclaración «Comprueba la tierra antes de regar».
 
+«+ Añadir planta» permanece en una zona fija inferior, en terracota. La lista
+se desplaza en una fila distinta del mismo contenedor: el espacio reservado
+crece con el texto y con el margen seguro del sistema, sin cubrir tarjetas.
+Las ventanas ocultan esa acción y desactivan el fondo. `visualViewport` ajusta
+la altura disponible al teclado y las barras del navegador; el zoom por gesto
+sigue siendo nativo. Los tamaños de texto usan `rem` para respetar preferencias.
+Las fotos de portada y ficha se muestran completas (`contain`); sin foto, o si
+falla su carga, aparece un dibujo vegetal. La foto guardada no se cambia.
+«Recordatorio del…» expresa una fecha pasada orientativa, sin afirmar que la
+planta necesita agua. Las fechas y el texto secundario tienen mayor contraste.
+
 ## Datos y comportamiento conservados
 
 - Mismo proyecto Firebase, Google y `users/{uid}/plants/{id}`. Sin migración ni
@@ -57,7 +68,7 @@ frecuencia, con la única aclaración «Comprueba la tierra antes de regar».
 - Restaurar valida íntegramente IDs, fechas, fotos, historial y tamaño; usa un batch
   atómico (máximo 400 plantas), con recuento de fichas conservadas. Se mantienen las
   copias v3 y los arrays legados válidos. No se recortan fotos/historial automáticamente.
-- Worker `plantometro-v12`: cachea estructura, estilos, módulos y SDK estático;
+- Worker `plantometro-v13`: cachea estructura, estilos, módulos y SDK estático;
   solo limpia cachés `plantometro-*`. No cachea servicios, login ni datos Firestore.
 
 ## Pruebas reproducibles
@@ -89,7 +100,15 @@ plantas, búsqueda pequeña/grande, que inspeccionar no escriba ni posponga, y q
 una planta nueva no tenga riego inventado. El formulario también se prueba con emulación táctil de Android en 320×740
 y tablet en 768×1024: apertura del selector, foto previa, cancelación simulada,
 fallo de lectura y conservación de foto/historial. El selector Android del sistema
-y la cámara requieren comprobación en dispositivos físicos. La demostración autónoma se prueba sin
+y la cámara requieren comprobación en dispositivos físicos.
+
+El botón fijo se comprueba además en 1024×768 y 768×640, con cero/una/muchas
+plantas, nombres largos, fechas pasadas/hoy/futuras, ambos temas, texto al 200%,
+todo el recorrido de desplazamiento y un margen seguro simulado de 34 px.
+Se comprueba que no intersecte fotos, nombres, fechas o botones, y que desaparezca
+tras abrir ficha, formulario, Ajustes o clima. La reducción de altura simula el
+espacio disponible con teclado; no abre un teclado Android real.
+La demostración autónoma se prueba sin
 red, con fotos embebidas, en los cuatro tamaños y ambos temas.
 
 El navegador, DOM, almacenamiento y ciclo del worker son reales en Chromium local.
@@ -100,6 +119,8 @@ Autenticación, Firebase, Gemini, clima y GPS se simulan: no se escribe en produ
 sincronización entre móviles, Gemini con clave real, clima/GPS y la instalación,
 actualización y uso offline en Android/tablet. Los 77 días de Bob se comprueban
 con un ejemplo; falta verificar fecha/frecuencia reales y fecha de la captura.
+También quedan pendientes el selector/cámara y el teclado del sistema, barras
+seguras y zoom por gesto en dispositivos físicos.
 
 ## Demostración sin fusionar
 

@@ -4,7 +4,7 @@ import { searchCity, useGPS, loadWeather } from "./weather.js";
 import { openForm, savePlant, chooseFormPhoto, updateReminderUnit, pickPhoto, setLight, exportDownload, importData, invalidateForm } from "./plants.js";
 import { aiPhotoPicked, identifyPlant } from "./gemini.js";
 import { galleryPicked } from "./photos.js";
-import { openModal, closeModal, render, toggleSearch, closeSearch } from "./ui.js";
+import { openModal, closeModal, render, toggleSearch, closeSearch, setupLayout } from "./ui.js";
 import { $ } from "./utils.js";
 
 // Location search results are bound in weather.js, rather than inline handlers.
@@ -24,5 +24,5 @@ document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const modals=[...document.querySelectorAll(".modal.open")];if(modals.length) closeModal(modals.at(-1).id);}});
 if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
 
-renderSettingsUI(); render(); loadWeather();
+setupLayout(); renderSettingsUI(); render(); loadWeather();
 try { startFirebase(); } catch(e){ showGate("login"); $("gate-error").textContent="Error al iniciar Firebase. Recarga la página."; }

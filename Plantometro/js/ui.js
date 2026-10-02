@@ -33,7 +33,7 @@ function dateWords(date){
 }
 function careDate(p){
   const {next,d,state}=plantState(p);
-  if(state==="late")return "Pendiente desde el " + dateWords(next);
+  if(state==="late")return "Recordatorio del " + dateWords(next);
   if(state==="today")return "Hoy toca mirar la tierra";
   if(d===1)return "Mañana, " + dateWords(next);
   return "Mirar la tierra el " + dateWords(next);
@@ -82,8 +82,11 @@ function openDetail(id){
   const p = plants.find(x=>x.id===id); if(!p) return;
   const {next,d,state,f} = plantState(p);
   $("d-name").textContent = p.name; $("d-species").textContent = p.species || "";
-  $("d-photo").innerHTML = p.photo ? `<img src="${p.photo}" alt="${esc(p.name)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : PLANT_ART;
+  $("d-photo").innerHTML = p.photo ? `<img src="${esc(p.photo)}" alt="${esc(p.name)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--surface2)">` : PLANT_ART;
   $("d-hero").classList.toggle("noimg", !p.photo);
+  $("d-photo").querySelector("img")?.addEventListener("error",()=>{
+    $("d-photo").innerHTML=PLANT_ART;$("d-hero").classList.add("noimg");
+  });
   const st = $("d-state");
   st.className = "detail-date " + (state!=="ok" ? state : "");
   st.textContent = careDate(p);
@@ -95,7 +98,7 @@ function openDetail(id){
   $("d-light").textContent = LIGHT[p.light] || "—";
   $("d-freq").textContent = `Cada ${f===1?"día":f+" días"} · orientativo`;
   $("d-last").textContent = p.lastWater ? dateWords(p.lastWater) : "Sin riegos registrados";
-  $("d-next").textContent = dateWords(next) + (state==="late" ? ` · ${Math.abs(d)} ${Math.abs(d)===1?"día":"días"} pendiente` : state==="today" ? " · hoy" : "");
+  $("d-next").textContent = dateWords(next) + (state==="late" ? ` · recordatorio de hace ${Math.abs(d)} ${Math.abs(d)===1?"día":"días"}` : state==="today" ? " · hoy" : "");
   if(p.fertFreq>0){
     $("d-fertrow").style.display="flex";
     $("d-fert").textContent = p.lastFert ? fmt(addDays(p.lastFert, p.fertFreq)) : "Sin registrar";
@@ -146,7 +149,32 @@ function openDetail(id){
 }
 
 /* ============ Modales e inicio ============ */
-function openModal(id){ if(id==="account-modal" || id==="weather-modal")closeModal("settings-modal"); $(id).classList.add("open"); if(id==="settings-modal") renderSettingsUI(); }
-function closeModal(id){ $(id).classList.remove("open"); if(id === "form-modal") invalidateForm(); }
+function syncModalLayout(){
+  const open=!!document.querySelector?.(".modal.open");
+  document.documentElement.classList.toggle("dialog-open",open);
+  $("app-shell").inert=open;
+}
+function openModal(id){ if(id==="account-modal" || id==="weather-modal")closeModal("settings-modal"); $(id).classList.add("open"); if(id==="settings-modal") renderSettingsUI(); syncModalLayout(); }
+function closeModal(id){ $(id).classList.remove("open"); if(id === "form-modal") invalidateForm(); syncModalLayout(); }
 
-export { toast, splash, render, toggleSearch, closeSearch, dateWords, careDate, openDetail, openModal, closeModal };
+function setupLayout(){
+  const root=document.documentElement,viewport=window.visualViewport,dock=$("add-dock");
+  const fit=()=>{
+    // Follow the space left by the keyboard/browser bars; leave pinch zoom native.
+    if(viewport && viewport.scale===1){
+      root.style.setProperty("--app-height",viewport.height+"px");
+      root.style.setProperty("--app-top",viewport.offsetTop+"px");
+    }else{
+      root.style.removeProperty?.("--app-height");root.style.removeProperty?.("--app-top");
+    }
+  };
+  const measure=()=>{
+    if(dock.getBoundingClientRect)root.style.setProperty("--dock-height",dock.getBoundingClientRect().height+"px");
+  };
+  fit();measure();
+  viewport?.addEventListener("resize",fit);viewport?.addEventListener("scroll",fit);
+  window.addEventListener?.("resize",fit);
+  if(typeof ResizeObserver!=="undefined")new ResizeObserver(measure).observe(dock);
+}
+
+export { toast, splash, render, toggleSearch, closeSearch, dateWords, careDate, openDetail, openModal, closeModal, setupLayout };

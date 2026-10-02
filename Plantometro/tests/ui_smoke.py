@@ -99,8 +99,8 @@ def overflow(page):
 
 def check_contrast(page):
     pairs = page.evaluate("""() => {
-      const s=getComputedStyle(document.documentElement), names=['--ink','--ink2','--green','--grana','--amber','--blue'];
-      return ['--bg','--surface','--surface2'].flatMap(bg=>names.map(fg=>[fg,bg,s.getPropertyValue(fg).trim(),s.getPropertyValue(bg).trim()]));
+      const s=getComputedStyle(document.documentElement), names=['--ink','--ink2','--green','--grana','--amber','--blue','--care'];
+      return [...['--bg','--surface','--surface2'].flatMap(bg=>names.map(fg=>[fg,bg,s.getPropertyValue(fg).trim(),s.getPropertyValue(bg).trim()])), ['--add-ink','--add-bg',s.getPropertyValue('--add-ink').trim(),s.getPropertyValue('--add-bg').trim()]];
     }""")
     def luminance(h):
         v=[int(h[i:i+2],16)/255 for i in (1,3,5)]
@@ -109,6 +109,24 @@ def check_contrast(page):
     for fg,bg,a,b in pairs:
         x,y=sorted([luminance(a),luminance(b)])
         assert (y+.05)/(x+.05)>=4.5, (fg,bg,a,b)
+
+def clear_dock(page):
+    # The scroll viewport physically ends above the dock, at every scroll offset.
+    # Check painted (clipped) card areas, not off-screen document rectangles.
+    result=page.evaluate("""() => {
+      const pane=document.querySelector('.wrap'),dock=document.querySelector('.add-dock'),fab=document.querySelector('.fab');
+      const p=pane.getBoundingClientRect(),d=dock.getBoundingClientRect(),b=fab.getBoundingClientRect();
+      const intersects=(a,c)=>a.left<c.right&&a.right>c.left&&a.top<c.bottom&&a.bottom>c.top;
+      const collisions=[...document.querySelectorAll('.card-photo,.card .name,.card .next,.waterbtn')].filter(el=>{
+        const r=el.getBoundingClientRect(),visible={left:Math.max(r.left,p.left),right:Math.min(r.right,p.right),top:Math.max(r.top,p.top),bottom:Math.min(r.bottom,p.bottom)};
+        return visible.left<visible.right&&visible.top<visible.bottom&&intersects(visible,b);
+      }).map(el=>el.className);
+      return {paneBottom:p.bottom,dockTop:d.top,scrollWidth:pane.scrollWidth,clientWidth:pane.clientWidth,buttonBottom:b.bottom,buttonTop:b.top,dockBottom:d.bottom,height:visualViewport.height,collisions,hit:document.elementFromPoint(b.left+b.width/2,b.top+b.height/2)?.closest('.fab')===fab};
+    }""")
+    assert result['paneBottom']<=result['dockTop']+.5,result
+    assert result['scrollWidth']<=result['clientWidth']+1,result
+    assert result['buttonTop']>=result['dockTop'] and result['buttonBottom']<=result['dockBottom'],result
+    assert result['buttonBottom']<=result['height']+1 and result['hit'] and not result['collisions'],result
 
 with sync_playwright() as pw:
     browser=pw.chromium.launch(executable_path=os.environ.get("CHROMIUM_PATH","/usr/bin/chromium"),args=["--no-sandbox"])
@@ -123,7 +141,7 @@ with sync_playwright() as pw:
         expect(page.locator("#grid .card")).to_have_count(1)
         expect(page.locator("#gate")).to_be_hidden()
         expect(page.locator("h1.brand")).to_have_text("Plantómetro")
-        expect(page.locator("#grid .next")).to_contain_text("Pendiente desde el")
+        expect(page.locator("#grid .next")).to_contain_text("Recordatorio del")
         assert not overflow(page)
         for theme in ["light","dark"]:
             page.evaluate(f"import('./js/settings.js').then(m=>m.setTheme('{theme}'))")
@@ -463,7 +481,7 @@ with sync_playwright() as pw:
             assert not overflow(page)
             page.screenshot(path=str(OUT/f"preview-{width}-{theme}.png"),full_page=True)
         page.locator("#grid [data-open]").first.click()
-        expect(page.locator('#d-next')).to_contain_text('77 días pendiente')
+        expect(page.locator('#d-next')).to_contain_text('recordatorio de hace 77 días')
         expect(page.locator('#d-water')).to_be_visible()
         page.locator('#detail-modal .xbtn').click()
         page.locator('.fab').click()
@@ -475,6 +493,73 @@ with sync_playwright() as pw:
         assert not errors,errors
         context.close()
     print('PASS preview: embedded photos, mobile/tablet layouts, both themes, services explicitly simulated')
+    # Dock layout with the actual app, synthetic garden and simulated services.
+    # Font preference and safe insets are varied; keyboard is simulated by viewport resize.
+    photo='data:image/jpeg;base64,'+base64.b64encode((ROOT/'Plantometro/preview-assets/plant.jpg').read_bytes()).decode()
+    from datetime import date,timedelta
+    day=date.today()
+    many=[{**PLANT,'id':'layout-'+str(i),'name':('La planta del salón junto a la ventana con un nombre largo '*3 if i==1 else 'Planta '+str(i)), 'photo':photo if i%3 else None,'history':[],'gallery':[],'waterFreq':7,'lastWater':str(day-timedelta(days=[12,7,3][i%3]))} for i in range(14)]
+    many.append({**PLANT,'id':'fresh','name':'Recién añadida sin riego','photo':None,'history':[],'gallery':[],'lastWater':'','createdAt':str(day)+'T12:00:00Z'})
+    for width,height in [(320,740),(390,844),(768,1024),(1024,768),(768,640)]:
+        context=browser.new_context(viewport=dict(width=width,height=height),has_touch=True,service_workers='block')
+        context.route('https://**/*',route_external)
+        context.add_init_script('window.testPlants=[];window.testWrites=[];')
+        page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto(URL)
+        expect(page.locator('#gate')).to_be_hidden()
+        # Zero, one and many plants, and the three chronological states.
+        for garden in [[],[many[1]],many]:
+            page.evaluate('list=>{testPlants=list;testSnapshot({docs:list.map(p=>({data:()=>p}))})}',garden)
+            expect(page.locator('#grid .card')).to_have_count(len(garden))
+            for theme in ['light','dark']:
+                page.evaluate(f"import('./js/settings.js').then(m=>m.setTheme('{theme}'))")
+                check_contrast(page)
+                for zoom in ['100%','200%']:
+                    page.evaluate('size=>document.documentElement.style.fontSize=size',zoom)
+                    page.evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
+                    clear_dock(page)
+                    for fraction in [0,.35,.7,1]:
+                        page.evaluate('f=>{const p=document.querySelector(".wrap");p.scrollTop=f*(p.scrollHeight-p.clientHeight)}',fraction)
+                        clear_dock(page)
+        page.evaluate("document.documentElement.style.fontSize='100%';document.documentElement.style.setProperty('--safe-bottom','34px')")
+        page.evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
+        clear_dock(page)
+        assert page.locator('.fab').bounding_box()['y']+page.locator('.fab').bounding_box()['height']<=height-34
+        # No destructive cropping, no image substitution when the photo is absent.
+        page.wait_for_function("[...document.querySelectorAll('.card-photo img')].every(i=>i.complete&&i.naturalWidth>0)")
+        assert page.locator('.card-photo img').evaluate_all("imgs=>imgs.every(i=>getComputedStyle(i).objectFit==='contain')")
+        assert page.locator('[data-plant=layout-0] .card-photo img').count()==0
+        assert page.locator('[data-plant=layout-0] .next').inner_text().startswith('Recordatorio del ')
+        assert page.locator('[data-plant=layout-1] .next').inner_text()=='Hoy toca mirar la tierra'
+        assert 'Mirar la tierra el ' in page.locator('[data-plant=layout-2] .next').inner_text()
+        fresh=page.locator('[data-plant=fresh]');assert fresh.get_attribute('class')=='card ok'
+        # Shrink available height while searching, then restore orientation/height.
+        page.locator('#search-toggle').click();page.locator('#q').fill('Planta')
+        page.set_viewport_size(dict(width=width,height=max(320,int(height*.55))))
+        page.evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
+        clear_dock(page)
+        page.set_viewport_size(dict(width=width,height=height))
+        page.get_by_role('button',name='Cerrar búsqueda').click()
+        # Global add action is absent behind every app window and returns on close.
+        page.locator('.fab').click();expect(page.locator('#form-modal')).to_be_visible();expect(page.locator('.fab')).to_be_hidden()
+        page.locator('#f-name').fill('Sin fecha inventada')
+        page.set_viewport_size(dict(width=width,height=max(320,int(height*.55))))
+        page.evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
+        expect(page.locator('.fab')).to_be_hidden()
+        page.locator('#plant-form').evaluate('el=>Promise.all(el.getAnimations().map(a=>a.finished))')
+        sheet=page.locator('#plant-form').bounding_box();assert sheet['y']>=0 and sheet['y']+sheet['height']<=max(320,int(height*.55))+1,(width,height,sheet)
+        page.locator('#f-save').scroll_into_view_if_needed();expect(page.locator('#f-save')).to_be_in_viewport()
+        page.locator('#form-modal .xbtn').click()
+        page.set_viewport_size(dict(width=width,height=height));clear_dock(page)
+        # Ficha, settings and secondary windows cannot be obscured by the dock.
+        page.locator('[data-open=layout-0]').click();expect(page.locator('.fab')).to_be_hidden()
+        assert page.locator('#d-next').inner_text().find('recordatorio de hace')>=0
+        page.locator('#detail-modal .xbtn').click()
+        page.locator('#settings-btn').click();expect(page.locator('.fab')).to_be_hidden()
+        page.get_by_role('button',name='Clima de tu zona').click();expect(page.locator('.fab')).to_be_hidden()
+        page.locator('#weather-modal .xbtn').click();clear_dock(page)
+        assert page.evaluate('testWrites.length')==0 and not errors,errors
+        print(f'PASS reserved dock {width}x{height}: zero/one/many, both themes, text 200%, full scroll, safe inset 34px, simulated keyboard, modals, full photos, date states and fresh plant')
+        context.close()
     # Real service worker and offline app shell, without a production sign-in.
     context=browser.new_context(viewport=dict(width=390,height=844))
     context.route("https://**/*",route_external)
@@ -484,8 +569,8 @@ with sync_playwright() as pw:
     page.reload()
     page.wait_for_function("navigator.serviceWorker.controller !== null")
     keys=page.evaluate("caches.keys()")
-    assert "plantometro-v12" in keys
-    assert page.evaluate("caches.open('plantometro-v12').then(c=>c.match(location.href).then(Boolean))")
+    assert "plantometro-v13" in keys
+    assert page.evaluate("caches.open('plantometro-v13').then(c=>c.match(location.href).then(Boolean))")
     # Preserve caches belonging to the other apps on the same GitHub Pages origin.
     page.evaluate("caches.open('horas-v1')")
     sw=page.evaluate("navigator.serviceWorker.getRegistration().then(r=>r.active.scriptURL)")
@@ -495,7 +580,7 @@ with sync_playwright() as pw:
     context.set_offline(True);page.reload()
     expect(page.locator("h1.brand")).to_have_text("Plantómetro")
     assert "horas-v1" in page.evaluate("caches.keys()")
-    print("PASS PWA: scoped worker v12, app cache, offline shell, standalone manifest, other-app cache retained")
+    print("PASS PWA: scoped worker v13, app cache, offline shell, standalone manifest, other-app cache retained")
     context.close();browser.close()
 server.shutdown()
 print(f"Screenshots: {OUT}")

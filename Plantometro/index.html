@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Plantómetro · El jardín compartido</title>
 <meta name="theme-color" content="#214B38">
 <link rel="manifest" href="./manifest.json">
@@ -19,6 +19,7 @@
     <path d="M55 103h50l-7 34H62Z" fill="currentColor" opacity=".35"/><path d="M53 103h54" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
   </symbol>
 </defs></svg>
+<div class="app-shell" id="app-shell">
 <div class="wrap">
   <header class="top">
     <div class="headrow">
@@ -37,7 +38,10 @@
   </div>
   <main class="grid" id="grid" aria-label="Tus plantas"></main>
 </div>
-<button class="fab" data-action="openForm" aria-label="Añadir planta"><span aria-hidden="true">+</span><span class="fab-label">Añadir planta</span></button>
+<div class="add-dock" id="add-dock">
+  <button class="fab" data-action="openForm" aria-label="Añadir planta"><span aria-hidden="true">+</span><span class="fab-label">Añadir planta</span></button>
+</div>
+</div>
 <div class="toast" id="toast"></div>
 
 <!-- ===== Formulario ===== -->
