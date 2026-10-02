@@ -48,14 +48,18 @@
 
     <label for="f-name">Nombre *</label>
     <input id="f-name" required placeholder="Ej: Monstera del salón">
-    <label>Foto (opcional)</label>
+    <label for="f-photo-button">Foto (opcional)</label>
     <div class="photopick">
-      <div class="prev" id="f-prev"><svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg></div>
-      <input type="file" accept="image/*" id="f-photo" >
+      <div class="prev" id="f-prev" aria-live="polite"><svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg></div>
+      <button type="button" class="btn soft photo-button" id="f-photo-button" data-action="chooseFormPhoto">Añadir foto</button>
+      <input type="file" accept="image/*" id="f-photo" hidden>
     </div>
-    <label for="f-freq">Mirar la tierra cada… (días)</label>
-    <input id="f-freq" type="number" min="1" max="120" required value="7">
-    <p class="note">La fecha es orientativa. Tú decides si necesita agua.</p>
+    <div class="frequency-field">
+      <label for="f-freq" id="f-freq-label">Recordarme cada</label>
+      <input id="f-freq" type="number" min="1" max="120" required value="7" aria-labelledby="f-freq-label f-freq-unit" aria-describedby="f-freq-note">
+      <span id="f-freq-unit">días</span>
+    </div>
+    <p class="note" id="f-freq-note">Comprueba la tierra antes de regar</p>
     <button type="button" class="text-button identify" id="f-identify" data-action="identifyPlant">Pedir ayuda a Gemini</button>
     <p class="note" id="f-aistatus" role="status" style="display:none"></p>
     <section id="f-suggestions" class="suggestions" hidden aria-label="Sugerencias de Gemini"></section>
@@ -93,7 +97,6 @@
     </div>
     <div class="detail-heading"><h2 id="d-name">—</h2><p id="d-species"></p><p class="detail-date" id="d-state"></p></div>
     <button class="btn primary" id="d-water">Ya la he regado</button>
-    <p class="note care-note">Si la tierra sigue húmeda, puedes esperar.</p>
     <div class="kv"><span class="k">Último riego</span><span class="v" id="d-last">—</span></div>
     <div class="kv"><span class="k">Para mirar la tierra</span><span class="v" id="d-next">—</span></div>
 

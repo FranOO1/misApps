@@ -1,5 +1,5 @@
 import { validateBackup } from "./backup.js";
-import { $, todayStr, addDays, diffDays, dateNumber, PLANT_ART } from "./utils.js";
+import { $, esc, todayStr, addDays, diffDays, dateNumber, PLANT_ART } from "./utils.js";
 import { whoAmI } from "./settings.js";
 import { plants, putPlant, removePlant, putPlantsBatch, updatePlantTransaction, sessionToken } from "./sync.js";
 import { shrinkImage } from "./photos.js";
@@ -18,6 +18,18 @@ function plantState(p){
 }
 /* ============ Formulario ============ */
 let formPhoto = null, formLight = "", formRevision = 0;
+function renderFormPhoto(){
+  $("f-prev").innerHTML = formPhoto ? `<img src="${esc(formPhoto)}" alt="Vista previa de la foto">` : PLANT_ART;
+  $("f-photo-button").textContent = formPhoto ? "Cambiar foto" : "Añadir foto";
+}
+function chooseFormPhoto(){
+  // Reset only the picker: cancelling leaves the current photo and draft intact.
+  $("f-photo").value = "";
+  $("f-photo").click();
+}
+function updateReminderUnit(){
+  $("f-freq-unit").textContent = +$("f-freq").value === 1 ? "día" : "días";
+}
 function setLight(v){ formLight = formLight===v ? "" : v; document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight)); }
 function openForm(id){
   const p = id ? plants.find(x=>x.id===id) : null;
@@ -26,6 +38,7 @@ function openForm(id){
   $("f-name").value = p?.name || ""; $("f-species").value = p?.species || "";
   $("f-loc").value = p?.loc || ""; $("f-desc").value = p?.desc || "";
   $("f-freq").value = p?.waterFreq || 7; $("f-last").value = p?.lastWater || "";
+  updateReminderUnit();
   $("f-fertfreq").value = p?.fertFreq || 0; $("f-fertlast").value = p?.lastFert || "";
   $("f-potsize").value = p?.potSize || ""; $("f-potdate").value = p?.potDate || "";
   formRevision++;
@@ -34,7 +47,7 @@ function openForm(id){
   $("f-details").open = !!p;
   $("f-aistatus").style.display = "none";
   formPhoto = p?.photo || null; formLight = p?.light || "";
-  $("f-prev").innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : PLANT_ART;
+  renderFormPhoto();
   $("f-photo").value = "";
   document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight));
   openModal("form-modal");
@@ -48,9 +61,9 @@ async function pickPhoto(e){
     const photo = await shrinkImage(file, 640, .68);
     if(revision !== formRevision || session!==sessionToken()) return;
     formPhoto = photo;
-    $("f-prev").innerHTML = `<img src="${formPhoto}" alt="Foto de la planta">`;
+    renderFormPhoto();
     $("f-aistatus").style.display = "block";
-    $("f-aistatus").textContent = "Foto lista. Puedes pedir sugerencias con Gemini.";
+    $("f-aistatus").textContent = "Foto lista.";
   }catch(e){ toast("No se pudo leer la foto. Prueba con otra imagen."); }
 }
 
@@ -153,4 +166,4 @@ async function importData(e){
     if(await putPlantsBatch(selected)){toast(`Restauración confirmada: ${selected.length} ${selected.length===1?'planta':'plantas'}.`);closeModal("account-modal");}
   }catch(err){toast("No se restauró ninguna ficha: " + (err.message||"copia inválida"));}
 }
-export {effectiveFreq,plantState,formPhoto,formLight,formRevision,setLight,openForm,pickPhoto,savePlant,trimPlant,water,correctWater,removeWaterEvent,fertilize,delPlant,exportDownload,importData,invalidateForm,setFormLight};
+export {effectiveFreq,plantState,formPhoto,formLight,formRevision,setLight,openForm,chooseFormPhoto,updateReminderUnit,pickPhoto,savePlant,trimPlant,water,correctWater,removeWaterEvent,fertilize,delPlant,exportDownload,importData,invalidateForm,setFormLight};

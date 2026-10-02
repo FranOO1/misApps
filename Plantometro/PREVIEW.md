@@ -38,7 +38,9 @@ usan servicios simulados y no alteran datos de producción.
 - Abrir una ficha: tocar la foto o el nombre. Cerrar si no hace falta agua, sin
   registrar una revisión ni posponer.
 - Añadir: botón «+ Añadir planta», escribir nombre/frecuencia y guardar; la foto
-  es opcional. Más detalles y Gemini se usan solo si hacen falta.
+  es opcional: «Añadir foto» muestra la vista previa y «Cambiar foto» permite
+  reemplazarla; cancelar deja la anterior. «Recordarme cada 7 días» configura la
+  frecuencia orientativa. Más detalles y Gemini se usan solo si hacen falta.
 - Clima o cuenta/copias: Ajustes y la opción correspondiente.
 
 Se han retirado la vista semanal, filtros, contadores, grandes avisos y botones

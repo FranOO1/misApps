@@ -204,6 +204,74 @@ with sync_playwright() as pw:
         assert not errors, errors
         print(f"PASS {width}x{height}: open, edit, history, undo, name/photo suggestions, discard, correction, add, weather, contrast")
         context.close()
+    # Form polish in touch/mobile Chromium. Native Android's OS picker still needs
+    # a device check: Playwright opens a browser file chooser and simulates cancellation.
+    for width,height in [(320,740),(768,1024)]:
+        ua="Mozilla/5.0 (Linux; Android 13; " + ("Pixel 5" if width<660 else "Tablet") + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 " + ("Mobile " if width<660 else "") + "Safari/537.36"
+        context=browser.new_context(viewport=dict(width=width,height=height),has_touch=True,is_mobile=True,user_agent=ua,service_workers="block")
+        context.route("https://**/*",route_external)
+        original_photo='data:image/jpeg;base64,'+base64.b64encode((ROOT/'Plantometro/preview-assets/plant.jpg').read_bytes()).decode()
+        original={**PLANT,"name":"Mi planta","photo":original_photo}
+        context.add_init_script("window.testPlants="+json.dumps([original])+";window.testWrites=[];")
+        page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto(URL)
+        # New plant: no native English file input, a tactile button and clear reminder.
+        page.locator('.fab').tap()
+        expect(page.locator('#f-photo')).to_be_hidden()
+        expect(page.locator('#f-photo-button')).to_have_text('Añadir foto')
+        expect(page.locator('#f-prev img')).to_have_count(0)
+        expect(page.locator('#f-freq-label')).to_have_text('Recordarme cada')
+        expect(page.locator('#f-freq-note')).to_have_text('Comprueba la tierra antes de regar')
+        assert page.locator('#f-photo-button').bounding_box()['height']>=44
+        assert 'Choose File' not in page.locator('#plant-form').inner_text()
+        page.locator('#f-freq').fill('1');expect(page.locator('#f-freq-unit')).to_have_text('día')
+        page.locator('#f-freq').fill('7');expect(page.locator('#f-freq-unit')).to_have_text('días')
+        page.locator('#f-name').fill('La nueva')
+        with page.expect_file_chooser() as event:
+            page.locator('#f-photo-button').tap()
+        event.value.set_files(str(ROOT/'Plantometro/preview-assets/ficus.jpg'))
+        expect(page.locator('#f-prev img')).to_be_visible()
+        expect(page.locator('#f-photo-button')).to_have_text('Cambiar foto')
+        new_preview=page.locator('#f-prev img').get_attribute('src')
+        assert new_preview.startswith('data:image/jpeg') and page.evaluate('testWrites.length')==0
+        # Cancel choosing a replacement; preview and draft remain untouched.
+        with page.expect_file_chooser() as event:
+            page.locator('#f-photo-button').tap()
+        event.value.set_files([])
+        page.locator('#f-photo').dispatch_event('cancel')
+        assert page.locator('#f-prev img').get_attribute('src')==new_preview
+        expect(page.locator('#f-name')).to_have_value('La nueva')
+        expect(page.locator('#f-photo-button')).to_have_text('Cambiar foto')
+        assert not overflow(page)
+        for theme in ['light','dark']:
+            page.evaluate(f"import('./js/settings.js').then(m=>m.setTheme('{theme}'))")
+            check_contrast(page)
+            page.screenshot(path=str(OUT/f'form-photo-{width}-{theme}.png'))
+        page.locator('#f-save').tap()
+        expect(page.locator('#grid .card')).to_have_count(2)
+        assert page.evaluate('testWrites.at(-1).plant.photo')==new_preview
+        assert page.evaluate('testWrites.at(-1).plant.history')==[]
+        # Edit: the original full photo, history and diary survive cancelling and saving.
+        page.locator('[data-open=existing]').tap();open_section(page,'d-manage-section');page.locator('#d-edit').tap()
+        expect(page.locator('#f-photo-button')).to_have_text('Cambiar foto')
+        assert page.locator('#f-prev img').get_attribute('src')==original_photo
+        before=page.evaluate('testWrites.length')
+        with page.expect_file_chooser() as event:
+            page.locator('#f-photo-button').tap()
+        event.value.set_files([]);page.locator('#f-photo').dispatch_event('cancel')
+        assert page.locator('#f-prev img').get_attribute('src')==original_photo
+        assert page.evaluate('testWrites.length')==before
+        # A decoding failure also leaves the previous photograph intact.
+        page.locator('#f-photo').set_input_files(dict(name='broken.jpg',mimeType='image/jpeg',buffer=b'not an image'))
+        expect(page.locator('#toast')).to_contain_text('No se pudo leer la foto')
+        assert page.locator('#f-prev img').get_attribute('src')==original_photo
+        page.locator('#f-save').tap()
+        page.wait_for_function('testWrites.length===2')
+        saved=page.evaluate('testWrites.at(-1).plant')
+        assert saved['photo']==original_photo and saved['history']==original['history'] and saved['gallery']==original['gallery']
+        assert saved['futureField']=='keep-me'
+        assert not errors,errors
+        print(f'PASS photo form {width}x{height} Android/touch emulation: add/change button, real chooser event, photo preview, simulated cancel, failed decoding, untouched previous photo/history, reminder singular/plural')
+        context.close()
     # Regression scenarios on real DOM, with explicit service failure and account changes.
     for width,height in [(390,844),(768,1024)]:
         context=browser.new_context(viewport=dict(width=width,height=height),service_workers="block")
@@ -368,6 +436,14 @@ with sync_playwright() as pw:
     page.get_by_role('button',name='Cerrar búsqueda').click()
     expect(page.locator('#grid .card')).to_have_count(9)
     assert not overflow(page) and not errors,errors
+    # Natural labels for no pending plants and an empty garden, with a photo fallback.
+    page.evaluate("day=>testSnapshot({docs:[{data:()=>({...testPlants[0],id:'future',name:'Mi planta',lastWater:day,photo:null})}]})",str(today))
+    expect(page.locator('#garden-summary')).to_have_text('Hoy, tu jardín puede esperar.')
+    expect(page.locator('.card-photo svg')).to_be_visible()
+    expect(page.locator('.card-photo img')).to_have_count(0)
+    page.evaluate("testSnapshot({docs:[]})")
+    expect(page.locator('#garden-summary')).to_have_text('Un rincón para tus plantas.')
+    expect(page.locator('#grid .empty h2')).to_have_text('Tu jardín empieza aquí')
     print('PASS minimal home: chronological order, one watering action, no changes on inspection, new plant without invented water, discreet search')
     context.close()
     # Self-contained preview with embedded photographs; network deliberately blocked.
@@ -389,6 +465,13 @@ with sync_playwright() as pw:
         page.locator("#grid [data-open]").first.click()
         expect(page.locator('#d-next')).to_contain_text('77 días pendiente')
         expect(page.locator('#d-water')).to_be_visible()
+        page.locator('#detail-modal .xbtn').click()
+        page.locator('.fab').click()
+        expect(page.locator('#f-photo-button')).to_have_text('Añadir foto')
+        expect(page.locator('#f-photo')).to_be_hidden()
+        expect(page.locator('#f-freq-label')).to_have_text('Recordarme cada')
+        expect(page.locator('#f-freq-note')).to_have_text('Comprueba la tierra antes de regar')
+        assert not overflow(page)
         assert not errors,errors
         context.close()
     print('PASS preview: embedded photos, mobile/tablet layouts, both themes, services explicitly simulated')
@@ -401,8 +484,8 @@ with sync_playwright() as pw:
     page.reload()
     page.wait_for_function("navigator.serviceWorker.controller !== null")
     keys=page.evaluate("caches.keys()")
-    assert "plantometro-v11" in keys
-    assert page.evaluate("caches.open('plantometro-v11').then(c=>c.match(location.href).then(Boolean))")
+    assert "plantometro-v12" in keys
+    assert page.evaluate("caches.open('plantometro-v12').then(c=>c.match(location.href).then(Boolean))")
     # Preserve caches belonging to the other apps on the same GitHub Pages origin.
     page.evaluate("caches.open('horas-v1')")
     sw=page.evaluate("navigator.serviceWorker.getRegistration().then(r=>r.active.scriptURL)")
@@ -412,7 +495,7 @@ with sync_playwright() as pw:
     context.set_offline(True);page.reload()
     expect(page.locator("h1.brand")).to_have_text("Plantómetro")
     assert "horas-v1" in page.evaluate("caches.keys()")
-    print("PASS PWA: scoped worker v11, app cache, offline shell, standalone manifest, other-app cache retained")
+    print("PASS PWA: scoped worker v12, app cache, offline shell, standalone manifest, other-app cache retained")
     context.close();browser.close()
 server.shutdown()
 print(f"Screenshots: {OUT}")

@@ -83,7 +83,11 @@ label{display:block;font-size:14px;font-weight:600;margin:18px 0 6px}
 .photopick .prev{display:flex;align-items:center;justify-content:center;width:74px;height:74px;flex-shrink:0;border-radius:16px;background:var(--surface2);color:var(--leaf);overflow:hidden}
 .photopick .prev>svg{width:65px;height:65px}
 .photopick .prev img{width:100%;height:100%;object-fit:cover}
-.photopick input{min-width:0;flex:1;font-size:13px;padding:10px 6px;border:0;background:none}
+.photopick .photo-button{min-width:0;flex:1;width:auto;margin:0;-webkit-tap-highlight-color:transparent}
+.frequency-field{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:18px}
+.frequency-field label{margin:0}
+.frequency-field input{width:76px;text-align:center}
+.frequency-field>span{color:var(--ink2);font-size:14px}
 .identify{font-size:14px;margin-top:4px}
 summary{display:flex;align-items:center;justify-content:space-between;gap:16px;font-weight:600;font-size:15px;cursor:pointer;list-style:none;padding:16px 0}
 summary::-webkit-details-marker{display:none}
@@ -108,7 +112,6 @@ details[open]>summary::after{content:'−'}
 .detail-heading h2{font-size:30px;overflow-wrap:anywhere}
 #d-species{color:var(--ink2);font-size:14px;margin-top:5px;font-style:italic;overflow-wrap:anywhere}
 .detail-date{color:var(--green);font-size:14px;margin-top:10px;line-height:1.5;font-weight:600}
-.care-note{text-align:center;margin-bottom:16px}
 .kv{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:10px 0;font-size:14px}
 .kv .k{color:var(--ink2)}
 .kv .v{text-align:right;max-width:65%;font-weight:500;overflow-wrap:anywhere}

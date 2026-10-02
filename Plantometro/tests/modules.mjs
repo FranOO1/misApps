@@ -67,7 +67,12 @@ await plants.water('old');assert.equal(writes.at(-1).plant.history.length,66);as
 assert.equal(JSON.stringify(writes.at(-1).plant.gallery),JSON.stringify(existing.gallery));
 assert.equal(writes.at(-1).plant.futureField,'preserve');
 assert.equal(JSON.stringify(writes.at(-1).ref),JSON.stringify(['users','test','plants','old']));
-plants.openForm('old');el('f-name').value='Nombre editado';await plants.savePlant({preventDefault(){}});
+plants.openForm('old');
+assert.equal(el('f-photo-button').textContent,'Añadir foto');
+const originalPhoto=plants.formPhoto,beforeCancel=writes.length;
+plants.chooseFormPhoto();await plants.pickPhoto({target:{files:[]}});
+assert.equal(plants.formPhoto,originalPhoto);assert.equal(writes.length,beforeCancel);
+el('f-name').value='Nombre editado';await plants.savePlant({preventDefault(){}});
 assert.equal(writes.at(-1).plant.name,'Nombre editado');assert.equal(writes.at(-1).plant.history.length,66);assert.equal(writes.at(-1).plant.futureField,'preserve');
 plants.openForm();el('f-name').value='Mi apodo';settings.settings.geminiKey='test-placeholder';
 await gemini.identifyPlant();assert.equal(el('f-name').value,'Mi apodo');assert.equal(el('f-freq').value,7);
@@ -81,6 +86,11 @@ await plants.savePlant({preventDefault(){}});assert.equal(writes.at(-1).plant.la
 assert.equal(sync.plants.length,2);
 gemini.showPlantSuggestions({revisarCadaDias:500,confianza:'baja'});
 assert(!el('f-suggestions').children.some(c=>c.children?.some(x=>x.id==='suggest-revisarCadaDias')));
+gemini.showPlantSuggestions({revisarCadaDias:1,confianza:'baja'});
+el('suggest-revisarCadaDias').value='1';
+el('use-revisarCadaDias').checked=true;
+el('f-suggestions').children.find(c=>c.tagName==='BUTTON').click();
+assert.equal(el('f-freq-unit').textContent,'día');
 assert(!/<style|on(click|change|input|submit)=/.test(html));
 assert.equal((html.match(/<script/g)||[]).length,1);
 // Calendar dates are exact across DST; a synthetic 77-day delay remains 77.
@@ -100,7 +110,7 @@ const events={},cacheKeys=new Set(['plantometro-v7','horas-v1','parte-v2']),core
 const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async paths=>core.push(...paths)};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL});
 vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),swcontext);
 let pending;events.install({waitUntil:p=>pending=p});await pending;events.activate({waitUntil:p=>pending=p});await pending;
-assert(cacheKeys.has('plantometro-v11'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
+assert(cacheKeys.has('plantometro-v12'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
 for(const file of core.filter(f=>f!=='./' && !f.startsWith('https:')))assert(fs.existsSync(path.join(root,file)),`Missing cache asset ${file}`);
 for(const file of ['styles.css',...fs.readdirSync(path.join(root,'js')).map(n=>'js/'+n)])assert(core.includes('./'+file),`Uncached asset ${file}`);
 let intercepted=false;events.fetch({request:{method:'POST',url:'https://generativelanguage.googleapis.com/'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);

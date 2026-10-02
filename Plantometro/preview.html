@@ -94,7 +94,11 @@ label{display:block;font-size:14px;font-weight:600;margin:18px 0 6px}
 .photopick .prev{display:flex;align-items:center;justify-content:center;width:74px;height:74px;flex-shrink:0;border-radius:16px;background:var(--surface2);color:var(--leaf);overflow:hidden}
 .photopick .prev>svg{width:65px;height:65px}
 .photopick .prev img{width:100%;height:100%;object-fit:cover}
-.photopick input{min-width:0;flex:1;font-size:13px;padding:10px 6px;border:0;background:none}
+.photopick .photo-button{min-width:0;flex:1;width:auto;margin:0;-webkit-tap-highlight-color:transparent}
+.frequency-field{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:18px}
+.frequency-field label{margin:0}
+.frequency-field input{width:76px;text-align:center}
+.frequency-field>span{color:var(--ink2);font-size:14px}
 .identify{font-size:14px;margin-top:4px}
 summary{display:flex;align-items:center;justify-content:space-between;gap:16px;font-weight:600;font-size:15px;cursor:pointer;list-style:none;padding:16px 0}
 summary::-webkit-details-marker{display:none}
@@ -119,7 +123,6 @@ details[open]>summary::after{content:'−'}
 .detail-heading h2{font-size:30px;overflow-wrap:anywhere}
 #d-species{color:var(--ink2);font-size:14px;margin-top:5px;font-style:italic;overflow-wrap:anywhere}
 .detail-date{color:var(--green);font-size:14px;margin-top:10px;line-height:1.5;font-weight:600}
-.care-note{text-align:center;margin-bottom:16px}
 .kv{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:10px 0;font-size:14px}
 .kv .k{color:var(--ink2)}
 .kv .v{text-align:right;max-width:65%;font-weight:500;overflow-wrap:anywhere}
@@ -216,14 +219,18 @@ details[open]>summary::after{content:'−'}
 
     <label for="f-name">Nombre *</label>
     <input id="f-name" required placeholder="Ej: Monstera del salón">
-    <label>Foto (opcional)</label>
+    <label for="f-photo-button">Foto (opcional)</label>
     <div class="photopick">
-      <div class="prev" id="f-prev"><svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg></div>
-      <input type="file" accept="image/*" id="f-photo" >
+      <div class="prev" id="f-prev" aria-live="polite"><svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg></div>
+      <button type="button" class="btn soft photo-button" id="f-photo-button" data-action="chooseFormPhoto">Añadir foto</button>
+      <input type="file" accept="image/*" id="f-photo" hidden>
     </div>
-    <label for="f-freq">Mirar la tierra cada… (días)</label>
-    <input id="f-freq" type="number" min="1" max="120" required value="7">
-    <p class="note">La fecha es orientativa. Tú decides si necesita agua.</p>
+    <div class="frequency-field">
+      <label for="f-freq" id="f-freq-label">Recordarme cada</label>
+      <input id="f-freq" type="number" min="1" max="120" required value="7" aria-labelledby="f-freq-label f-freq-unit" aria-describedby="f-freq-note">
+      <span id="f-freq-unit">días</span>
+    </div>
+    <p class="note" id="f-freq-note">Comprueba la tierra antes de regar</p>
     <button type="button" class="text-button identify" id="f-identify" data-action="identifyPlant">Pedir ayuda a Gemini</button>
     <p class="note" id="f-aistatus" role="status" style="display:none"></p>
     <section id="f-suggestions" class="suggestions" hidden aria-label="Sugerencias de Gemini"></section>
@@ -261,7 +268,6 @@ details[open]>summary::after{content:'−'}
     </div>
     <div class="detail-heading"><h2 id="d-name">—</h2><p id="d-species"></p><p class="detail-date" id="d-state"></p></div>
     <button class="btn primary" id="d-water">Ya la he regado</button>
-    <p class="note care-note">Si la tierra sigue húmeda, puedes esperar.</p>
     <div class="kv"><span class="k">Último riego</span><span class="v" id="d-last">—</span></div>
     <div class="kv"><span class="k">Para mirar la tierra</span><span class="v" id="d-next">—</span></div>
 
@@ -830,6 +836,18 @@ function plantState(p){
 }
 /* ============ Formulario ============ */
 let formPhoto = null, formLight = "", formRevision = 0;
+function renderFormPhoto(){
+  $("f-prev").innerHTML = formPhoto ? `<img src="${esc(formPhoto)}" alt="Vista previa de la foto">` : PLANT_ART;
+  $("f-photo-button").textContent = formPhoto ? "Cambiar foto" : "Añadir foto";
+}
+function chooseFormPhoto(){
+  // Reset only the picker: cancelling leaves the current photo and draft intact.
+  $("f-photo").value = "";
+  $("f-photo").click();
+}
+function updateReminderUnit(){
+  $("f-freq-unit").textContent = +$("f-freq").value === 1 ? "día" : "días";
+}
 function setLight(v){ formLight = formLight===v ? "" : v; document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight)); }
 function openForm(id){
   const p = id ? plants.find(x=>x.id===id) : null;
@@ -838,6 +856,7 @@ function openForm(id){
   $("f-name").value = p?.name || ""; $("f-species").value = p?.species || "";
   $("f-loc").value = p?.loc || ""; $("f-desc").value = p?.desc || "";
   $("f-freq").value = p?.waterFreq || 7; $("f-last").value = p?.lastWater || "";
+  updateReminderUnit();
   $("f-fertfreq").value = p?.fertFreq || 0; $("f-fertlast").value = p?.lastFert || "";
   $("f-potsize").value = p?.potSize || ""; $("f-potdate").value = p?.potDate || "";
   formRevision++;
@@ -846,7 +865,7 @@ function openForm(id){
   $("f-details").open = !!p;
   $("f-aistatus").style.display = "none";
   formPhoto = p?.photo || null; formLight = p?.light || "";
-  $("f-prev").innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : PLANT_ART;
+  renderFormPhoto();
   $("f-photo").value = "";
   document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight));
   openModal("form-modal");
@@ -860,9 +879,9 @@ async function pickPhoto(e){
     const photo = await shrinkImage(file, 640, .68);
     if(revision !== formRevision || session!==sessionToken()) return;
     formPhoto = photo;
-    $("f-prev").innerHTML = `<img src="${formPhoto}" alt="Foto de la planta">`;
+    renderFormPhoto();
     $("f-aistatus").style.display = "block";
-    $("f-aistatus").textContent = "Foto lista. Puedes pedir sugerencias con Gemini.";
+    $("f-aistatus").textContent = "Foto lista.";
   }catch(e){ toast("No se pudo leer la foto. Prueba con otra imagen."); }
 }
 
@@ -1300,6 +1319,7 @@ function showPlantSuggestions(j){
       if(c.key === "luz"){ setFormLight(c.input.value); }
       else $(c.target).value=c.input.value.trim();
     }
+    updateReminderUnit();
     $("f-details").open = true; box.hidden=true;
     $("f-aistatus").textContent="Sugerencias elegidas en el formulario. Revisa los datos y guarda la planta.";
   };
@@ -1454,12 +1474,13 @@ function closeModal(id){ $(id).classList.remove("open"); if(id === "form-modal")
 
 
 // Location search results are bound in weather.js, rather than inline handlers.
-const actions = { openModal, closeModal, openForm, setLight, setTheme, saveSettings, searchCity, useGPS, loadWeather, doSignIn, doSignOut, exportDownload, toggleSearch, closeSearch, toggleSummer, enableNotifs, identifyPlant };
+const actions = { openModal, closeModal, openForm, chooseFormPhoto, setLight, setTheme, saveSettings, searchCity, useGPS, loadWeather, doSignIn, doSignOut, exportDownload, toggleSearch, closeSearch, toggleSummer, enableNotifs, identifyPlant };
 document.querySelectorAll("[data-action]").forEach(button=>button.addEventListener("click",()=>{
   actions[button.dataset.action]?.(button.dataset.arg);
 }));
 $("plant-form").addEventListener("submit",savePlant);
 $("f-photo").addEventListener("change",pickPhoto);
+$("f-freq").addEventListener("input",updateReminderUnit);
 $("backup-file").addEventListener("change",importData);
 $("q").addEventListener("input",render);
 $("f-name").addEventListener("input",invalidateForm);

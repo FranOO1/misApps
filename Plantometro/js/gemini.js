@@ -2,7 +2,7 @@ import { $, esc, todayStr, fmt, LIGHT } from "./utils.js";
 import { settings, whoAmI } from "./settings.js";
 import { plants, putPlant, sessionToken } from "./sync.js";
 import { isOutdoor, seasonContext, weatherContext } from "./weather.js";
-import { plantState, formPhoto, formLight, formRevision, openForm, trimPlant, setFormLight } from "./plants.js";
+import { plantState, formPhoto, formLight, formRevision, openForm, trimPlant, setFormLight, updateReminderUnit } from "./plants.js";
 import { shrinkImage, pushDiary } from "./photos.js";
 import { toast, openModal, closeModal } from "./ui.js";
 
@@ -286,6 +286,7 @@ function showPlantSuggestions(j){
       if(c.key === "luz"){ setFormLight(c.input.value); }
       else $(c.target).value=c.input.value.trim();
     }
+    updateReminderUnit();
     $("f-details").open = true; box.hidden=true;
     $("f-aistatus").textContent="Sugerencias elegidas en el formulario. Revisa los datos y guarda la planta.";
   };

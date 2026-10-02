@@ -32,7 +32,10 @@ con nueve plantas o más aparece además un icono discreto en la cabecera. Nunca
 se muestra el campo de búsqueda por defecto. Clima, cuenta y copias se abren desde
 Ajustes. En la ficha hay una acción principal; fotos, cuidados, historial, Gemini y
 edición se ordenan en desplegables nativos. Crear pide nombre, foto opcional y
-frecuencia; los demás datos están en «Más detalles».
+frecuencia; los demás datos están en «Más detalles». La foto se elige con
+«Añadir foto»/«Cambiar foto» y un selector nativo oculto; cancelar conserva la
+vista previa anterior y no escribe nada. «Recordarme cada 7 días» explica la
+frecuencia, con la única aclaración «Comprueba la tierra antes de regar».
 
 ## Datos y comportamiento conservados
 
@@ -54,7 +57,7 @@ frecuencia; los demás datos están en «Más detalles».
 - Restaurar valida íntegramente IDs, fechas, fotos, historial y tamaño; usa un batch
   atómico (máximo 400 plantas), con recuento de fichas conservadas. Se mantienen las
   copias v3 y los arrays legados válidos. No se recortan fotos/historial automáticamente.
-- Worker `plantometro-v11`: cachea estructura, estilos, módulos y SDK estático;
+- Worker `plantometro-v12`: cachea estructura, estilos, módulos y SDK estático;
   solo limpia cachés `plantometro-*`. No cachea servicios, login ni datos Firestore.
 
 ## Pruebas reproducibles
@@ -83,7 +86,10 @@ dos riegos y abono, permisos de escritura/eliminación, restauración inválida 
 batch fallido, exportación, siete fotos conservadas, GPS, revisión guardada, logout,
 cambio de cuenta y respuestas tardías. La suite también comprueba el orden de las
 plantas, búsqueda pequeña/grande, que inspeccionar no escriba ni posponga, y que
-una planta nueva no tenga riego inventado. La demostración autónoma se prueba sin
+una planta nueva no tenga riego inventado. El formulario también se prueba con emulación táctil de Android en 320×740
+y tablet en 768×1024: apertura del selector, foto previa, cancelación simulada,
+fallo de lectura y conservación de foto/historial. El selector Android del sistema
+y la cámara requieren comprobación en dispositivos físicos. La demostración autónoma se prueba sin
 red, con fotos embebidas, en los cuatro tamaños y ambos temas.
 
 El navegador, DOM, almacenamiento y ciclo del worker son reales en Chromium local.
