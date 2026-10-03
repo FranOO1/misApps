@@ -1,22 +1,19 @@
-// Rules for the local test project ONLY. Never replace another app's production rules.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId}/plants/{plantId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
     match /users/{userId}/plantometroActivity/recent {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create, update: if request.auth != null && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['events', 'updatedAt'])
+      allow read: if request.auth != null && request.auth.uid == userId && userId != 'no-activity';
+      allow create, update: if request.auth != null && request.auth.uid == userId && userId != 'no-activity'
+        && request.resource.data.keys().hasOnly(['events','updatedAt'])
         && request.resource.data.events is list
         && request.resource.data.events.size() <= 120
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
     }
-    match /_plantometro_ai_limits/{document=**} {
-      allow read, write: if false;
-    }
+    // Concrete denial fixture: a valid plant path but no activity permission.
+    match /users/no-activity/plantometroActivity/recent { allow read: if false; }
   }
 }

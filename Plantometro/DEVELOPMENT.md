@@ -14,7 +14,9 @@ desactivado en esta rama.
 | `js/plants.js` | Formulario, recordatorios, riegos, abono y corrección de historial. |
 | `js/backup.js` | Validación completa de copias y restauración atómica. |
 | `js/photos.js` | Compresión, vista previa y diario fotográfico. |
-| `js/weather.js` | Ciudad/GPS y contexto exterior; validación de respuestas. |
+| `js/weather.js` | Ciudad/GPS opcional, clima visible, caché y refresco controlado. |
+| `js/weather-model.js`, `js/weather-effects.js` | Validación/umbrales y señales ambientales accesibles. |
+| `js/activity-model.js`, `js/activity.js` | Eventos/lecturas por dispositivo y campana sincronizada. |
 | `js/gemini.js` | Consejos y sugerencias editables; guardado explícito. |
 | `js/ai-service.js` | Callable autenticado, App Check y errores seguros. |
 | `js/ai-config.js` | Activación, región y clave pública de App Check; nunca secretos. |
@@ -34,8 +36,8 @@ terracota ocupa una fila fija propia; la lista termina antes. Se oculta con las
 ventanas. `visualViewport`, texto en `rem` y margen seguro reservan espacio.
 Fotos completas (`contain`), o dibujo vegetal si faltan; no se sustituye la especie.
 
-Clima/cuenta/copias quedan en Ajustes. Búsqueda a petición, con acceso adicional
-pequeño desde nueve plantas. La ficha recoge detalles en desplegables. Crear pide
+Clima compacto y campana en la cabecera; cuenta/copias en Ajustes. Búsqueda
+visible desde cinco plantas; cuadrícula compacta solo si cabe con texto legible. La ficha recoge detalles en desplegables. Crear pide
 nombre, foto opcional y frecuencia; lo demás en «Más detalles». Selector oculto
 tras «Añadir foto»/«Cambiar foto», vista previa conservada al cancelar.
 «Recordarme cada 7 días» tiene una sola aclaración: «Comprueba la tierra antes de
@@ -54,7 +56,7 @@ como texto legible sin reescribirlo.
 
 Se elimina campo de clave y opción de notificaciones: no había avisos con app cerrada.
 La migración borra solo `geminiKey`; incluso con escritura bloqueada carga preferencias
-y no usa la clave. Worker `plantometro-v16`: shell, módulos, contrato compartido y SDK
+y no usa la clave. Worker `plantometro-v17`: shell, módulos, contrato compartido y SDK
 estático; sin caché de respuestas IA, autenticación ni documentos Firestore; conserva
 cachés ajenas. Instala el conjunto completo con descargas frescas y sirve HTML/módulos
 de la misma versión; no mezcla la caché HTTP anterior. Comprueba actualizaciones al
@@ -116,3 +118,12 @@ por la caché HTTP no pueden bloquear la instalación/recarga de la nueva versi�
 `/tmp/plantometro-pages-v16-ready` (o `PLANTOMETRO_RELEASE_SIGNAL`) antes de comprobar
 la versión publicada. No usa adaptadores ni inicia sesión; prueba shell/SDK, clima
 y caché offline, no CRUD de producción ni instalación física Android.
+
+## Clima y actividad compartida (esta rama)
+
+[WEATHER_ACTIVITY.md](WEATHER_ACTIVITY.md) explica los módulos, los umbrales, el
+diario limitado, la conservación de datos y las reglas de producción necesarias.
+[TEST_MATRIX_WEATHER_ACTIVITY.md](TEST_MATRIX_WEATHER_ACTIVITY.md) separa las pruebas
+reales de Open-Meteo, emuladores locales, simulación y teléfonos pendientes.
+[PUSH.md](PUSH.md): push desactivado hasta disponer de emisor, acceso y entrega
+real verificada; no se ha activado facturación. Esta tarea no modifica Gemini.
