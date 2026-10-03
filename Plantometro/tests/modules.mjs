@@ -28,7 +28,8 @@ for(const m of html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bid="([^"]+)"[^>]*)>/g))
   const el=new Element(m[1]);el.parentElement=new Element('div');el.id=m[3];el.value=/\bvalue="([^"]*)"/.exec(m[2])?.[1]||'';
 }
 const document={getElementById:id=>{assert(elements.has(id),`Missing DOM id ${id}`);return elements.get(id);},querySelectorAll:()=>[],createElement:tag=>new Element(tag),createTextNode:text=>({textContent:text}),addEventListener(){},documentElement:new Element('html')};
-const storage=new Map();
+const originalSettings={name:'Fran',city:'Granada',lat:37.1773,lon:-3.5986,theme:'dark',geminiKey:'migration-test-marker',summerMode:true,customPreference:'keep'};
+const storage=new Map([['pg3b_settings',JSON.stringify(originalSettings)]]);
 const writes=[];
 const existing={id:'old',name:'Mi planta',species:'Monstera',light:'media',waterFreq:7,lastWater:'2020-01-01',loc:'Terraza',gallery:[{date:'2020-01-01',note:'old',img:''}],history:Array.from({length:65},()=>({t:'agua',date:'2020-01-01',by:'Pareja'})),createdAt:'2020-01-01T12:00:00Z',futureField:'preserve'};
 const context=vm.createContext({document,window:{},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},matchMedia:()=>({matches:false,addEventListener(){}}),navigator:{},setTimeout:()=>0,clearTimeout(){},Date,console,URL,Blob,TextEncoder,crypto:webcrypto,confirm:()=>true,fetch:async url=>{
@@ -44,7 +45,8 @@ context.testExisting=existing;context.testWrites=writes;
 const modules=new Map();
 function getModule(id){
   if(modules.has(id))return modules.get(id);
-  const code=id.startsWith('https:')?mocks[id.split('/').at(-1)]:fs.readFileSync(id,'utf8');
+  let code=id.startsWith('https:')?mocks[id.split('/').at(-1)]:fs.readFileSync(id,'utf8');
+  if(id.endsWith('/ai-service.js'))code=`export const AI_UNAVAILABLE='Ayuda con IA no disponible';export const aiEnabled=()=>true;export const aiStatus=()=> 'IA simulada en pruebas';export const aiErrorMessage=()=> 'No disponible';export const callPlantAI=async()=>({resumen:'Consejo de ejemplo.',consejo:'Comprueba la tierra.',confianza:'baja',motivo:'Dudosa',sugerencias:{nombreComun:'Monstera',especie:'Monstera deliciosa',revisarCadaDias:5,abonoCadaDias:null,luz:'media'}});`;
   assert(code,`Missing module ${id}`);
   const mod=new vm.SourceTextModule(code,{context,identifier:id});modules.set(id,mod);return mod;
 }
@@ -55,6 +57,8 @@ const ns=file=>modules.get(path.join(root,'js',file)).namespace;
 const ui=ns('ui.js'),plants=ns('plants.js'),sync=ns('sync.js'),settings=ns('settings.js'),weather=ns('weather.js'),gemini=ns('gemini.js');
 const el=id=>elements.get(id);
 assert.equal(sync.plants.length,1);
+const migrated=JSON.parse(storage.get('pg3b_settings')),expectedSettings={...originalSettings};delete expectedSettings.geminiKey;assert.deepEqual(migrated,expectedSettings);assert(!('geminiKey' in settings.settings));
+assert(!html.includes('s-gkey'));assert(!html.includes('s-notif-sw'));
 assert.equal(plants.plantState(existing).state,'late');
 assert.match(el('grid').innerHTML,/Recordatorio del/);
 settings.settings.name='Fran';settings.settings.summerMode=true;
@@ -74,7 +78,7 @@ plants.chooseFormPhoto();await plants.pickPhoto({target:{files:[]}});
 assert.equal(plants.formPhoto,originalPhoto);assert.equal(writes.length,beforeCancel);
 el('f-name').value='Nombre editado';await plants.savePlant({preventDefault(){}});
 assert.equal(writes.at(-1).plant.name,'Nombre editado');assert.equal(writes.at(-1).plant.history.length,66);assert.equal(writes.at(-1).plant.futureField,'preserve');
-plants.openForm();el('f-name').value='Mi apodo';settings.settings.geminiKey='test-placeholder';
+plants.openForm();el('f-name').value='Mi apodo';
 await gemini.identifyPlant();assert.equal(el('f-name').value,'Mi apodo');assert.equal(el('f-freq').value,7);
 assert.equal(el('f-suggestions').hidden,false);
 const buttons=el('f-suggestions').children.filter(c=>c.tagName==='BUTTON');
@@ -107,10 +111,11 @@ assert.throws(()=>backup.validateBackup([bob,bob]));
 const one={...existing,gallery:[],history:[]};assert.equal(backup.validateBackup([one]).length,1);
 // Execute service-worker lifecycle with a cache adapter, checking scope and routes.
 const events={},cacheKeys=new Set(['plantometro-v7','horas-v1','parte-v2']),core=[];
-const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async paths=>core.push(...paths)};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL});
+const scope='https://franoo1.github.io/misApps/Plantometro/';
+const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},registration:{scope},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async requests=>core.push(...requests.map(r=>{assert.equal(r.cache,'reload');return r.url.startsWith(scope)?'./'+r.url.slice(scope.length):r.url;}))};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL,Request});
 vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),swcontext);
 let pending;events.install({waitUntil:p=>pending=p});await pending;events.activate({waitUntil:p=>pending=p});await pending;
-assert(cacheKeys.has('plantometro-v13'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
+assert(cacheKeys.has('plantometro-v15'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
 for(const file of core.filter(f=>f!=='./' && !f.startsWith('https:')))assert(fs.existsSync(path.join(root,file)),`Missing cache asset ${file}`);
 for(const file of ['styles.css',...fs.readdirSync(path.join(root,'js')).map(n=>'js/'+n)])assert(core.includes('./'+file),`Uncached asset ${file}`);
 let intercepted=false;events.fetch({request:{method:'POST',url:'https://generativelanguage.googleapis.com/'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);

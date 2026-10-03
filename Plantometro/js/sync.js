@@ -17,13 +17,15 @@ try { localStorage.removeItem("pg3_fbconfig"); } catch(e){} // limpieza de la co
 
 /* ============ Firebase: sesión y datos ============ */
 let auth=null, fs=null, user=null, unsub=null, plants=[];
-let epoch=0, operations=new Map(), confirmed=new Map();
+let epoch=0, operations=new Map(), confirmed=new Map(),transactions=new Set(),pendingWrites=new Set();
+const hasPendingWrites=()=>pendingWrites.size>0||transactions.size>0;
+function notifySyncIdle(){if(typeof window.dispatchEvent==='function')window.dispatchEvent(new Event('plantometro:sync-idle'));}
 const clone = value => JSON.parse(JSON.stringify(value));
 const cacheKey = uid => "pg3_cache_" + uid;
 try{localStorage.removeItem("pg3_cache");}catch(e){}
 function clearGarden(uid){
   epoch++; if(unsub){unsub();unsub=null;}
-  plants=[]; confirmed.clear(); operations.clear();
+  plants=[]; confirmed.clear(); operations.clear();transactions.clear();pendingWrites.clear();
   try{localStorage.removeItem("pg3_cache");if(uid)localStorage.removeItem(cacheKey(uid));}catch(e){}
   document.querySelectorAll(".modal.open").forEach(m=>closeModal(m.id));
   $("acc-name").textContent=""; $("acc-email").textContent=""; $("acc-photo").src="";
@@ -52,6 +54,7 @@ function optimistic(p){const i=plants.findIndex(x=>x.id===p.id);if(i<0)plants.pu
 function rollback(id){const previous=confirmed.get(id);plants=plants.filter(p=>p.id!==id);if(previous)plants.push(clone(previous));saveCache();render();}
 function track(ids,action,write){
   const session=epoch,uid=user.uid,op=Symbol(); ids.forEach(id=>operations.set(id,op));
+  pendingWrites.add(op);
   $("sync-status").textContent=navigator.onLine===false ? "Cambios pendientes en este dispositivo; se enviarán al volver la conexión." : "Guardando cambios…";
   return Promise.resolve().then(write).then(()=>{
     if(epoch!==session || user?.uid!==uid)return false;
@@ -60,7 +63,7 @@ function track(ids,action,write){
   }).catch(err=>{
     if(epoch!==session || user?.uid!==uid)return false;
     ids.forEach(id=>{if(operations.get(id)===op){rollback(id);operations.delete(id);}});reportWriteError(err,action);return false;
-  });
+  }).finally(()=>{pendingWrites.delete(op);notifySyncIdle();});
 }
 
 function showGate(mode){
@@ -103,8 +106,8 @@ async function doSignIn(){
   const prov = new GoogleAuthProvider();
   try { await signInWithPopup(auth, prov); }
   catch(err){
-    if((err.code||"").includes("popup")) { try { await signInWithRedirect(auth, prov); } catch(e2){ $("gate-error").textContent = friendlyAuthError(e2); } }
-    else $("gate-error").textContent = friendlyAuthError(err);
+    if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(err.code)) { try { await signInWithRedirect(auth, prov); } catch(e2){ $("gate-error").textContent = friendlyAuthError(e2); } }
+    else if(!['auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(err.code)) $("gate-error").textContent = friendlyAuthError(err);
   }
 }
 async function doSignOut(){
@@ -145,6 +148,7 @@ function putPlantsBatch(list){
 async function updatePlantTransaction(id,transform){
   if(!requireSession())return false;
   const session=epoch,uid=user.uid;
+  const operation=Symbol();transactions.add(operation);
   try{
     await runTransaction(fs,async tx=>{
       const ref=doc(fs,"users",uid,"plants",id),snap=await tx.get(ref);
@@ -158,7 +162,8 @@ async function updatePlantTransaction(id,transform){
     if(changed){optimistic(changed);confirmed.set(id,clone(changed));}
     toast("Riego corregido. Los demás registros se conservan.");return true;
   }catch(err){if(session===epoch)reportWriteError(err,"corregir ese riego (requiere conexión)");return false;}
+  finally{transactions.delete(operation);notifySyncIdle();}
 }
 const alive=()=>plants;
 const sessionToken=()=>user?user.uid+":"+epoch:null;
-export {plants,auth,showGate,startFirebase,doSignIn,doSignOut,putPlant,removePlant,putPlantsBatch,updatePlantTransaction,alive,sessionToken};
+export {plants,auth,showGate,startFirebase,doSignIn,doSignOut,putPlant,removePlant,putPlantsBatch,updatePlantTransaction,alive,sessionToken,hasPendingWrites};

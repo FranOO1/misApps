@@ -1,131 +1,115 @@
 # Plantómetro: estructura y comprobación
 
-Aplicación estática, sin framework ni compilación. GitHub Pages sirve los archivos
-con rutas relativas desde `Plantometro/`; `index.html` contiene la estructura.
+Cliente estático, sin framework ni compilación. GitHub Pages sirve rutas relativas;
+`index.html` contiene la estructura. El servidor de IA se despliega aparte y está
+desactivado en esta rama.
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `styles.css` | Jerarquía visual, temas y adaptación a móvil/tablet. |
-| `js/app.js` | Arranque y conexión de eventos. |
-| `js/utils.js` | Fechas por días de calendario, texto seguro y placeholder vegetal. |
-| `js/ui.js` | Portada, fechas cotidianas, búsqueda opcional, ficha y modales. |
-| `js/plants.js` | Formulario, pauta orientativa, riegos/abonos y copias. |
-| `js/backup.js` | Validación completa de una copia antes de escribir. |
-| `js/photos.js` | Compresión y diario fotográfico. |
-| `js/weather.js` | Ciudad/GPS y contexto para exterior. |
-| `js/gemini.js` | Propuestas editables, identificación y consulta de cuidados. |
-| `js/settings.js` | Preferencias del dispositivo, apodo, tema y avisos opcionales. |
-| `js/sync.js` | Proyecto Firebase existente, login Google y Firestore. |
+| `styles.css` | Portada, temas, contraste y adaptación táctil. |
+| `js/app.js` | Arranque y eventos. |
+| `js/pwa.js` | Actualización segura al terminar formularios, guardados y deshacer. |
+| `js/utils.js` | Fechas, texto seguro y dibujo vegetal sin foto. |
+| `js/ui.js` | Portada, búsqueda discreta, ficha y ventanas. |
+| `js/plants.js` | Formulario, recordatorios, riegos, abono y corrección de historial. |
+| `js/backup.js` | Validación completa de copias y restauración atómica. |
+| `js/photos.js` | Compresión, vista previa y diario fotográfico. |
+| `js/weather.js` | Ciudad/GPS y contexto exterior; validación de respuestas. |
+| `js/gemini.js` | Consejos y sugerencias editables; guardado explícito. |
+| `js/ai-service.js` | Callable autenticado, App Check y errores seguros. |
+| `js/ai-config.js` | Activación, región y clave pública de App Check; nunca secretos. |
+| `shared/ai-response.js` | Contrato de respuesta validado en cliente y servidor. |
+| `js/settings.js` | Preferencias y borrado exclusivo de la antigua clave de Gemini. |
+| `js/sync.js` | Firebase existente, Google, Firestore y caché por cuenta. |
+| `server/` | Función autenticada, autorización, cuotas privadas y Vertex por IAM. |
 | `sw.js`, `manifest.json` | Caché e instalación PWA. |
-| `scripts/build_preview.py` | Genera una demostración autónoma con servicios simulados. |
-| `preview-assets/` | Fotografías ilustrativas para la demostración. |
+| `scripts/build_preview.py`, `preview-assets/` | Demostración autónoma simulada. |
+| `tests/`, `server/tests/` | Navegador, módulos, migración y servicios locales. |
 
-## Jerarquía actual
+## Interfaz y datos
 
-La portada muestra una cabecera pequeña, una frase y tarjetas: foto, nombre,
-fecha y «Ya la he regado». Se ordenan por fecha de revisión, primero las pendientes,
-luego hoy y finalmente próximas. Tocar la foto o el nombre abre la ficha.
+Se mantiene la portada: cabecera pequeña, una frase y tarjetas con foto, nombre,
+recordatorio y «Ya la he regado». Foto y nombre abren ficha. «+ Añadir planta»
+terracota ocupa una fila fija propia; la lista termina antes. Se oculta con las
+ventanas. `visualViewport`, texto en `rem` y margen seguro reservan espacio.
+Fotos completas (`contain`), o dibujo vegetal si faltan; no se sustituye la especie.
 
-Se retiran Semana, filas de filtros, estadísticas, anillos, avisos grandes, etiquetas
-secundarias y el segundo botón por tarjeta. La búsqueda se abre desde Ajustes;
-con nueve plantas o más aparece además un icono discreto en la cabecera. Nunca
-se muestra el campo de búsqueda por defecto. Clima, cuenta y copias se abren desde
-Ajustes. En la ficha hay una acción principal; fotos, cuidados, historial, Gemini y
-edición se ordenan en desplegables nativos. Crear pide nombre, foto opcional y
-frecuencia; los demás datos están en «Más detalles». La foto se elige con
-«Añadir foto»/«Cambiar foto» y un selector nativo oculto; cancelar conserva la
-vista previa anterior y no escribe nada. «Recordarme cada 7 días» explica la
-frecuencia, con la única aclaración «Comprueba la tierra antes de regar».
+Clima/cuenta/copias quedan en Ajustes. Búsqueda a petición, con acceso adicional
+pequeño desde nueve plantas. La ficha recoge detalles en desplegables. Crear pide
+nombre, foto opcional y frecuencia; lo demás en «Más detalles». Selector oculto
+tras «Añadir foto»/«Cambiar foto», vista previa conservada al cancelar.
+«Recordarme cada 7 días» tiene una sola aclaración: «Comprueba la tierra antes de
+regar».
 
-«+ Añadir planta» permanece en una zona fija inferior, en terracota. La lista
-se desplaza en una fila distinta del mismo contenedor: el espacio reservado
-crece con el texto y con el margen seguro del sistema, sin cubrir tarjetas.
-Las ventanas ocultan esa acción y desactivan el fondo. `visualViewport` ajusta
-la altura disponible al teclado y las barras del navegador; el zoom por gesto
-sigue siendo nativo. Los tamaños de texto usan `rem` para respetar preferencias.
-Las fotos de portada y ficha se muestran completas (`contain`); sin foto, o si
-falla su carga, aparece un dibujo vegetal. La foto guardada no se cambia.
-«Recordatorio del…» expresa una fecha pasada orientativa, sin afirmar que la
-planta necesita agua. Las fechas y el texto secundario tienen mayor contraste.
+No cambia Firebase ni `users/{uid}/plants/{id}`. Editar conserva campos desconocidos,
+fotos e historial. `waterFreq` orienta cuándo comprobar; sin `lastWater` la referencia
+es la creación y no se inventa un riego. Inspeccionar no escribe ni pospone. La
+corrección durable elimina solo el evento elegido y conserva operaciones posteriores.
 
-## Datos y comportamiento conservados
+La IA nunca escribe en el jardín desde servidor. Sugerencias sin seleccionar pasan
+al formulario solo al aceptar los campos elegidos/corregidos; guardar la planta
+sigue siendo separado. Consejo/foto se guardan explícitamente. Se descartan consultas
+tardías de otra ficha/sesión o de formularios cambiados. JSON antiguo se presenta
+como texto legible sin reescribirlo.
 
-- Mismo proyecto Firebase, Google y `users/{uid}/plants/{id}`. Sin migración ni
-  cambio de identificadores. Editar conserva campos adicionales, historial y fotos.
-- `waterFreq` orienta cuándo mirar la tierra. No es una medida de humedad. Abrir
-  una ficha y salir no escribe ni pospone nada; si no se riega, sigue pendiente.
-- Una planta sin `lastWater` usa su fecha de creación como referencia. No se
-  inventa un riego. Registrar actualiza fecha, apodo e historial y permite deshacer.
-- La corrección durable de un riego nuevo sigue disponible en Historial después
-  del aviso: una transacción elimina ese evento y conserva operaciones posteriores.
-- Gemini no bloquea la creación: se revisan y seleccionan los campos antes de
-  aplicarlos al formulario. La clave permanece en el dispositivo, fuera de Firebase
-  y del repositorio; no se imprime ni se envía en URLs.
-- El clima y el modo verano aportan contexto, sin modificar pautas ni registrar
-  agua. La lluvia se contextualiza solo en fichas de exterior.
-- Logout limpia memoria/copia local por UID. Respuestas tardías de otra sesión se
-  descartan. Permisos, sesión y disponibilidad de Firestore tienen errores distintos.
-- Restaurar valida íntegramente IDs, fechas, fotos, historial y tamaño; usa un batch
-  atómico (máximo 400 plantas), con recuento de fichas conservadas. Se mantienen las
-  copias v3 y los arrays legados válidos. No se recortan fotos/historial automáticamente.
-- Worker `plantometro-v13`: cachea estructura, estilos, módulos y SDK estático;
-  solo limpia cachés `plantometro-*`. No cachea servicios, login ni datos Firestore.
+Se elimina campo de clave y opción de notificaciones: no había avisos con app cerrada.
+La migración borra solo `geminiKey`; incluso con escritura bloqueada carga preferencias
+y no usa la clave. Worker `plantometro-v15`: shell, módulos, contrato compartido y SDK
+estático; sin caché de respuestas IA, autenticación ni documentos Firestore; conserva
+cachés ajenas. Instala el conjunto completo con descargas frescas y sirve HTML/módulos
+de la misma versión; no mezcla la caché HTTP anterior. Comprueba actualizaciones al
+abrir/volver y espera si hay formularios, escrituras pendientes o un aviso Deshacer.
+Rutas y manifest siguen bajo `/misApps/Plantometro/`.
 
 ## Pruebas reproducibles
 
-Desde la raíz del repositorio:
+Node 22, Python Playwright, Chromium y Java 21 para Firestore.
+`CHROMIUM_PATH` selecciona el navegador; `PLANTOMETRO_TEST_OUTPUT` cambia capturas
+(por defecto `/tmp/plantometro-tests`). Desde raíz:
 
 ```sh
-for file in Plantometro/js/*.js Plantometro/sw.js; do node --check "$file" || exit 1; done
 node --experimental-vm-modules Plantometro/tests/modules.mjs
+node --experimental-vm-modules --test Plantometro/tests/migration.test.mjs
 python Plantometro/scripts/build_preview.py
-python Plantometro/tests/ui_smoke.py
+python -u Plantometro/tests/ui_smoke.py
+python -u Plantometro/tests/security_ui.py
+node --experimental-vm-modules Plantometro/tests/auth_cancel.mjs
+python -u Plantometro/tests/pwa_update.py
 ```
 
-La prueba Node carga el grafo real de módulos con un DOM mínimo y adaptadores
-simulados. Verifica añadir/editar, propuestas Gemini seleccionadas/corregidas y
-descarte, preservación de datos, fechas, validación de copias, rutas y worker.
+Desde `Plantometro/`, con Node 22:
 
-La suite de navegador usa Python Playwright y Chromium (`CHROMIUM_PATH` permite
-seleccionar ejecutable). Ejecuta 320×740, 390×844, 768×1024 y 820×1180, temas
-claro/oscuro, nombres largos, contraste de textos, abrir/añadir/editar, fotos,
-Gemini por nombre/foto, riego/deshacer y clima desde Ajustes. Las capturas se guardan
-en `/tmp/plantometro-tests` o `PLANTOMETRO_TEST_OUTPUT`.
+```sh
+npm ci
+npm run test:server
+npm run test:integration
+npm audit --omit=dev
+```
 
-Regresiones en 390×844 y 768×1024: corrección específica tras cinco segundos con
-dos riegos y abono, permisos de escritura/eliminación, restauración inválida y
-batch fallido, exportación, siete fotos conservadas, GPS, revisión guardada, logout,
-cambio de cuenta y respuestas tardías. La suite también comprueba el orden de las
-plantas, búsqueda pequeña/grande, que inspeccionar no escriba ni posponga, y que
-una planta nueva no tenga riego inventado. El formulario también se prueba con emulación táctil de Android en 320×740
-y tablet en 768×1024: apertura del selector, foto previa, cancelación simulada,
-fallo de lectura y conservación de foto/historial. El selector Android del sistema
-y la cámara requieren comprobación en dispositivos físicos.
+La integración exige `demo-plantometro` y variables de emuladores; nunca se ejecuta
+contra el jardín personal. SDK web real, Auth/Firestore locales, dos navegadores de
+una cuenta desechable y otra cuenta aislada: sincronización, transacciones,
+reconexión, fotos, copia/restauración y salida. No verifica Google OAuth ni Gemini.
 
-El botón fijo se comprueba además en 1024×768 y 768×640, con cero/una/muchas
-plantas, nombres largos, fechas pasadas/hoy/futuras, ambos temas, texto al 200%,
-todo el recorrido de desplazamiento y un margen seguro simulado de 34 px.
-Se comprueba que no intersecte fotos, nombres, fechas o botones, y que desaparezca
-tras abrir ficha, formulario, Ajustes o clima. La reducción de altura simula el
-espacio disponible con teclado; no abre un teclado Android real.
-La demostración autónoma se prueba sin
-red, con fotos embebidas, en los cuatro tamaños y ambos temas.
+UI: Chromium real, servicios adaptados, 320×740, 390×844, 768×1024 y 820×1180,
+ambos temas. También 1024×768 y 768×640 para botón fijo, texto 200%, nombres largos,
+cero/una/muchas plantas y margen seguro simulado 34 px. Reducir viewport simula
+espacio del teclado, no abre Android. Contraste de texto/paleta ≥4,5:1 y acciones
+principales ≥44 px.
 
-El navegador, DOM, almacenamiento y ciclo del worker son reales en Chromium local.
-La suite comprueba shell sin conexión, manifest standalone y caché de otras apps.
-Autenticación, Firebase, Gemini, clima y GPS se simulan: no se escribe en producción.
+Las reglas de prueba no se despliegan. El emulador utilizado no aplica reglas a
+bases con nombre: contadores en colección privada de su base desechable predeterminada
+solo en pruebas. Producción usa `plantometro-ai`; su IAM/aislamiento deben comprobarse
+en Google. App Check positivo también requiere Google; el rechazo sin App Check sí
+se ejecuta con middleware Functions real.
 
-**Pendiente real:** Google y reglas/escrituras Firestore con vuestra cuenta,
-sincronización entre móviles, Gemini con clave real, clima/GPS y la instalación,
-actualización y uso offline en Android/tablet. Los 77 días de Bob se comprueban
-con un ejemplo; falta verificar fecha/frecuencia reales y fecha de la captura.
-También quedan pendientes el selector/cámara y el teclado del sistema, barras
-seguras y zoom por gesto en dispositivos físicos.
+[TEST_MATRIX.md](TEST_MATRIX.md) detalla resultados y bloqueos por caso. Capturas de
+[captures/](captures/) proceden del navegador con demostración, no de tu jardín.
+[SECURE_AI.md](SECURE_AI.md) contiene configuración exacta pendiente. IA desactivada
+hasta verificarla, sin afirmar que funciona con Google por pasar las simulaciones.
 
-## Demostración sin fusionar
-
-Ver [PREVIEW.md](PREVIEW.md). Regenerar `preview.html` tras modificar código o
-estilos. No contiene configuración Firebase ni una clave real; todos sus servicios
-se simulan. Sus fotografías ilustrativas están documentadas en
-[preview-assets/README.md](preview-assets/README.md) y se embeben en el HTML. No
-sustituyen las fotos de los usuarios. La página no instala un service worker.
+`tests/published_update.py` comprueba una actualización real de GitHub Pages en un
+perfil sin sesión, conservando preferencias y una ficha local desechable. Espera
+`/tmp/plantometro-pages-v15-ready` (o `PLANTOMETRO_RELEASE_SIGNAL`) antes de comprobar
+la versión publicada. No usa adaptadores ni inicia sesión; prueba shell/SDK, clima
+y caché offline, no CRUD de producción ni instalación física Android.

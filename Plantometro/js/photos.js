@@ -1,4 +1,4 @@
-import { $, todayStr, fmt } from "./utils.js";
+import { $, esc, todayStr, fmt } from "./utils.js";
 import { whoAmI } from "./settings.js";
 import { plants, putPlant, sessionToken } from "./sync.js";
 import { trimPlant } from "./plants.js";
@@ -7,20 +7,24 @@ import { toast, openModal, closeModal } from "./ui.js";
 /* ============ Diario fotográfico ============ */
 function renderGallery(p){
   const g = p.gallery || [];
-  $("d-gal").innerHTML = g.map((e,i)=>`<button class="gph" data-g="${i}"><img src="${e.img}" alt=""><span class="gd">${fmt(e.date)}</span></button>`).join("")
-    + `<button class="gadd" data-gadd="1" title="Añadir foto al diario">➕</button>`;
+  $("d-gal").innerHTML = g.map((e,i)=>`<button class="gph" data-g="${i}" aria-label="Foto del ${esc(fmt(e.date))}"><img src="${esc(e.img)}" alt=""><span class="gd">${fmt(e.date)}</span></button>`).join("")
+    + `<button class="gadd" data-gadd="1" title="Añadir foto al diario" aria-label="Añadir foto al diario">+<span>Foto</span></button>`;
   $("d-gal").querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openDiaryPhoto(p.id, +b.dataset.g));
   $("d-gal").querySelector("[data-gadd]").onclick = ()=>galleryAdd(p.id);
 }
 function openDiaryPhoto(id, i){
   const p = plants.find(x=>x.id===id); const e = p?.gallery?.[i]; if(!e) return;
-  $("pm-date").textContent = "📷 " + fmt(e.date);
+  $("pm-date").textContent = "Foto del " + fmt(e.date);
   $("pm-img").src = e.img;
   $("pm-note").textContent = e.note || "";
-  $("pm-del").onclick = ()=>{
-    p.gallery.splice(i,1);
-    p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-    putPlant(p); closeModal("photo-modal"); renderGallery(p); toast("Foto quitada del diario");
+  $("pm-del").onclick = async()=>{
+    const session=sessionToken(),current=plants.find(x=>x.id===id);
+    const index=current?.gallery?.findIndex(photo=>photo.img===e.img&&photo.date===e.date&&(photo.note||'')===(e.note||''));
+    if(index==null||index<0){toast('Esta foto ya no está en el diario.');return;}
+    const updated={...current,gallery:current.gallery.filter((_,n)=>n!==index),updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
+    if(await putPlant(updated) && session===sessionToken()){
+      closeModal('photo-modal');const saved=plants.find(x=>x.id===id);if(saved)renderGallery(saved);toast('Foto quitada del diario.');
+    }
   };
   openModal("photo-modal");
 }
@@ -53,7 +57,7 @@ async function galleryPicked(e){
   try{
     const small = await shrinkImage(file, 480, .6);
     if(session!==sessionToken() || !plants.some(x=>x.id===p.id))return;
-    if(await pushDiary(plants.find(x=>x.id===p.id), small, "")){renderGallery(plants.find(x=>x.id===p.id)); toast("Foto añadida al diario 📷");}
+    if(await pushDiary(plants.find(x=>x.id===p.id), small, "")){const saved=plants.find(x=>x.id===p.id);if(saved)renderGallery(saved);toast("Foto añadida al diario.");}
   }catch(err){ toast("No se pudo leer la imagen ❌"); }
 }
 

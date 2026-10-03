@@ -1,61 +1,52 @@
-# Plantómetro 3 · Sincronización en tiempo real con tu cuenta de Google
+# Plantómetro
 
-La app usa **Firebase** (gratis, de Google). Se configura UNA sola vez, en unos 10 minutos.
-Después: entráis con Google en cada móvil y todo se sincroniza al instante.
+Tu jardín: fotografías, recordatorios orientativos y «Ya la he regado». La fecha
+recuerda cuándo comprobar la tierra, no mide su humedad. Si no hace falta agua,
+puedes salir sin registrar nada. Una planta nueva no tiene un riego inventado.
 
-## Paso 1 · Crear el proyecto (solo tú, una vez)
+https://franoo1.github.io/misApps/Plantometro/ publica `main`. Los cambios de una
+rama se revisan antes de fusionar; la [demostración](PREVIEW.md) permite probarlos
+sin usar tu jardín.
 
-1. Entra en https://console.firebase.google.com con tu cuenta de Gmail.
-2. "Crear proyecto" → nombre: `plantometro` → desactiva Analytics → Crear.
+## Cuenta y datos
 
-## Paso 2 · Activar el login con Google
+Firebase ya está configurado para este proyecto. Entra con Google: cada cuenta
+tiene su propio jardín. Usar tu cuenta en tus otros dispositivos permite ver ese
+mismo jardín. No hay invitaciones ni acceso compartido entre cuentas diferentes.
+El apodo de Ajustes identifica quién registra los cuidados en cada dispositivo.
 
-1. Menú lateral: **Authentication** → "Comenzar".
-2. Pestaña "Sign-in method" → **Google** → Habilitar → Guardar.
-3. En Authentication → **Settings → Dominios autorizados**: añade el dominio
-   donde tienes la app (por ejemplo `tuusuario.github.io`). `localhost` ya viene incluido.
+Se conservan proyecto, rutas `users/{uid}/plants/{id}`, fotos, historial y copias.
+Cerrar sesión limpia memoria y copia local de esa cuenta. Sin conexión se utiliza
+la última copia disponible; los cambios pueden sincronizarse al recuperarla. Un
+error de permisos se indica como tal, sin presentarlo como pérdida de cobertura.
 
-## Paso 3 · Crear la base de datos
+Las copias se exportan desde Ajustes. Restaurar comprueba el archivo completo
+antes de escribir y confirma cuántas plantas incorpora, sin descartar fotos o
+historial silenciosamente. Guarda una copia antes de una restauración importante.
 
-1. Menú lateral: **Firestore Database** → "Crear base de datos".
-2. Ubicación: `eur3 (europe-west)` → empezar en **modo producción**.
-3. Pestaña **Reglas**: borra lo que haya y pega esto tal cual (no hay que cambiar nada):
+## Ayuda con IA y recordatorios
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/plants/{plantId} {
-      allow read, write: if request.auth != null
-        && request.auth.uid == userId;
-    }
-  }
-}
-```
+No tienes que crear ni pegar una clave. La antigua clave de Gemini se elimina
+exclusivamente de las preferencias del dispositivo al abrir esta versión. La
+configuración pública de Firebase identifica el proyecto: no es una clave secreta
+de Gemini.
 
-4. Pulsa **Publicar**. Cada cuenta de Google solo puede ver SU propio jardín.
+La IA está preparada mediante servidor autenticado, pero **desactivada hasta
+completar su configuración**. La app indica «Ayuda con IA no disponible» y permite
+seguir creando/cuidando plantas. Las sugerencias se revisan y eligen individualmente;
+consejo y foto solo se guardan al pulsar el botón correspondiente.
+[Configuración segura](SECURE_AI.md).
 
-## Paso 4 · Copiar la configuración
+Los recordatorios se muestran al abrir la app. No se prometen notificaciones con
+la app cerrada. El clima da contexto sin cambiar fechas ni registrar riegos.
 
-1. Rueda dentada (arriba izq.) → **Configuración del proyecto**.
-2. Baja hasta "Tus apps" → icono **</>** (Web) → nombre `plantometro` → Registrar.
-3. Te muestra un bloque `const firebaseConfig = { apiKey: "...", ... }`.
-   **Cópialo entero.**
+## Mantenimiento
 
-## Paso 5 · Poner en marcha la app
+Publicar la carpeta completa: HTML, estilos, `js/`, `shared/`, manifest y worker.
+Las rutas relativas funcionan en GitHub Pages y como PWA. El servidor se despliega
+por separado; Pages no lo ejecuta. No reemplazar configuración Firebase ni reglas
+de otras aplicaciones.
 
-1. Sube `index.html`, `manifest.json` y `sw.js` a tu hosting (GitHub Pages, etc.).
-2. Abre la app: te pedirá pegar la configuración → pégala → Guardar.
-3. "Continuar con Google" → listo.
-4. En el móvil de tu pareja: abrir la app, pegar LA MISMA configuración,
-   y entrar con LA MISMA cuenta de Google. Al compartir cuenta, compartís jardín.
-
-## Notas
-
-- La "apiKey" de Firebase NO es secreta: la seguridad la ponen las reglas del paso 3.
-- Funciona sin conexión: los cambios se guardan y se suben solos al volver la cobertura.
-- Cada cuenta de Google tiene su propio jardín: si alguien entra con otra
-  cuenta, empieza de cero con sus propias plantas.
-- Para compartir el jardín con más gente: que entren con la misma cuenta.
-- En Ajustes de la app poned quién usa cada móvil, para que los riegos
-  queden firmados aunque compartáis cuenta.
+Consultar [estructura y pruebas](DEVELOPMENT.md), [matriz](TEST_MATRIX.md) y
+[configuración del servidor](SECURE_AI.md). Node se utiliza solo para desarrollar
+y desplegar el servidor, no para abrir la aplicación.
