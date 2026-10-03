@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-<title>Plantómetro · El jardín compartido</title>
+<title>Plantómetro · Tu jardín</title>
 <meta name="theme-color" content="#214B38">
 
 
@@ -105,7 +105,7 @@ label{display:block;font-size:0.875rem;font-weight:600;margin:18px 0 6px}
 .photopick .photo-button{min-width:0;flex:1;width:auto;margin:0;-webkit-tap-highlight-color:transparent}
 .frequency-field{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:18px}
 .frequency-field label{margin:0}
-.frequency-field input{width:76px;text-align:center}
+.frequency-field input{width:4.75rem;max-width:100%;text-align:center}
 .frequency-field>span{color:var(--ink2);font-size:0.875rem}
 .identify{font-size:0.875rem;margin-top:4px}
 summary{display:flex;align-items:center;justify-content:space-between;gap:16px;font-weight:600;font-size:0.9375rem;cursor:pointer;list-style:none;padding:16px 0}
@@ -146,6 +146,7 @@ details[open]>summary::after{content:'−'}
 .gal .gph img{width:100%;height:100%;object-fit:cover;display:block}
 .gal .gd{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.8));color:#fff;padding:14px 4px 5px;text-align:center;font-size:0.6875rem}
 .gal .gadd{font-size:1.875rem;border:1px dashed var(--line)}
+.gal .gadd span{display:block;font-size:.8125rem}
 .lastai{display:none;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;font-size:0.8125rem;color:var(--ink2)}
 .lastai button{font-weight:600;color:var(--green);padding:0 12px}
 .aibtns,.actions2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
@@ -244,6 +245,7 @@ details[open]>summary::after{content:'−'}
     </div>
     <p class="note" id="f-freq-note">Comprueba la tierra antes de regar</p>
     <button type="button" class="text-button identify" id="f-identify" data-action="identifyPlant">Pedir ayuda a Gemini</button>
+    <p class="note" id="f-ai-availability" role="status"></p>
     <p class="note" id="f-aistatus" role="status" style="display:none"></p>
     <section id="f-suggestions" class="suggestions" hidden aria-label="Sugerencias de Gemini"></section>
     <details id="f-details" class="more-details"><summary>Más detalles</summary>
@@ -302,6 +304,7 @@ details[open]>summary::after{content:'−'}
     </details>
     <details class="detail-section" id="d-ai-section">
       <summary>Ayuda con Gemini</summary>
+      <p class="note" id="d-ai-availability" role="status"></p>
       <div class="aibtns">
         <button class="btn soft" id="d-aiphoto">Consultar una foto</button>
         <button class="btn soft" id="d-aicard">Revisar los cuidados</button>
@@ -329,7 +332,7 @@ details[open]>summary::after{content:'−'}
         <div class="note" id="acc-email" style="margin:0;overflow:hidden;text-overflow:ellipsis">—</div>
       </div>
     </div>
-    <p class="note" style="margin-top:10px">Para compartir el jardín, usa esta misma cuenta en el otro móvil.</p>
+    <p class="note" style="margin-top:10px">Cada cuenta tiene su jardín. Abre la misma cuenta en otro dispositivo para ver tus plantas allí.</p>
     <button class="btn soft" data-action="exportDownload">Descargar copia de seguridad</button>
     <label class="btn soft" style="cursor:pointer">Restaurar copia
       <input type="file" accept=".json,application/json" hidden id="backup-file">
@@ -342,13 +345,13 @@ details[open]>summary::after{content:'−'}
 <div id="gate" style="position:fixed;inset:0;background:var(--bg);z-index:100;display:none;align-items:center;justify-content:center;padding:20px">
   <div style="max-width:420px;width:100%">
     <div style="text-align:center;margin-bottom:18px">
-      <div style="font-size:52px">🪴</div>
+      <svg viewBox="0 0 160 160" width="84" height="84" style="color:var(--leaf)" aria-hidden="true"><use href="#plant-art"/></svg>
       <h1 style="font-size:32px;color:var(--green-deep)">Plantómetro</h1>
-      <p style="color:var(--ink2);font-size:14px;margin-top:4px">Vuestro jardín, sincronizado al instante</p>
+      <p style="color:var(--ink2);font-size:14px;margin-top:4px">Tus plantas, también en tus otros dispositivos</p>
     </div>
 
     <div id="gate-login" style="display:none;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);text-align:center">
-      <p style="font-size:14px;margin-bottom:4px">Entrad <b>los dos con la misma cuenta</b> de Google para compartir el jardín:</p>
+      <p style="font-size:14px;margin-bottom:4px">Entra con tu cuenta de Google. Cada cuenta tiene su propio jardín.</p>
       <button class="btn primary" data-action="doSignIn">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C41.4 34.9 44 30 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
         Continuar con Google
@@ -362,10 +365,11 @@ details[open]>summary::after{content:'−'}
 <div class="modal" id="ai-modal">
   <div class="sheet">
     <div class="mhead">
-      <div><h2 id="ai-title">🤖 Asistente IA</h2><p style="font-style:italic;color:var(--ink2);font-size:13.5px" id="ai-sub"></p></div>
+      <div><h2 id="ai-title">Ayuda con IA</h2><p class="note" id="ai-sub"></p></div>
       <button class="xbtn" data-action="closeModal" data-arg="ai-modal" aria-label="Cerrar">✕</button>
     </div>
     <div id="ai-body" class="ai-out"></div>
+    <button class="text-button" id="ai-save" hidden>Guardar consejo en la ficha</button>
     <button class="btn primary" id="ai-apply" style="display:none">Revisar sugerencias</button>
     <div class="actions2" style="margin-top:12px">
       <button class="btn soft" id="ai-copy">Copiar</button>
@@ -402,8 +406,8 @@ details[open]>summary::after{content:'−'}
     <label for="s-city">Ciudad para el clima</label>
     <div style="display:flex;gap:8px">
       <input id="s-city" placeholder="Escribe y busca…">
-      <button class="iconbtn" style="width:46px;height:46px" data-action="searchCity" title="Buscar">🔍</button>
-      <button class="iconbtn" style="width:46px;height:46px" data-action="useGPS" title="Usar mi ubicación">📍</button>
+      <button class="iconbtn" style="width:46px;height:46px" data-action="searchCity" title="Buscar" aria-label="Buscar ciudad"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+      <button class="iconbtn" style="width:46px;height:46px" data-action="useGPS" title="Usar mi ubicación" aria-label="Usar mi ubicación"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22S4 15 4 9a8 8 0 0 1 16 0c0 6-8 13-8 13Z"/><circle cx="12" cy="9" r="3"/></svg></button>
     </div>
     <div class="georesults" id="georesults"></div>
 
@@ -414,18 +418,10 @@ details[open]>summary::after{content:'−'}
       <button data-v="auto" data-action="setTheme" data-arg="auto">Automático</button>
     </div>
 
-    <input id="s-gkey" type="hidden" value="preview-only"><p class="note">Gemini simulado: no introduzcas una clave en esta demostración.</p>
-
     <label>Contexto de estación</label>
     <button class="togglebtn" id="s-summer" data-action="toggleSummer">
       <span>Modo verano <span class="note" style="display:block;margin:2px 0 0">Recuerda vigilar la humedad con el calor; no cambia tus frecuencias</span></span>
       <span class="sw" id="s-summer-sw">NO</span>
-    </button>
-
-    <label>Avisos de revisión</label>
-    <button class="togglebtn" data-action="enableNotifs">
-      <span>Avisarme de plantas pendientes</span>
-      <span class="sw" id="s-notif-sw">—</span>
     </button>
 
     <button class="btn primary" data-action="saveSettings">Guardar ajustes</button>
@@ -451,7 +447,6 @@ const DEMO_PLANT='data:image/jpeg;base64,/9j/4AAQSkZJRgABAgEASABIAAD/4gJASUNDX1B
 
 // Preview adapters only: all garden, login, climate and Gemini data are simulated.
 Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition:ok=>ok({coords:{latitude:37.17,longitude:-3.59}})},configurable:true});
-const Notification={permission:'denied',requestPermission:async()=> 'denied'};
 const demoDate=(days)=>{const d=new Date();d.setDate(d.getDate()+days);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
 let demoPlants=[{id:'bob-demo',name:'Bob',species:'Ficus elastica (ejemplo)',photo:DEMO_FICUS,loc:'Salón',light:'media',waterFreq:7,lastWater:demoDate(-84),history:[],gallery:[],createdAt:new Date().toISOString()}, {id:'aloe-demo',name:'La de la ventana',species:'Haworthia (ejemplo)',photo:DEMO_PLANT,loc:'Terraza',light:'sol',waterFreq:14,lastWater:demoDate(-14),history:[],gallery:[],createdAt:new Date().toISOString()}];
 const demoAuth={currentUser:{uid:'preview-only',displayName:'Vista previa',email:'sin-cuenta-real'}};
@@ -475,8 +470,7 @@ const fetch=async url=>{
  if(String(url).includes('geocoding-api'))return {json:async()=>({results:[{name:'Granada (ejemplo)',latitude:37.17,longitude:-3.59,country:'España'}]})};
  if(String(url).includes('bigdatacloud'))return {json:async()=>({city:'Ubicación de ejemplo'})};
  if(String(url).includes('open-meteo'))return {json:async()=>({current:{temperature_2m:24,relative_humidity_2m:55,weather_code:2},daily:{precipitation_probability_max:[30,70],precipitation_sum:[0,2]}})};
- const text=JSON.stringify({nombreComun:'Monstera (ejemplo)',especie:'Monstera deliciosa',revisarCadaDias:7,luz:'media',confianza:'baja',motivo:'Respuesta simulada; no se ha identificado tu foto.',consejo:'Comprueba la humedad antes de regar.'});
- return {ok:true,json:async()=>({candidates:[{content:{parts:[{text}]}}]})};
+ throw Error('Servicio no simulado');
 };
 
 
@@ -495,6 +489,72 @@ const LIGHT = {sol:"☀️ Sol directo", media:"⛅ Luz media", sombra:"🌑 Som
 
 const PLANT_ART = `<svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg>`;
 
+// Untrusted model output: the browser and server share this small contract.
+const CONFIDENCE = ['alta', 'media', 'baja'];
+function normalizeAIResponse(value){
+  if(typeof value==='string'){
+    const text=value.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+    if(!text || text.length>12000)throw Error('invalid-ai-response');
+    try{value=JSON.parse(text);}catch{throw Error('invalid-ai-response');}
+  }
+  if(!value || typeof value!=='object' || Array.isArray(value))throw Error('invalid-ai-response');
+  const text=(v,max,required=false)=>{
+    if(v==null && !required)return null;
+    if(typeof v!=='string' || !v.trim() || v.length>max || /^(?:```|[\[{])/.test(v.trim()))throw Error('invalid-ai-response');
+    return v.trim();
+  };
+  const number=(v,min,max)=>{if(v==null)return null;if(!Number.isInteger(v)||v<min||v>max)throw Error('invalid-ai-response');return v;};
+  const s=value.sugerencias;
+  if(!s || typeof s!=='object' || Array.isArray(s) || !CONFIDENCE.includes(value.confianza))throw Error('invalid-ai-response');
+  if(s.luz!=null && !['sol','media','sombra'].includes(s.luz))throw Error('invalid-ai-response');
+  return {
+    resumen:text(value.resumen,300,true),consejo:text(value.consejo,700,true),
+    confianza:value.confianza,motivo:text(value.motivo,600,true),
+    sugerencias:{nombreComun:text(s.nombreComun,120),especie:text(s.especie,160),
+      revisarCadaDias:number(s.revisarCadaDias,1,120),abonoCadaDias:number(s.abonoCadaDias,0,365),luz:s.luz||null}
+  };
+}
+function aiResponseText(value){
+  const r=normalizeAIResponse(value);
+  return r.resumen+'\n\n'+r.consejo+'\n\n'+(r.confianza==='baja'?'Identificación dudosa. ':'')+r.motivo;
+}
+function readableSavedAI(text){
+  const value=typeof text==='string'?text.trim():'';
+  if(!value)return 'La revisión guardada está vacía.';
+  if(value.startsWith('{') || /^```(?:json)?\s*\{/i.test(value)){
+    try{return aiResponseText(value);}catch{}
+    try{
+      const j=JSON.parse(value.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));
+      const pieces=[j.nombreComun,j.especie,j.motivo,j.consejo].filter(v=>typeof v==='string'&&v.trim()).map(v=>v.slice(0,700));
+      if(pieces.length)return 'Recomendación guardada, sin confirmar.\n\n'+pieces.join('\n\n');
+    }catch{}
+    return 'Esta revisión guardada no contiene un texto legible. Puedes volver a consultar cuando la ayuda con IA esté disponible.';
+  }
+  return value.replace(/```json\s*\{[\s\S]*?\}\s*```/gi,'').trim() || 'La revisión guardada no contiene un consejo.';
+}
+
+// Public deployment switches only. App Check's site key is public, never a Gemini key.
+const aiConfig=Object.freeze({enabled:true,region:'europe-west1',functionName:'plantometroAI',appCheckSiteKey:'public-demo'});
+
+const AI_UNAVAILABLE='Ayuda con IA no disponible';
+const messages={
+  'unavailable':AI_UNAVAILABLE+'. Puedes cuidar y guardar tus plantas sin ella.',
+  'unauthenticated':'Entra con Google para consultar la ayuda con IA.',
+  'permission-denied':AI_UNAVAILABLE+' para esta cuenta.',
+  'resource-exhausted':'Se ha alcanzado el límite de consultas. Inténtalo más tarde.',
+  'deadline-exceeded':'La consulta está tardando demasiado. Inténtalo otra vez.',
+  'invalid-argument':'No se pudo leer la consulta. Revisa el nombre o la foto.',
+  'data-loss':'La IA no devolvió una respuesta válida. Tus datos siguen igual.',
+  'failed-precondition':'No se pudo verificar la consulta. Vuelve a abrir la app e inténtalo otra vez.'
+};
+function aiEnabled(){return aiConfig.enabled===true && !!aiConfig.appCheckSiteKey;}
+function aiErrorMessage(error){return messages[String(error?.code||'').replace(/^functions\//,'')]||'No se pudo consultar la ayuda con IA. Tus datos siguen igual.';}
+function aiStatus(){return aiEnabled()?'Ayuda con IA simulada en esta prueba.':AI_UNAVAILABLE;}
+
+async function callPlantAI(data){
+          return normalizeAIResponse({resumen:'Consejos de ejemplo para esta planta.',consejo:'Observa la tierra y ajusta la frecuencia si lo necesitas.',confianza:'baja',motivo:'IA simulada: no se ha identificado tu foto ni consultado Gemini real.',sugerencias:{nombreComun:'Monstera (ejemplo)',especie:'Monstera deliciosa',revisarCadaDias:7,abonoCadaDias:null,luz:'media'}});
+        }
+
 function validDate(value, optional=false){return (optional && (value==null || value==='')) || (typeof value==='string' && Number.isFinite(dateNumber(value)));}
 function validImage(value){return value==null || value==='' || (typeof value==='string' && /^(data:image\/(jpeg|png|webp|gif);base64,[a-zA-Z0-9+/=]+|https?:\/\/[^\s"<>]+)$/.test(value));}
 function validTimestamp(value){return value==null || (typeof value==='string' && /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value)));}
@@ -508,6 +568,7 @@ function validatePlant(p){
   if(p.fertFreq!=null && (!Number.isInteger(p.fertFreq)||p.fertFreq<0||p.fertFreq>365))throw Error('Abono inválido');
   if(p.history!=null && (!Array.isArray(p.history)||p.history.some(h=>!h||!['agua','abono'].includes(h.t)||!validDate(h.date)|| (h.by!=null && typeof h.by!=='string'))))throw Error('Historial inválido');
   if(p.gallery!=null && (!Array.isArray(p.gallery)||p.gallery.some(g=>!g||!validDate(g.date)||!validImage(g.img)||typeof g.img!=='string'||!g.img || (g.note!=null && typeof g.note!=='string'))))throw Error('Diario inválido');
+  if(p.lastAI!=null && (typeof p.lastAI!=='object'||Array.isArray(p.lastAI)||typeof p.lastAI.text!=='string'||!validDate(p.lastAI.date,true)))throw Error('Revisión de IA inválida');
   if(new TextEncoder().encode(JSON.stringify(p)).length>850000)throw Error('Ficha demasiado grande');
 }
 function validateBackup(value){
@@ -519,68 +580,46 @@ function validateBackup(value){
   return JSON.parse(JSON.stringify(list));
 }
 
-/* ============ Ajustes locales (clima y tema) ============ */
-let settings = { city:"Granada", lat:37.1773, lon:-3.5986, theme:"auto", name:"", geminiKey:"preview-only", summerMode:false, streak:0, streakDate:"", lastNotif:"" };
+/* Device preferences; migrate only the legacy Gemini credential. */
+let settings = { city:"Granada", lat:37.1773, lon:-3.5986, theme:"auto", name:"", summerMode:false, streak:0, streakDate:"", lastNotif:"" };
 try {
-  const s = localStorage.getItem("pg3b_preview_settings");
-  if (s) {
-    const o = JSON.parse(s);
-    if (!o.name && (o.u1 || o.u2)) o.name = (o.active===2 ? o.u2 : o.u1) || ""; // migración del formato antiguo
-    settings = Object.assign(settings, o);
+  const s=localStorage.getItem("pg3b_preview_settings");
+  if(s){
+    const o=JSON.parse(s);
+    if(o && typeof o==='object' && !Array.isArray(o)){
+      if(Object.hasOwn(o,'geminiKey')){
+        delete o.geminiKey;
+        try{localStorage.setItem('pg3b_preview_settings',JSON.stringify(o));}catch{}
+      }
+      if(!o.name && (o.u1||o.u2))o.name=(o.active===2?o.u2:o.u1)||'';
+      settings=Object.assign(settings,o);
+    }
   }
-} catch(e){}
-function persistSettings(){ try{ localStorage.setItem("pg3b_preview_settings", JSON.stringify(settings)); }catch(e){} }
-
-function applyTheme(){
-  const wantsDark = settings.theme==="dark" || (settings.theme==="auto" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.classList.toggle("dark", wantsDark);
-  document.querySelectorAll("#themeopts button").forEach(b=>b.classList.toggle("on", b.dataset.v===settings.theme));
+}catch{}
+function persistSettings(){
+  delete settings.geminiKey;
+  try{localStorage.setItem('pg3b_preview_settings',JSON.stringify(settings));}catch{}
 }
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
-function setTheme(t){ settings.theme=t; persistSettings(); applyTheme(); }
+function applyTheme(){
+  const wantsDark=settings.theme==='dark'||(settings.theme==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.toggle('dark',wantsDark);
+  document.querySelectorAll('#themeopts button').forEach(b=>b.classList.toggle('on',b.dataset.v===settings.theme));
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
+function setTheme(t){settings.theme=t;persistSettings();applyTheme();}
 function renderSettingsUI(){
-  $("s-city").value = settings.city;
-  $("s-name").value = settings.name || "";
-  $("s-gkey").value = settings.geminiKey || "";
-  $("s-summer").classList.toggle("on", !!settings.summerMode);
-  $("s-summer-sw").textContent = settings.summerMode ? "SÍ" : "NO";
-  $("s-notif-sw").textContent = !("Notification" in window) ? "N/D" : Notification.permission==="granted" ? "SÍ" : "NO";
-  applyTheme();
+  $('s-city').value=settings.city;$('s-name').value=settings.name||'';
+  $('s-summer').classList.toggle('on',!!settings.summerMode);
+  $('s-summer-sw').textContent=settings.summerMode?'SÍ':'NO';applyTheme();
 }
 function toggleSummer(){
-  settings.summerMode = !settings.summerMode;
-  persistSettings(); renderSettingsUI(); render();
-  toast(settings.summerMode ? "☀️ Contexto de verano activado: comprueba la humedad" : "Modo verano desactivado");
-}
-async function enableNotifs(){
-  if(!("Notification" in window)){ toast("Este navegador no admite notificaciones"); return; }
-  const perm = await Notification.requestPermission();
-  renderSettingsUI();
-  toast(perm==="granted" ? "🔔 Avisos activados" : "Permiso de avisos denegado");
-  if(perm==="granted") maybeNotify(true);
-}
-function maybeNotify(force){
-  if(!("Notification" in window) || Notification.permission!=="granted") return;
-  const t = todayStr();
-  if(!force && settings.lastNotif===t) return;
-  const hoy=[], tarde=[];
-  alive().forEach(p=>{ const s=plantState(p).state; if(s==="today") hoy.push(p.name); if(s==="late") tarde.push(p.name); });
-  if(!hoy.length && !tarde.length) return;
-  settings.lastNotif = t; persistSettings();
-  const body = [tarde.length?`🌱 Por revisar: ${tarde.join(", ")}`:"", hoy.length?`💧 Hoy: ${hoy.join(", ")}`:""].filter(Boolean).join("\n");
-  navigator.serviceWorker?.ready.then(reg=>reg.showNotification("Plantómetro 🪴", {body: body + " · Comprueba la tierra antes de regar."})).catch(()=>{
-    try{ new Notification("Plantómetro 🪴", {body: body + " · Comprueba la tierra antes de regar."}); }catch(e){}
-  });
+  settings.summerMode=!settings.summerMode;persistSettings();renderSettingsUI();render();
+  toast(settings.summerMode?'Contexto de verano activado':'Modo verano desactivado');
 }
 function saveSettings(){
-  settings.name = $("s-name").value.trim();
-  settings.geminiKey = $("s-gkey").value.trim();
-  persistSettings(); renderSettingsUI(); closeModal("settings-modal"); toast("Ajustes guardados 🌿");
+  settings.name=$('s-name').value.trim();persistSettings();renderSettingsUI();closeModal('settings-modal');toast('Ajustes guardados.');
 }
-
-
-function whoAmI(){ return (settings.name || "").trim() || "Alguien"; }
-
+function whoAmI(){return (settings.name||'').trim()||'Alguien';}
 
 /* ============ Firebase: configuración (incrustada, proyecto misApps) ============ */
 const fbConfig = {};
@@ -739,12 +778,13 @@ async function searchCity(){
   const box = $("georesults"); box.innerHTML = "<p class='note'>Buscando…</p>";
   try{
     const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=es&format=json`);
+    if(r.ok===false)throw Error('weather-search-unavailable');
     const d = await r.json();
     if(!d.results?.length){ box.innerHTML = "<p class='note'>Sin resultados. Prueba con otro nombre.</p>"; return; }
     box.innerHTML = d.results.map((c,i)=>`<button data-city="${i}">📍 ${esc(c.name)}${c.admin1?", "+esc(c.admin1):""} <span style="color:var(--ink2)">(${esc(c.country||"")})</span></button>`).join("");
     box._results = d.results;
     box.querySelectorAll("[data-city]").forEach(b=>b.onclick=()=>pickCity(+b.dataset.city));
-  }catch(e){ box.innerHTML = "<p class='note'>No hay conexión ahora mismo.</p>"; }
+  }catch(e){ box.innerHTML = "<p class='note'>La búsqueda no está disponible ahora. Prueba de nuevo.</p>"; }
 }
 function pickCity(i){
   const c = $("georesults")._results[i];
@@ -797,7 +837,9 @@ async function loadWeather(){
   $("w-city").textContent = settings.city;
   try{
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${settings.lat}&longitude=${settings.lon}&current=temperature_2m,relative_humidity_2m,weather_code&daily=precipitation_probability_max,precipitation_sum&forecast_days=2&timezone=auto`);
+    if(r.ok===false)throw Error('weather-unavailable');
     const d = await r.json(); const c = d.current;
+    if(!c||!Number.isFinite(c.temperature_2m)||!Number.isFinite(c.relative_humidity_2m)||c.relative_humidity_2m<0||c.relative_humidity_2m>100||!Number.isInteger(c.weather_code))throw Error('weather-invalid');
     forecast = {
       temp: c.temperature_2m,
       fetchedAt: Date.now(),
@@ -826,9 +868,9 @@ async function loadWeather(){
     }
   }catch(e){
     forecast = null;
-    $("w-summary").textContent = `${settings.city} · sin conexión`;
+    $("w-summary").textContent = `${settings.city} · clima no disponible`;
     $("w-temp").textContent = "--°"; $("w-hum").textContent = "--%"; $("w-rain").textContent = "--%";
-    $("w-tip").textContent = "Sin conexión: el clima se actualizará cuando la haya.";
+    $("w-tip").textContent = "No se pudo consultar el clima. Puedes volver a intentarlo; tus fechas siguen igual.";
     $("w-tip").style.display = "block";
     render();
   }
@@ -873,7 +915,8 @@ function openForm(id){
   $("f-potsize").value = p?.potSize || ""; $("f-potdate").value = p?.potDate || "";
   formRevision++;
   $("f-suggestions").hidden = true; $("f-suggestions").replaceChildren();
-  $("f-identify").disabled = false;
+  $("f-identify").disabled = !aiEnabled();
+  $("f-ai-availability").textContent = aiStatus();
   $("f-details").open = !!p;
   $("f-aistatus").style.display = "none";
   formPhoto = p?.photo || null; formLight = p?.light || "";
@@ -885,7 +928,7 @@ function openForm(id){
 async function pickPhoto(e){
   const file = e.target.files[0]; if(!file) return;
   const revision = ++formRevision, session=sessionToken();
-  $("f-identify").disabled = false;
+  $("f-identify").disabled = !aiEnabled();
   $("f-suggestions").hidden = true;
   try{
     const photo = await shrinkImage(file, 640, .68);
@@ -970,7 +1013,8 @@ async function delPlant(id){
 }
 
 function invalidateForm(){
-  formRevision++; $("f-identify").disabled=false; $("f-suggestions").hidden=true;
+  formRevision++; $("f-identify").disabled=!aiEnabled(); $("f-suggestions").hidden=true;
+  $("f-aistatus").style.display="none";
 }
 function setFormLight(value){
   formLight=value;
@@ -1000,20 +1044,24 @@ async function importData(e){
 /* ============ Diario fotográfico ============ */
 function renderGallery(p){
   const g = p.gallery || [];
-  $("d-gal").innerHTML = g.map((e,i)=>`<button class="gph" data-g="${i}"><img src="${e.img}" alt=""><span class="gd">${fmt(e.date)}</span></button>`).join("")
-    + `<button class="gadd" data-gadd="1" title="Añadir foto al diario">➕</button>`;
+  $("d-gal").innerHTML = g.map((e,i)=>`<button class="gph" data-g="${i}" aria-label="Foto del ${esc(fmt(e.date))}"><img src="${esc(e.img)}" alt=""><span class="gd">${fmt(e.date)}</span></button>`).join("")
+    + `<button class="gadd" data-gadd="1" title="Añadir foto al diario" aria-label="Añadir foto al diario">+<span>Foto</span></button>`;
   $("d-gal").querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>openDiaryPhoto(p.id, +b.dataset.g));
   $("d-gal").querySelector("[data-gadd]").onclick = ()=>galleryAdd(p.id);
 }
 function openDiaryPhoto(id, i){
   const p = plants.find(x=>x.id===id); const e = p?.gallery?.[i]; if(!e) return;
-  $("pm-date").textContent = "📷 " + fmt(e.date);
+  $("pm-date").textContent = "Foto del " + fmt(e.date);
   $("pm-img").src = e.img;
   $("pm-note").textContent = e.note || "";
-  $("pm-del").onclick = ()=>{
-    p.gallery.splice(i,1);
-    p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-    putPlant(p); closeModal("photo-modal"); renderGallery(p); toast("Foto quitada del diario");
+  $("pm-del").onclick = async()=>{
+    const session=sessionToken(),current=plants.find(x=>x.id===id);
+    const index=current?.gallery?.findIndex(photo=>photo.img===e.img&&photo.date===e.date&&(photo.note||'')===(e.note||''));
+    if(index==null||index<0){toast('Esta foto ya no está en el diario.');return;}
+    const updated={...current,gallery:current.gallery.filter((_,n)=>n!==index),updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
+    if(await putPlant(updated) && session===sessionToken()){
+      closeModal('photo-modal');renderGallery(plants.find(x=>x.id===id));toast('Foto quitada del diario.');
+    }
   };
   openModal("photo-modal");
 }
@@ -1051,43 +1099,6 @@ async function galleryPicked(e){
 }
 
 
-/* ============ IA (Gemini, capa gratuita) ============ */
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]; // si el primero falla, prueba el segundo
-
-async function callGemini(parts){
-  const key = (settings.geminiKey || "").trim();
-  if(!key){
-    closeModal("ai-modal");
-    toast("Añade tu clave de Gemini en Ajustes ⚙️");
-    setTimeout(()=>openModal("settings-modal"), 400);
-    return null;
-  }
-  let lastErr = null;
-  for(const model of GEMINI_MODELS){
-    try{
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type":"application/json", "x-goog-api-key": key },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 1500 }
-        })
-      });
-      if(!r.ok){
-        lastErr = new Error("Gemini no pudo responder (HTTP " + r.status + ")");
-        if(r.status === 404 || r.status === 429) continue; // prueba el siguiente modelo
-        throw lastErr;
-      }
-      const d = await r.json();
-      const txt = (d.candidates?.[0]?.content?.parts || []).map(p=>p.text || "").join("").trim();
-      if(txt) return txt;
-      lastErr = new Error("Respuesta vacía de la IA");
-    }catch(err){ lastErr = err; }
-  }
-  throw lastErr || new Error("No se pudo contactar con Gemini");
-}
-
-// Markdown ligero → HTML seguro (negritas, listas, títulos)
 function mdToHtml(t){
   const lines = esc(t).split("\n");
   let html = "", inList = false;
@@ -1111,192 +1122,107 @@ function mdToHtml(t){
   return html;
 }
 
-// Ficha completa en texto: todos los campos + estado calculado + historial
-function fichaText(p){
-  const {next, d, state, f} = plantState(p);
-  const estado = state==="late" ? `revisión de humedad pendiente desde ${next}; no implica que necesite agua`
-               : state==="today" ? "revisar humedad HOY; regar solo si lo necesita"
-               : `revisión prevista el ${next} (en ${d} día(s)); humedad desconocida`;
-  const hist = (p.history || []).slice(0, 20)
-    .map(h=>`  - ${h.date}: ${h.t==="agua"?"riego":"abono"}${h.by?` (por ${h.by})`:""}`).join("\n") || "  (sin registros)";
-  const clima = weatherContext(p);
-  return [
-    `FICHA DE LA PLANTA (datos guardados en la app):`,
-    `- Nombre: ${p.name || "—"}`,
-    `- Especie/tipo: ${p.species || "no indicada"}`,
-    `- Ubicación: ${p.loc || "no indicada"}${isOutdoor(p) ? " (exterior)" : ""}`,
-    `- Luz que recibe: ${LIGHT[p.light] || "no indicada"}`,
-    `- Descripción/notas: ${p.desc || "sin notas"}`,
-    `- Frecuencia orientativa para revisar humedad: cada ${f} días. No es una orden de regar.`,
-    `- Último riego: ${p.lastWater || "—"} · Estado hoy (${todayStr()}): ${estado}`,
-    `- Abono: ${p.fertFreq>0 ? `cada ${p.fertFreq} días, último el ${p.lastFert || "sin registrar"}` : "sin pauta de abono"}`,
-    `- Maceta: ${p.potSize || "tamaño no indicado"}${p.potDate ? `, último trasplante el ${p.potDate}` : ""}`,
-    clima,
-    `- Historial reciente:`,
-    hist
-  ].filter(Boolean).join("\n");
+
+function aiContext(p){return {city:settings.city,date:todayStr(),season:seasonContext(),weather:p?weatherContext(p):''};}
+let aiBusy=false,aiRun=0,aiPhotoPlantId=null;
+function invalidateAI(){aiRun++;aiBusy=false;}
+function showReview(response){
+  const b=$('ai-body');b.replaceChildren();
+  const title=document.createElement('h3');title.textContent=response.resumen;b.append(title);
+  const advice=document.createElement('p');advice.textContent=response.consejo;b.append(advice);
+  const confidence=document.createElement('p');confidence.className='note';
+  confidence.textContent=(response.confianza==='alta'?'Recomendación orientativa. ':'Identificación o cuidados dudosos. ')+response.motivo;b.append(confidence);
+  const label=document.createElement('p');label.className='note';label.textContent='Son sugerencias. La ficha sigue igual hasta que decidas guardar.';b.append(label);
 }
-
-const SUG_JSON = `\nNo deduzcas falta de agua por el calendario. riegoCadaDias representa días entre revisiones de humedad, no riegos obligatorios. La lluvia solo es relevante para plantas de exterior; no cambies la pauta por una predicción incierta.\nMUY IMPORTANTE: termina tu respuesta con EXACTAMENTE un bloque de código JSON con tus valores sugeridos para la ficha (usa null en lo que no cambiarías):\n\`\`\`json\n{"riegoCadaDias": número o null, "abonoCadaDias": número o null, "luz": "sol" | "media" | "sombra" | null}\n\`\`\``;
-
-// dataURL → parte inline_data para Gemini
-function dataUrlToPart(dataUrl){
-  const m = /^data:(image\/[a-z+.-]+);base64,(.+)$/i.exec(dataUrl || "");
-  return m ? { inline_data: { mime_type: m[1], data: m[2] } } : null;
+async function saveReview(id,response,photo,session,button){
+  if(session!==sessionToken())return;
+  const current=plants.find(p=>p.id===id);if(!current)return;
+  button.disabled=true;
+  const updated={...current,lastAI:{date:todayStr(),text:aiResponseText(response)},updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
+  if(photo)updated.gallery=[{date:todayStr(),img:photo,note:response.resumen.slice(0,140)},...(current.gallery||[])];
+  const saved=await putPlant(updated);
+  if(session!==sessionToken())return;
+  button.disabled=false;
+  if(saved){
+    toast(photo?'Foto y consejo guardados.':'Consejo guardado en la ficha.');
+    if($('ai-modal').classList.contains('open')){closeModal('ai-modal');openDetail(id);}
+  }
 }
-
-// Extrae el bloque JSON final de sugerencias y lo separa del texto visible
-function extractSuggestions(txt){
-  const m = /```json\s*(\{[\s\S]*?\})\s*```/i.exec(txt);
-  if(!m) return { clean: txt, sug: null };
-  let sug = null;
-  try{ sug = JSON.parse(m[1]); }catch(e){}
-  return { clean: txt.replace(m[0], "").trim(), sug };
-}
-
-let aiBusy = false;
-async function runAI(p, subtitle, parts){
-  if(aiBusy) return null;
-  const session=sessionToken();
-  aiBusy = true;
-  $("ai-title").textContent = "🤖 " + p.name;
-  $("ai-sub").textContent = subtitle;
-  $("ai-apply").style.display = "none";
-  $("ai-body").innerHTML = `<div class="ai-spin"><span class="leafspin">🌿</span>Analizando… puede tardar unos segundos</div>`;
-  openModal("ai-modal");
-  let clean = null;
+async function runAI(p,subtitle,request,diaryPhoto=null){
+  if(!aiEnabled()){toast(aiErrorMessage({code:'unavailable'}));return null;}
+  if(aiBusy){toast('Hay una consulta en curso.');return null;}
+  const session=sessionToken(),run=++aiRun;aiBusy=true;
+  $('ai-title').textContent=p.name;$('ai-sub').textContent=subtitle;
+  $('ai-apply').style.display='none';$('ai-save').hidden=true;
+  $('ai-body').innerHTML='<div class="ai-spin" role="status">Consultando… puedes cerrar esta ventana.</div>';
+  openModal('ai-modal');
+  const current=()=>session===sessionToken()&&run===aiRun&&$('ai-modal').classList.contains('open')&&plants.some(x=>x.id===p.id);
   try{
-    const txt = await callGemini(parts);
-    if(session!==sessionToken() || !plants.some(x=>x.id===p.id)){aiBusy=false;return null;}
-    p=plants.find(x=>x.id===p.id);
-    if(txt === null){ aiBusy = false; return null; } // faltaba la clave
-    const ex = extractSuggestions(txt);
-    clean = ex.clean;
-    $("ai-body").innerHTML = mdToHtml(clean);
-    $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(clean).then(()=>toast("Copiado 📄")).catch(()=>toast("No se pudo copiar")); };
-    // Guardar como última revisión en la ficha
-    p.lastAI = { date: todayStr(), text: clean.slice(0, 4000) };
-    p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-    putPlant(trimPlant(p));
-    if($("detail-modal").classList.contains("open")){
-      $("d-lastai").style.display="flex";
-      $("d-lastai-txt").textContent = `🤖 Última revisión: ${fmt(p.lastAI.date)}`;
-    }
-    // Cambios sugeridos aplicables
-    const s = ex.sug || {};
-    const nf = Number.isFinite(+s.riegoCadaDias) && +s.riegoCadaDias>=1 && +s.riegoCadaDias<=120 ? Math.round(+s.riegoCadaDias) : null;
-    const na = s.abonoCadaDias != null && Number.isFinite(+s.abonoCadaDias) && +s.abonoCadaDias>=0 && +s.abonoCadaDias<=365 ? Math.round(+s.abonoCadaDias) : null;
-    const nl = ["sol","media","sombra"].includes(s.luz) ? s.luz : null;
-    const cambios = [];
-    if(nf !== null && nf !== p.waterFreq) cambios.push(`revisar humedad cada ${nf} d`);
-    if(na !== null && na !== (p.fertFreq||0)) cambios.push(na===0 ? "sin abono" : `abono cada ${na} d`);
-    if(nl && nl !== p.light) cambios.push(`luz: ${LIGHT[nl]}`);
-    if(cambios.length){
-      const btn = $("ai-apply");
-      btn.textContent = "Revisar sugerencias: " + cambios.join(" · ");
-      btn.style.display = "flex";
-      btn.onclick = ()=>{
-        closeModal("ai-modal"); closeModal("detail-modal"); openForm(p.id);
-        showPlantSuggestions({revisarCadaDias:nf, abonoCadaDias:na, luz:nl, confianza:"media", motivo:"Recomendaciones de la revisión. Selecciona solo lo que quieras cambiar; la IA puede equivocarse."});
+    const response=await callPlantAI(request);if(!current())return null;
+    showReview(response);
+    $('ai-copy').onclick=()=>navigator.clipboard?.writeText(aiResponseText(response)).then(()=>toast('Consejo copiado.')).catch(()=>toast('No se pudo copiar.'));
+    const save=$('ai-save');save.hidden=false;save.disabled=false;save.textContent=diaryPhoto?'Guardar foto y consejo':'Guardar consejo en la ficha';
+    save.onclick=()=>saveReview(p.id,response,diaryPhoto,session,save);
+    const values=response.sugerencias;
+    if(Object.values(values).some(v=>v!=null)){
+      const button=$('ai-apply');button.textContent='Revisar sugerencias';button.style.display='flex';
+      button.onclick=()=>{
+        if(session!==sessionToken()||!plants.some(x=>x.id===p.id))return;
+        closeModal('ai-modal');closeModal('detail-modal');openForm(p.id);
+        showPlantSuggestions({...values,confianza:response.confianza,motivo:response.motivo,consejo:response.consejo});
       };
     }
-  }catch(err){
-    if(session!==sessionToken()){aiBusy=false;return null;}
-    $("ai-body").innerHTML = `<p><b>❌ No se pudo completar el análisis.</b></p><p class="note">No se pudo obtener una respuesta válida.</p><p class="note">Comprueba tu clave de Gemini en Ajustes ⚙️ y tu conexión.</p>`;
-  }
-  aiBusy = false;
-  return clean;
+    return response;
+  }catch(error){
+    if(current()){
+      $('ai-body').replaceChildren();const message=document.createElement('p');message.textContent=aiErrorMessage(error);$('ai-body').append(message);
+    }
+    return null;
+  }finally{if(run===aiRun)aiBusy=false;}
 }
-
-// 📋 Revisión de la ficha guardada (detecta fallos en riegos, descripción, cuidados…)
 function aiReviewCard(id){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  const prompt =
-`Eres un experto jardinero. Te paso la ficha completa de una planta guardada en mi app de riegos (estamos en ${settings.city || "España"}, fecha de hoy: ${todayStr()}).
-Revisa TODOS los campos de la ficha y detecta posibles fallos o mejoras. En concreto:
-1. ¿La frecuencia para revisar humedad es orientativamente adecuada para esta especie, su luz y la época del año?
-2. Describe el historial sin asumir que un intervalo largo indica falta de agua: no conocemos la humedad real.
-3. ¿La pauta de abono es correcta (o falta)?
-4. ¿La ubicación, la luz y la maceta son adecuadas para la especie? ¿Toca trasplante?
-5. ¿Falta algo importante en la descripción/cuidados o hay algún dato incoherente en la ficha?
-Si adjunto foto, úsala también para valorar el estado.
-Responde en español, breve y práctico, con títulos (##) y listas con guiones. Incluye una sección "## Cambios sugeridos en la ficha" con valores concretos.${SUG_JSON}
-
-${fichaText(p)}`;
-  const parts = [{ text: prompt }];
-  const photo = dataUrlToPart(p.photo);
-  if(photo) parts.push(photo);
-  runAI(p, "Revisión de la ficha 📋", parts);
+  const p=plants.find(x=>x.id===id);if(!p)return;
+  return runAI(p,'Recomendaciones para revisar',{mode:'review',plantId:id,context:aiContext(p)});
 }
-
-// 📸 Diagnóstico por foto nueva (cámara o galería) → se guarda en el diario
-let aiPhotoPlantId = null;
 function aiPhotoDiag(id){
-  aiPhotoPlantId = id;
-  $("ai-file").value = "";
-  $("ai-file").click();
+  if(!aiEnabled()){toast(aiErrorMessage({code:'unavailable'}));return;}
+  aiPhotoPlantId=id;$('ai-file').value='';$('ai-file').click();
 }
 async function aiPhotoPicked(e){
-  const file = e.target.files[0]; if(!file) return;
-  const p = plants.find(x=>x.id===aiPhotoPlantId); if(!p) return;
+  const file=e.target.files[0];if(!file)return;
+  const p=plants.find(x=>x.id===aiPhotoPlantId);if(!p)return;
   const session=sessionToken();
-  let big, small;
   try{
-    big = await shrinkImage(file, 1024, .85);   // para la IA
-    small = await shrinkImage(file, 480, .6);   // para el diario
-  }catch(err){ toast("No se pudo leer la imagen ❌"); return; }
-  if(session!==sessionToken())return;
-  const prompt =
-`Eres un experto jardinero. Te envío una FOTO ACTUAL de mi planta junto con su ficha de la app (estamos en ${settings.city || "España"}, hoy es ${todayStr()}).
-Analiza la foto y dime:
-1. **Estado general** de la planta (¿está sana?). Empieza con una frase corta resumen.
-2. **Problemas visibles**: hojas amarillas/marrones, plagas, hongos, falta o exceso de riego, falta de luz, maceta pequeña…
-3. **Causas posibles** de cada problema, cruzando la foto y la ficha, sin deducir humedad real o necesidad de agua solo por fechas.
-4. **Qué hacer esta semana**, en pasos concretos.
-Responde en español, claro y breve, con títulos (##) y listas con guiones.${SUG_JSON}
-
-${fichaText(p)}`;
-  const txt = await runAI(p, "Diagnóstico por foto 📸", [{ text: prompt }, dataUrlToPart(big)]);
-  if(txt && session===sessionToken()){
-    const firstLine = txt.split("\n").map(s=>s.replace(/[#*]/g,"").trim()).filter(s=>s && !/^(estado|problemas|causa|qué hacer)/i.test(s))[0] || "";
-    if(await pushDiary(plants.find(x=>x.id===p.id), small, firstLine))toast("Diagnóstico guardado en el diario 📷");
-  }
+    const [photo,small]=await Promise.all([shrinkImage(file,768,.72),shrinkImage(file,480,.6)]);
+    if(session!==sessionToken()||!plants.some(x=>x.id===p.id))return;
+    await runAI(p,'Consejo sobre esta foto',{mode:'photo',plantId:p.id,photo,context:aiContext(p)},small);
+  }catch{toast('No se pudo leer la foto.');}
 }
-
-// Reutiliza Gemini; nunca escribe en la ficha sin una elección explícita.
 async function identifyPlant(){
-  const name = $("f-name").value.trim();
-  if(!name && !formPhoto){ toast("Escribe un nombre o añade una foto primero."); return; }
-  if(!(settings.geminiKey || "").trim()){ toast("Añade tu clave de Gemini en Ajustes."); return; }
-  const revision = formRevision, session=sessionToken();
-  const st = $("f-aistatus"), btn = $("f-identify");
-  btn.disabled = true; $("f-suggestions").hidden = true;
-  st.style.display = "block"; st.textContent = "Consultando Gemini…";
+  const name=$('f-name').value.trim();
+  if(!name&&!formPhoto){toast('Escribe un nombre o añade una foto primero.');return;}
+  if(!aiEnabled()){toast(aiErrorMessage({code:'unavailable'}));return;}
+  const revision=formRevision,session=sessionToken(),status=$('f-aistatus'),button=$('f-identify');
+  button.disabled=true;$('f-suggestions').hidden=true;status.style.display='block';status.textContent='Consultando…';
+  const current=()=>session===sessionToken()&&revision===formRevision&&$('form-modal').classList.contains('open');
   try{
-    const prompt = `Sugiere una identificación y cuidados a partir del nombre y/o foto. El nombre puede ser un apodo, no una especie. No asumas una identificación segura. Responde SOLO con JSON:
-{"nombreComun":string|null,"especie":string|null,"revisarCadaDias":number|null,"luz":"sol"|"media"|"sombra"|null,"confianza":"alta"|"media"|"baja","motivo":string,"consejo":string}
-Los días son una frecuencia ORIENTATIVA para revisar humedad, NUNCA una orden de regar. Usa null cuando no puedas recomendar algo. Explica la incertidumbre y alternativas. No deduzcas humedad de una foto ni ajustes días por lluvia prevista. Contexto: ciudad ${settings.city}, latitud ${settings.lat}, fecha ${todayStr()}, ${seasonContext()}. Nombre introducido: ${name}. Especie introducida: ${$("f-species").value}. Ubicación: ${$("f-loc").value}.`;
-    const parts = [{text:prompt}]; const photo = dataUrlToPart(formPhoto); if(photo) parts.push(photo);
-    const txt = await callGemini(parts);
-    if(session!==sessionToken() || revision !== formRevision || !$("form-modal").classList.contains("open")) return;
-    if(!txt) return;
-    const j = JSON.parse(txt.replace(/```json|```/gi, "").trim());
-    if(!j || typeof j !== "object" || Array.isArray(j)) throw new Error("Formato inválido");
-    showPlantSuggestions(j);
-    st.textContent = "Revisa, corrige y elige qué datos quieres usar. Aún no se ha aplicado nada.";
-  }catch(e){
-    if(session===sessionToken() && revision === formRevision) st.textContent = "No se pudo obtener una sugerencia válida. Puedes completar la ficha a mano o intentarlo otra vez.";
-  }finally{ if(session===sessionToken() && revision === formRevision) btn.disabled = false; }
+    const response=await callPlantAI({mode:'identify',draft:{name,species:$('f-species').value,loc:$('f-loc').value,light:formLight,waterFreq:+$('f-freq').value,desc:$('f-desc').value},photo:formPhoto,context:aiContext()});
+    if(!current())return;
+    showPlantSuggestions({...response.sugerencias,confianza:response.confianza,motivo:response.motivo,consejo:response.consejo});
+    status.textContent='Revisa, corrige y elige los datos que quieras usar. Aún no se ha aplicado nada.';
+  }catch(error){if(current())status.textContent=aiErrorMessage(error);}
+  finally{if(current())button.disabled=!aiEnabled();}
 }
+
 function showPlantSuggestions(j){
   const box = $("f-suggestions"); box.replaceChildren(); box.hidden = false;
-  const confidence = j.confianza === "alta" ? "Identificación probable; comprueba que coincide." : "Identificación dudosa: es una hipótesis, no una especie confirmada.";
+  const confidence = j.confianza === "alta" ? "Identificación probable; comprueba que coincide." : "Identificación dudosa: los cuidados o la especie no están confirmados.";
   const heading = document.createElement("h3"); heading.textContent = "Sugerencias para revisar"; box.append(heading);
   const note = document.createElement("p"); note.className = "note";
   note.textContent = confidence + " " + (typeof j.motivo === "string" ? j.motivo.slice(0,600) : ""); box.append(note);
   const candidates = [
     ["nombreComun", "Nombre común", "f-name"], ["especie", "Especie / tipo", "f-species"],
-    ["revisarCadaDias", "Revisar humedad cada (días)", "f-freq"], ["luz", "Luz orientativa", "f-light"],
+    ["revisarCadaDias", "Recordarme cada (días)", "f-freq"], ["luz", "Luz orientativa", "f-light"],
     ["abonoCadaDias", "Abono cada (días; 0 = sin abono)", "f-fertfreq"]
   ];
   const choices = [];
@@ -1339,6 +1265,7 @@ function showPlantSuggestions(j){
   discard.onclick=()=>{box.hidden=true;box.replaceChildren();$("f-aistatus").textContent="Sugerencias descartadas. Tus datos siguen igual.";};
   box.append(apply,discard);
 }
+
 
 
 function toast(msg, actionLabel, actionFn){
@@ -1389,7 +1316,6 @@ function render(){
   $("garden-summary").textContent=!list.length ? "Un rincón para tus plantas." : due ? `Hoy toca cuidar ${due===1?"una planta":due+" plantas"}.` : "Hoy, tu jardín puede esperar.";
   $("search-toggle").hidden=list.length<9;
   $("loclist").innerHTML=[...new Set(list.map(p=>p.loc).filter(Boolean))].map(l=>`<option value="${esc(l)}">`).join("");
-  maybeNotify();
   const q=$("q").value.trim().toLocaleLowerCase("es");
   const shown=list.filter(p=>!q || (p.name+" "+(p.species||"")).toLocaleLowerCase("es").includes(q))
     .sort((a,b)=>plantState(a).d-plantState(b).d || a.name.localeCompare(b.name,"es"));
@@ -1457,9 +1383,11 @@ function openDetail(id){
     $("d-lastai-btn").onclick = ()=>{
       $("ai-title").textContent = p.name;
       $("ai-sub").textContent = `Revisión guardada · ${fmt(p.lastAI.date)}`;
-      $("ai-body").innerHTML = mdToHtml(p.lastAI.text);
+      const text = readableSavedAI(p.lastAI.text);
+      $("ai-body").innerHTML = mdToHtml(text);
       $("ai-apply").style.display="none";
-      $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(p.lastAI.text).then(()=>toast("Copiado 📄")).catch(()=>{}); };
+      $("ai-save").hidden=true;
+      $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(text).then(()=>toast("Copiado.")).catch(()=>{}); };
       openModal("ai-modal");
     };
   } else $("d-lastai").style.display="none";
@@ -1470,6 +1398,8 @@ function openDetail(id){
   $("d-hist").querySelectorAll("[data-correct]").forEach(b=>b.onclick=()=>{if(confirm("¿Quitar solo este riego accidental? Los demás registros se conservarán."))correctWater(id,b.dataset.correct);});
   $("d-water").onclick = e=>{ water(id, e.currentTarget); openDetail(id); };
   $("d-water").dataset.plantId = id;
+  $("d-ai-availability").textContent = aiStatus();
+  $("d-aiphoto").disabled = $("d-aicard").disabled = !aiEnabled();
   $("d-aiphoto").onclick = ()=>aiPhotoDiag(id);
   $("d-aicard").onclick = ()=>aiReviewCard(id);
   $("d-fertbtn").onclick = ()=>fertilize(id);
@@ -1490,7 +1420,7 @@ function syncModalLayout(){
   $("app-shell").inert=open;
 }
 function openModal(id){ if(id==="account-modal" || id==="weather-modal")closeModal("settings-modal"); $(id).classList.add("open"); if(id==="settings-modal") renderSettingsUI(); syncModalLayout(); }
-function closeModal(id){ $(id).classList.remove("open"); if(id === "form-modal") invalidateForm(); syncModalLayout(); }
+function closeModal(id){ $(id).classList.remove("open"); if(id === "form-modal") invalidateForm(); if(id === "ai-modal")invalidateAI(); syncModalLayout(); }
 
 function setupLayout(){
   const root=document.documentElement,viewport=window.visualViewport,dock=$("add-dock");
@@ -1514,7 +1444,7 @@ function setupLayout(){
 
 
 // Location search results are bound in weather.js, rather than inline handlers.
-const actions = { openModal, closeModal, openForm, chooseFormPhoto, setLight, setTheme, saveSettings, searchCity, useGPS, loadWeather, doSignIn, doSignOut, exportDownload, toggleSearch, closeSearch, toggleSummer, enableNotifs, identifyPlant };
+const actions = { openModal, closeModal, openForm, chooseFormPhoto, setLight, setTheme, saveSettings, searchCity, useGPS, loadWeather, doSignIn, doSignOut, exportDownload, toggleSearch, closeSearch, toggleSummer, identifyPlant };
 document.querySelectorAll("[data-action]").forEach(button=>button.addEventListener("click",()=>{
   actions[button.dataset.action]?.(button.dataset.arg);
 }));

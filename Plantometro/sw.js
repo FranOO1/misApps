@@ -1,10 +1,13 @@
 // Plantómetro v2 — caché real para funcionar sin conexión
-const CACHE = "plantometro-v13";
+const CACHE = "plantometro-v14";
 const CORE = ["./", "./index.html", "./manifest.json", "./styles.css",
   "./js/backup.js", "./js/app.js", "./js/utils.js", "./js/settings.js", "./js/sync.js", "./js/weather.js", "./js/plants.js", "./js/photos.js", "./js/gemini.js", "./js/ui.js",
+  "./js/ai-config.js", "./js/ai-service.js", "./shared/ai-response.js",
   "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
   "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"];
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js",
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js",
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));

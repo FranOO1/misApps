@@ -1,48 +1,14 @@
-import { $, esc, todayStr, fmt, LIGHT } from "./utils.js";
+import { $, esc, todayStr } from "./utils.js";
 import { settings, whoAmI } from "./settings.js";
 import { plants, putPlant, sessionToken } from "./sync.js";
-import { isOutdoor, seasonContext, weatherContext } from "./weather.js";
-import { plantState, formPhoto, formLight, formRevision, openForm, trimPlant, setFormLight, updateReminderUnit } from "./plants.js";
-import { shrinkImage, pushDiary } from "./photos.js";
-import { toast, openModal, closeModal } from "./ui.js";
+import { seasonContext, weatherContext } from "./weather.js";
+import { formPhoto, formLight, formRevision, openForm, setFormLight, updateReminderUnit } from "./plants.js";
+import { shrinkImage } from "./photos.js";
+import { toast, openModal, closeModal, openDetail } from "./ui.js";
+import { aiEnabled, aiStatus, aiErrorMessage, callPlantAI } from "./ai-service.js";
+import { aiResponseText } from "../shared/ai-response.js";
+import { LIGHT } from "./utils.js";
 
-/* ============ IA (Gemini, capa gratuita) ============ */
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]; // si el primero falla, prueba el segundo
-
-async function callGemini(parts){
-  const key = (settings.geminiKey || "").trim();
-  if(!key){
-    closeModal("ai-modal");
-    toast("Añade tu clave de Gemini en Ajustes ⚙️");
-    setTimeout(()=>openModal("settings-modal"), 400);
-    return null;
-  }
-  let lastErr = null;
-  for(const model of GEMINI_MODELS){
-    try{
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type":"application/json", "x-goog-api-key": key },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 1500 }
-        })
-      });
-      if(!r.ok){
-        lastErr = new Error("Gemini no pudo responder (HTTP " + r.status + ")");
-        if(r.status === 404 || r.status === 429) continue; // prueba el siguiente modelo
-        throw lastErr;
-      }
-      const d = await r.json();
-      const txt = (d.candidates?.[0]?.content?.parts || []).map(p=>p.text || "").join("").trim();
-      if(txt) return txt;
-      lastErr = new Error("Respuesta vacía de la IA");
-    }catch(err){ lastErr = err; }
-  }
-  throw lastErr || new Error("No se pudo contactar con Gemini");
-}
-
-// Markdown ligero → HTML seguro (negritas, listas, títulos)
 function mdToHtml(t){
   const lines = esc(t).split("\n");
   let html = "", inList = false;
@@ -66,192 +32,107 @@ function mdToHtml(t){
   return html;
 }
 
-// Ficha completa en texto: todos los campos + estado calculado + historial
-function fichaText(p){
-  const {next, d, state, f} = plantState(p);
-  const estado = state==="late" ? `revisión de humedad pendiente desde ${next}; no implica que necesite agua`
-               : state==="today" ? "revisar humedad HOY; regar solo si lo necesita"
-               : `revisión prevista el ${next} (en ${d} día(s)); humedad desconocida`;
-  const hist = (p.history || []).slice(0, 20)
-    .map(h=>`  - ${h.date}: ${h.t==="agua"?"riego":"abono"}${h.by?` (por ${h.by})`:""}`).join("\n") || "  (sin registros)";
-  const clima = weatherContext(p);
-  return [
-    `FICHA DE LA PLANTA (datos guardados en la app):`,
-    `- Nombre: ${p.name || "—"}`,
-    `- Especie/tipo: ${p.species || "no indicada"}`,
-    `- Ubicación: ${p.loc || "no indicada"}${isOutdoor(p) ? " (exterior)" : ""}`,
-    `- Luz que recibe: ${LIGHT[p.light] || "no indicada"}`,
-    `- Descripción/notas: ${p.desc || "sin notas"}`,
-    `- Frecuencia orientativa para revisar humedad: cada ${f} días. No es una orden de regar.`,
-    `- Último riego: ${p.lastWater || "—"} · Estado hoy (${todayStr()}): ${estado}`,
-    `- Abono: ${p.fertFreq>0 ? `cada ${p.fertFreq} días, último el ${p.lastFert || "sin registrar"}` : "sin pauta de abono"}`,
-    `- Maceta: ${p.potSize || "tamaño no indicado"}${p.potDate ? `, último trasplante el ${p.potDate}` : ""}`,
-    clima,
-    `- Historial reciente:`,
-    hist
-  ].filter(Boolean).join("\n");
+
+function aiContext(p){return {city:settings.city,date:todayStr(),season:seasonContext(),weather:p?weatherContext(p):''};}
+let aiBusy=false,aiRun=0,aiPhotoPlantId=null;
+function invalidateAI(){aiRun++;aiBusy=false;}
+function showReview(response){
+  const b=$('ai-body');b.replaceChildren();
+  const title=document.createElement('h3');title.textContent=response.resumen;b.append(title);
+  const advice=document.createElement('p');advice.textContent=response.consejo;b.append(advice);
+  const confidence=document.createElement('p');confidence.className='note';
+  confidence.textContent=(response.confianza==='alta'?'Recomendación orientativa. ':'Identificación o cuidados dudosos. ')+response.motivo;b.append(confidence);
+  const label=document.createElement('p');label.className='note';label.textContent='Son sugerencias. La ficha sigue igual hasta que decidas guardar.';b.append(label);
 }
-
-const SUG_JSON = `\nNo deduzcas falta de agua por el calendario. riegoCadaDias representa días entre revisiones de humedad, no riegos obligatorios. La lluvia solo es relevante para plantas de exterior; no cambies la pauta por una predicción incierta.\nMUY IMPORTANTE: termina tu respuesta con EXACTAMENTE un bloque de código JSON con tus valores sugeridos para la ficha (usa null en lo que no cambiarías):\n\`\`\`json\n{"riegoCadaDias": número o null, "abonoCadaDias": número o null, "luz": "sol" | "media" | "sombra" | null}\n\`\`\``;
-
-// dataURL → parte inline_data para Gemini
-function dataUrlToPart(dataUrl){
-  const m = /^data:(image\/[a-z+.-]+);base64,(.+)$/i.exec(dataUrl || "");
-  return m ? { inline_data: { mime_type: m[1], data: m[2] } } : null;
+async function saveReview(id,response,photo,session,button){
+  if(session!==sessionToken())return;
+  const current=plants.find(p=>p.id===id);if(!current)return;
+  button.disabled=true;
+  const updated={...current,lastAI:{date:todayStr(),text:aiResponseText(response)},updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
+  if(photo)updated.gallery=[{date:todayStr(),img:photo,note:response.resumen.slice(0,140)},...(current.gallery||[])];
+  const saved=await putPlant(updated);
+  if(session!==sessionToken())return;
+  button.disabled=false;
+  if(saved){
+    toast(photo?'Foto y consejo guardados.':'Consejo guardado en la ficha.');
+    if($('ai-modal').classList.contains('open')){closeModal('ai-modal');openDetail(id);}
+  }
 }
-
-// Extrae el bloque JSON final de sugerencias y lo separa del texto visible
-function extractSuggestions(txt){
-  const m = /```json\s*(\{[\s\S]*?\})\s*```/i.exec(txt);
-  if(!m) return { clean: txt, sug: null };
-  let sug = null;
-  try{ sug = JSON.parse(m[1]); }catch(e){}
-  return { clean: txt.replace(m[0], "").trim(), sug };
-}
-
-let aiBusy = false;
-async function runAI(p, subtitle, parts){
-  if(aiBusy) return null;
-  const session=sessionToken();
-  aiBusy = true;
-  $("ai-title").textContent = "🤖 " + p.name;
-  $("ai-sub").textContent = subtitle;
-  $("ai-apply").style.display = "none";
-  $("ai-body").innerHTML = `<div class="ai-spin"><span class="leafspin">🌿</span>Analizando… puede tardar unos segundos</div>`;
-  openModal("ai-modal");
-  let clean = null;
+async function runAI(p,subtitle,request,diaryPhoto=null){
+  if(!aiEnabled()){toast(aiErrorMessage({code:'unavailable'}));return null;}
+  if(aiBusy){toast('Hay una consulta en curso.');return null;}
+  const session=sessionToken(),run=++aiRun;aiBusy=true;
+  $('ai-title').textContent=p.name;$('ai-sub').textContent=subtitle;
+  $('ai-apply').style.display='none';$('ai-save').hidden=true;
+  $('ai-body').innerHTML='<div class="ai-spin" role="status">Consultando… puedes cerrar esta ventana.</div>';
+  openModal('ai-modal');
+  const current=()=>session===sessionToken()&&run===aiRun&&$('ai-modal').classList.contains('open')&&plants.some(x=>x.id===p.id);
   try{
-    const txt = await callGemini(parts);
-    if(session!==sessionToken() || !plants.some(x=>x.id===p.id)){aiBusy=false;return null;}
-    p=plants.find(x=>x.id===p.id);
-    if(txt === null){ aiBusy = false; return null; } // faltaba la clave
-    const ex = extractSuggestions(txt);
-    clean = ex.clean;
-    $("ai-body").innerHTML = mdToHtml(clean);
-    $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(clean).then(()=>toast("Copiado 📄")).catch(()=>toast("No se pudo copiar")); };
-    // Guardar como última revisión en la ficha
-    p.lastAI = { date: todayStr(), text: clean.slice(0, 4000) };
-    p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-    putPlant(trimPlant(p));
-    if($("detail-modal").classList.contains("open")){
-      $("d-lastai").style.display="flex";
-      $("d-lastai-txt").textContent = `🤖 Última revisión: ${fmt(p.lastAI.date)}`;
-    }
-    // Cambios sugeridos aplicables
-    const s = ex.sug || {};
-    const nf = Number.isFinite(+s.riegoCadaDias) && +s.riegoCadaDias>=1 && +s.riegoCadaDias<=120 ? Math.round(+s.riegoCadaDias) : null;
-    const na = s.abonoCadaDias != null && Number.isFinite(+s.abonoCadaDias) && +s.abonoCadaDias>=0 && +s.abonoCadaDias<=365 ? Math.round(+s.abonoCadaDias) : null;
-    const nl = ["sol","media","sombra"].includes(s.luz) ? s.luz : null;
-    const cambios = [];
-    if(nf !== null && nf !== p.waterFreq) cambios.push(`revisar humedad cada ${nf} d`);
-    if(na !== null && na !== (p.fertFreq||0)) cambios.push(na===0 ? "sin abono" : `abono cada ${na} d`);
-    if(nl && nl !== p.light) cambios.push(`luz: ${LIGHT[nl]}`);
-    if(cambios.length){
-      const btn = $("ai-apply");
-      btn.textContent = "Revisar sugerencias: " + cambios.join(" · ");
-      btn.style.display = "flex";
-      btn.onclick = ()=>{
-        closeModal("ai-modal"); closeModal("detail-modal"); openForm(p.id);
-        showPlantSuggestions({revisarCadaDias:nf, abonoCadaDias:na, luz:nl, confianza:"media", motivo:"Recomendaciones de la revisión. Selecciona solo lo que quieras cambiar; la IA puede equivocarse."});
+    const response=await callPlantAI(request);if(!current())return null;
+    showReview(response);
+    $('ai-copy').onclick=()=>navigator.clipboard?.writeText(aiResponseText(response)).then(()=>toast('Consejo copiado.')).catch(()=>toast('No se pudo copiar.'));
+    const save=$('ai-save');save.hidden=false;save.disabled=false;save.textContent=diaryPhoto?'Guardar foto y consejo':'Guardar consejo en la ficha';
+    save.onclick=()=>saveReview(p.id,response,diaryPhoto,session,save);
+    const values=response.sugerencias;
+    if(Object.values(values).some(v=>v!=null)){
+      const button=$('ai-apply');button.textContent='Revisar sugerencias';button.style.display='flex';
+      button.onclick=()=>{
+        if(session!==sessionToken()||!plants.some(x=>x.id===p.id))return;
+        closeModal('ai-modal');closeModal('detail-modal');openForm(p.id);
+        showPlantSuggestions({...values,confianza:response.confianza,motivo:response.motivo,consejo:response.consejo});
       };
     }
-  }catch(err){
-    if(session!==sessionToken()){aiBusy=false;return null;}
-    $("ai-body").innerHTML = `<p><b>❌ No se pudo completar el análisis.</b></p><p class="note">No se pudo obtener una respuesta válida.</p><p class="note">Comprueba tu clave de Gemini en Ajustes ⚙️ y tu conexión.</p>`;
-  }
-  aiBusy = false;
-  return clean;
+    return response;
+  }catch(error){
+    if(current()){
+      $('ai-body').replaceChildren();const message=document.createElement('p');message.textContent=aiErrorMessage(error);$('ai-body').append(message);
+    }
+    return null;
+  }finally{if(run===aiRun)aiBusy=false;}
 }
-
-// 📋 Revisión de la ficha guardada (detecta fallos en riegos, descripción, cuidados…)
 function aiReviewCard(id){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  const prompt =
-`Eres un experto jardinero. Te paso la ficha completa de una planta guardada en mi app de riegos (estamos en ${settings.city || "España"}, fecha de hoy: ${todayStr()}).
-Revisa TODOS los campos de la ficha y detecta posibles fallos o mejoras. En concreto:
-1. ¿La frecuencia para revisar humedad es orientativamente adecuada para esta especie, su luz y la época del año?
-2. Describe el historial sin asumir que un intervalo largo indica falta de agua: no conocemos la humedad real.
-3. ¿La pauta de abono es correcta (o falta)?
-4. ¿La ubicación, la luz y la maceta son adecuadas para la especie? ¿Toca trasplante?
-5. ¿Falta algo importante en la descripción/cuidados o hay algún dato incoherente en la ficha?
-Si adjunto foto, úsala también para valorar el estado.
-Responde en español, breve y práctico, con títulos (##) y listas con guiones. Incluye una sección "## Cambios sugeridos en la ficha" con valores concretos.${SUG_JSON}
-
-${fichaText(p)}`;
-  const parts = [{ text: prompt }];
-  const photo = dataUrlToPart(p.photo);
-  if(photo) parts.push(photo);
-  runAI(p, "Revisión de la ficha 📋", parts);
+  const p=plants.find(x=>x.id===id);if(!p)return;
+  return runAI(p,'Recomendaciones para revisar',{mode:'review',plantId:id,context:aiContext(p)});
 }
-
-// 📸 Diagnóstico por foto nueva (cámara o galería) → se guarda en el diario
-let aiPhotoPlantId = null;
 function aiPhotoDiag(id){
-  aiPhotoPlantId = id;
-  $("ai-file").value = "";
-  $("ai-file").click();
+  if(!aiEnabled()){toast(aiErrorMessage({code:'unavailable'}));return;}
+  aiPhotoPlantId=id;$('ai-file').value='';$('ai-file').click();
 }
 async function aiPhotoPicked(e){
-  const file = e.target.files[0]; if(!file) return;
-  const p = plants.find(x=>x.id===aiPhotoPlantId); if(!p) return;
+  const file=e.target.files[0];if(!file)return;
+  const p=plants.find(x=>x.id===aiPhotoPlantId);if(!p)return;
   const session=sessionToken();
-  let big, small;
   try{
-    big = await shrinkImage(file, 1024, .85);   // para la IA
-    small = await shrinkImage(file, 480, .6);   // para el diario
-  }catch(err){ toast("No se pudo leer la imagen ❌"); return; }
-  if(session!==sessionToken())return;
-  const prompt =
-`Eres un experto jardinero. Te envío una FOTO ACTUAL de mi planta junto con su ficha de la app (estamos en ${settings.city || "España"}, hoy es ${todayStr()}).
-Analiza la foto y dime:
-1. **Estado general** de la planta (¿está sana?). Empieza con una frase corta resumen.
-2. **Problemas visibles**: hojas amarillas/marrones, plagas, hongos, falta o exceso de riego, falta de luz, maceta pequeña…
-3. **Causas posibles** de cada problema, cruzando la foto y la ficha, sin deducir humedad real o necesidad de agua solo por fechas.
-4. **Qué hacer esta semana**, en pasos concretos.
-Responde en español, claro y breve, con títulos (##) y listas con guiones.${SUG_JSON}
-
-${fichaText(p)}`;
-  const txt = await runAI(p, "Diagnóstico por foto 📸", [{ text: prompt }, dataUrlToPart(big)]);
-  if(txt && session===sessionToken()){
-    const firstLine = txt.split("\n").map(s=>s.replace(/[#*]/g,"").trim()).filter(s=>s && !/^(estado|problemas|causa|qué hacer)/i.test(s))[0] || "";
-    if(await pushDiary(plants.find(x=>x.id===p.id), small, firstLine))toast("Diagnóstico guardado en el diario 📷");
-  }
+    const [photo,small]=await Promise.all([shrinkImage(file,768,.72),shrinkImage(file,480,.6)]);
+    if(session!==sessionToken()||!plants.some(x=>x.id===p.id))return;
+    await runAI(p,'Consejo sobre esta foto',{mode:'photo',plantId:p.id,photo,context:aiContext(p)},small);
+  }catch{toast('No se pudo leer la foto.');}
 }
-
-// Reutiliza Gemini; nunca escribe en la ficha sin una elección explícita.
 async function identifyPlant(){
-  const name = $("f-name").value.trim();
-  if(!name && !formPhoto){ toast("Escribe un nombre o añade una foto primero."); return; }
-  if(!(settings.geminiKey || "").trim()){ toast("Añade tu clave de Gemini en Ajustes."); return; }
-  const revision = formRevision, session=sessionToken();
-  const st = $("f-aistatus"), btn = $("f-identify");
-  btn.disabled = true; $("f-suggestions").hidden = true;
-  st.style.display = "block"; st.textContent = "Consultando Gemini…";
+  const name=$('f-name').value.trim();
+  if(!name&&!formPhoto){toast('Escribe un nombre o añade una foto primero.');return;}
+  if(!aiEnabled()){toast(aiErrorMessage({code:'unavailable'}));return;}
+  const revision=formRevision,session=sessionToken(),status=$('f-aistatus'),button=$('f-identify');
+  button.disabled=true;$('f-suggestions').hidden=true;status.style.display='block';status.textContent='Consultando…';
+  const current=()=>session===sessionToken()&&revision===formRevision&&$('form-modal').classList.contains('open');
   try{
-    const prompt = `Sugiere una identificación y cuidados a partir del nombre y/o foto. El nombre puede ser un apodo, no una especie. No asumas una identificación segura. Responde SOLO con JSON:
-{"nombreComun":string|null,"especie":string|null,"revisarCadaDias":number|null,"luz":"sol"|"media"|"sombra"|null,"confianza":"alta"|"media"|"baja","motivo":string,"consejo":string}
-Los días son una frecuencia ORIENTATIVA para revisar humedad, NUNCA una orden de regar. Usa null cuando no puedas recomendar algo. Explica la incertidumbre y alternativas. No deduzcas humedad de una foto ni ajustes días por lluvia prevista. Contexto: ciudad ${settings.city}, latitud ${settings.lat}, fecha ${todayStr()}, ${seasonContext()}. Nombre introducido: ${name}. Especie introducida: ${$("f-species").value}. Ubicación: ${$("f-loc").value}.`;
-    const parts = [{text:prompt}]; const photo = dataUrlToPart(formPhoto); if(photo) parts.push(photo);
-    const txt = await callGemini(parts);
-    if(session!==sessionToken() || revision !== formRevision || !$("form-modal").classList.contains("open")) return;
-    if(!txt) return;
-    const j = JSON.parse(txt.replace(/```json|```/gi, "").trim());
-    if(!j || typeof j !== "object" || Array.isArray(j)) throw new Error("Formato inválido");
-    showPlantSuggestions(j);
-    st.textContent = "Revisa, corrige y elige qué datos quieres usar. Aún no se ha aplicado nada.";
-  }catch(e){
-    if(session===sessionToken() && revision === formRevision) st.textContent = "No se pudo obtener una sugerencia válida. Puedes completar la ficha a mano o intentarlo otra vez.";
-  }finally{ if(session===sessionToken() && revision === formRevision) btn.disabled = false; }
+    const response=await callPlantAI({mode:'identify',draft:{name,species:$('f-species').value,loc:$('f-loc').value,light:formLight,waterFreq:+$('f-freq').value,desc:$('f-desc').value},photo:formPhoto,context:aiContext()});
+    if(!current())return;
+    showPlantSuggestions({...response.sugerencias,confianza:response.confianza,motivo:response.motivo,consejo:response.consejo});
+    status.textContent='Revisa, corrige y elige los datos que quieras usar. Aún no se ha aplicado nada.';
+  }catch(error){if(current())status.textContent=aiErrorMessage(error);}
+  finally{if(current())button.disabled=!aiEnabled();}
 }
+
 function showPlantSuggestions(j){
   const box = $("f-suggestions"); box.replaceChildren(); box.hidden = false;
-  const confidence = j.confianza === "alta" ? "Identificación probable; comprueba que coincide." : "Identificación dudosa: es una hipótesis, no una especie confirmada.";
+  const confidence = j.confianza === "alta" ? "Identificación probable; comprueba que coincide." : "Identificación dudosa: los cuidados o la especie no están confirmados.";
   const heading = document.createElement("h3"); heading.textContent = "Sugerencias para revisar"; box.append(heading);
   const note = document.createElement("p"); note.className = "note";
   note.textContent = confidence + " " + (typeof j.motivo === "string" ? j.motivo.slice(0,600) : ""); box.append(note);
   const candidates = [
     ["nombreComun", "Nombre común", "f-name"], ["especie", "Especie / tipo", "f-species"],
-    ["revisarCadaDias", "Revisar humedad cada (días)", "f-freq"], ["luz", "Luz orientativa", "f-light"],
+    ["revisarCadaDias", "Recordarme cada (días)", "f-freq"], ["luz", "Luz orientativa", "f-light"],
     ["abonoCadaDias", "Abono cada (días; 0 = sin abono)", "f-fertfreq"]
   ];
   const choices = [];
@@ -295,4 +176,5 @@ function showPlantSuggestions(j){
   box.append(apply,discard);
 }
 
-export { aiReviewCard, aiPhotoDiag, aiPhotoPicked, identifyPlant, showPlantSuggestions, mdToHtml };
+
+export {aiReviewCard,aiPhotoDiag,aiPhotoPicked,identifyPlant,showPlantSuggestions,mdToHtml,invalidateAI};

@@ -12,6 +12,7 @@ function validatePlant(p){
   if(p.fertFreq!=null && (!Number.isInteger(p.fertFreq)||p.fertFreq<0||p.fertFreq>365))throw Error('Abono inválido');
   if(p.history!=null && (!Array.isArray(p.history)||p.history.some(h=>!h||!['agua','abono'].includes(h.t)||!validDate(h.date)|| (h.by!=null && typeof h.by!=='string'))))throw Error('Historial inválido');
   if(p.gallery!=null && (!Array.isArray(p.gallery)||p.gallery.some(g=>!g||!validDate(g.date)||!validImage(g.img)||typeof g.img!=='string'||!g.img || (g.note!=null && typeof g.note!=='string'))))throw Error('Diario inválido');
+  if(p.lastAI!=null && (typeof p.lastAI!=='object'||Array.isArray(p.lastAI)||typeof p.lastAI.text!=='string'||!validDate(p.lastAI.date,true)))throw Error('Revisión de IA inválida');
   if(new TextEncoder().encode(JSON.stringify(p)).length>850000)throw Error('Ficha demasiado grande');
 }
 function validateBackup(value){

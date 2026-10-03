@@ -21,10 +21,10 @@ APP = "export const initializeApp = config => config;"
 AUTH = """
 export const getAuth = () => ({currentUser:{uid:'test-user'}});
 export class GoogleAuthProvider {}
-export const signInWithPopup = async () => {window.testAuthCallback({uid:"test-user",displayName:"Prueba"});};
-export const signInWithRedirect = async () => {};
-export const getRedirectResult = async () => null;
-export const signOut = async () => {window.testAuthCallback(null);};
+export const signInWithPopup = async () => {if(window.testSignInError)throw {code:window.testSignInError};window.testAuthCallback({uid:"test-user",displayName:"Prueba"});};
+export const signInWithRedirect = async () => {if(window.testSignInError)throw {code:window.testSignInError};};
+export const getRedirectResult = async () => {if(window.testRedirectError)throw {code:window.testRedirectError};return null;};
+export const signOut = async () => {if(window.testSignOutError)throw {code:window.testSignOutError};window.testAuthCallback(null);};
 export const onAuthStateChanged = (auth, cb) => {window.testAuthCallback=cb;queueMicrotask(()=>cb({uid:'test-user',displayName:'Prueba',email:'test@example.invalid'}));};
 """
 FIRESTORE = """
@@ -33,8 +33,8 @@ export const persistentLocalCache = () => ({});
 export const persistentMultipleTabManager = () => ({});
 export const collection = (...args) => args;
 export const doc = (...args) => args;
-export const onSnapshot = (ref, cb) => {
- window.testSnapshot=cb;
+export const onSnapshot = (ref, cb, error) => {
+ window.testSnapshotError=error;window.testSnapshot=cb;
  queueMicrotask(()=>cb({docs:window.testPlants.map(p=>({data:()=>p}))}));
  return ()=>{};
 };
@@ -43,11 +43,24 @@ export const setDoc = async (ref, p) => {
  window.testWrites.push(JSON.parse(JSON.stringify({ref:ref.slice(1),plant:p})));
  const i=window.testPlants.findIndex(x=>x.id===p.id);if(i>=0)window.testPlants[i]=JSON.parse(JSON.stringify(p));else window.testPlants.push(JSON.parse(JSON.stringify(p)));
 };
-export const deleteDoc = async ref => {if(window.testWriteError)throw {code:window.testWriteError};window.testPlants=window.testPlants.filter(p=>p.id!==ref.at(-1));};
+export const deleteDoc = async ref => {if(window.testWriteError)throw {code:window.testWriteError};(window.testDeletes||=[]).push(ref);window.testPlants=window.testPlants.filter(p=>p.id!==ref.at(-1));};
 export const writeBatch = () => {const changes=[];return {set:(r,p)=>changes.push([r,p]),commit:async()=>{if(window.testWriteError)throw {code:window.testWriteError};for(const [r,p] of changes)await setDoc(r,p);}};};
-export const runTransaction = async (db,cb) => cb({get:async ref=>{const p=window.testPlants.find(p=>p.id===ref.at(-1));return {exists:()=>!!p,data:()=>JSON.parse(JSON.stringify(p))};},set: (r,p)=>{setDoc(r,p);}});
+export const runTransaction = async (db,cb) => {if(window.testWriteError)throw {code:window.testWriteError};const pending=[];await cb({get:async ref=>{const p=window.testPlants.find(p=>p.id===ref.at(-1));return {exists:()=>!!p,data:()=>JSON.parse(JSON.stringify(p))};},set:(r,p)=>pending.push([r,p])});for(const [r,p] of pending)await setDoc(r,p);};
 
 """
+AI_RESPONSE = dict(resumen='Una planta que observar.',consejo='Comprueba la tierra antes de decidir.',confianza='baja',motivo='Foto o nombre insuficientes para confirmar.',sugerencias=dict(nombreComun='Monstera',especie='Monstera deliciosa',revisarCadaDias=5,abonoCadaDias=None,luz='media'))
+APP_CHECK = 'export class ReCaptchaEnterpriseProvider {}; export const initializeAppCheck = () => ({});'
+FUNCTIONS = """export const getFunctions=()=>({});
+export const httpsCallable=(f,name,options)=>async data=>{
+ window.testAIOptions=options;window.testAIRequest=data;window.testAICalls=(window.testAICalls||0)+1;
+ if(window.testAIWait)await new Promise(r=>window.finishAI=r);
+ if(window.testAIError)throw {code:window.testAIError,message:'Details must never be shown'};
+ return {data:window.testAIResponse||RESPONSE};
+};""".replace('RESPONSE',json.dumps(AI_RESPONSE))
+
+def enable_test_ai(context):
+    context.route('**/js/ai-config.js',lambda r:r.fulfill(body="export const aiConfig={enabled:true,region:'europe-west1',functionName:'plantometroAI',appCheckSiteKey:'public-test-only'};",content_type='application/javascript'))
+
 PLANT = dict(id="existing", name="Monstera del salón con un nombre muy largo "*3,
              species="Monstera deliciosa", loc="Terraza", light="media", waterFreq=7,
              lastWater="2020-01-01", fertFreq=0, gallery=[dict(date="2020-01-01", img="", note="Foto antigua")],
@@ -71,12 +84,10 @@ def route_external(route):
         route.fulfill(body=AUTH, content_type="application/javascript")
     elif "firebase-firestore.js" in url:
         route.fulfill(body=FIRESTORE, content_type="application/javascript")
-    elif "generativelanguage.googleapis.com" in url:
-        assert route.request.headers.get("x-goog-api-key") == "test-placeholder"
-        result = dict(nombreComun="Monstera", especie="Monstera deliciosa", revisarCadaDias=5,
-                      luz="media", confianza="baja", motivo="Foto o nombre insuficientes para confirmar.",
-                      consejo="Comprueba la humedad, no riegues por calendario.")
-        route.fulfill(json=dict(candidates=[dict(content=dict(parts=[dict(text=json.dumps(result))]))]))
+    elif 'firebase-app-check.js' in url:
+        route.fulfill(body=APP_CHECK,content_type='application/javascript')
+    elif 'firebase-functions.js' in url:
+        route.fulfill(body=FUNCTIONS,content_type='application/javascript')
     elif "bigdatacloud.net" in url:
         route.fulfill(json={"city":"Ciudad GPS"})
     elif "geocoding-api.open-meteo.com" in url:
@@ -133,6 +144,7 @@ with sync_playwright() as pw:
     for width,height in [(320,740),(390,844),(768,1024),(820,1180)]:
         context=browser.new_context(viewport=dict(width=width,height=height),service_workers="block")
         context.route("https://**/*",route_external)
+        enable_test_ai(context)
         context.add_init_script("window.testPlants="+json.dumps([PLANT])+";window.testWrites=[];localStorage.setItem('pg3b_settings',JSON.stringify({name:'Fran',geminiKey:'test-placeholder',summerMode:true}));")
         page=context.new_page()
         errors=[]
@@ -228,6 +240,7 @@ with sync_playwright() as pw:
         ua="Mozilla/5.0 (Linux; Android 13; " + ("Pixel 5" if width<660 else "Tablet") + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 " + ("Mobile " if width<660 else "") + "Safari/537.36"
         context=browser.new_context(viewport=dict(width=width,height=height),has_touch=True,is_mobile=True,user_agent=ua,service_workers="block")
         context.route("https://**/*",route_external)
+        enable_test_ai(context)
         original_photo='data:image/jpeg;base64,'+base64.b64encode((ROOT/'Plantometro/preview-assets/plant.jpg').read_bytes()).decode()
         original={**PLANT,"name":"Mi planta","photo":original_photo}
         context.add_init_script("window.testPlants="+json.dumps([original])+";window.testWrites=[];")
@@ -294,6 +307,7 @@ with sync_playwright() as pw:
     for width,height in [(390,844),(768,1024)]:
         context=browser.new_context(viewport=dict(width=width,height=height),service_workers="block")
         context.route("https://**/*",route_external)
+        enable_test_ai(context)
         context.add_init_script("window.testPlants="+json.dumps([{**PLANT,"name":"Bob","gallery":[]}])+";window.testWrites=[];")
         page=context.new_page();errors=[];page.on("pageerror",lambda e:errors.append(str(e)));page.goto(URL)
         expect(page.locator("#grid .card")).to_have_count(1)
@@ -364,15 +378,15 @@ with sync_playwright() as pw:
         page.evaluate("import('./js/ui.js').then(m=>m.openModal('settings-modal'))")
         page.get_by_title("Usar mi ubicación").click()
         expect(page.locator("#s-city")).to_have_value("Ciudad GPS")
-        page.locator("#s-gkey").fill("test-placeholder");page.locator("#s-name").fill("Fran")
+        page.locator("#s-name").fill("Fran")
         page.get_by_role("button",name="Guardar ajustes").click()
         assert page.evaluate("""async()=>{const s=await import('./js/sync.js'),p=await import('./js/photos.js');for(let i=0;i<7;i++)await p.pushDiary(s.plants.find(p=>p.id==='existing'),'data:image/png;base64,AAAA','Foto '+i);return s.plants.find(p=>p.id==='existing').gallery.length===7;}""")
         page.locator("#grid [data-open]").first.click()
         expect(page.locator("#d-gal .gph")).to_have_count(7)
         open_section(page,"d-ai-section")
         page.locator("#d-aicard").click()
-        expect(page.locator("#ai-body .ai-spin")).to_have_count(0)
-        page.locator("#ai-modal .xbtn").click()
+        expect(page.locator("#ai-save")).to_be_visible()
+        page.locator("#ai-save").click()
         page.locator("#detail-modal .xbtn").click()
         page.locator("#grid [data-open]").first.click()
         open_section(page,"d-ai-section")
@@ -569,8 +583,8 @@ with sync_playwright() as pw:
     page.reload()
     page.wait_for_function("navigator.serviceWorker.controller !== null")
     keys=page.evaluate("caches.keys()")
-    assert "plantometro-v13" in keys
-    assert page.evaluate("caches.open('plantometro-v13').then(c=>c.match(location.href).then(Boolean))")
+    assert "plantometro-v14" in keys
+    assert page.evaluate("caches.open('plantometro-v14').then(c=>c.match(location.href).then(Boolean))")
     # Preserve caches belonging to the other apps on the same GitHub Pages origin.
     page.evaluate("caches.open('horas-v1')")
     sw=page.evaluate("navigator.serviceWorker.getRegistration().then(r=>r.active.scriptURL)")
@@ -580,7 +594,7 @@ with sync_playwright() as pw:
     context.set_offline(True);page.reload()
     expect(page.locator("h1.brand")).to_have_text("Plantómetro")
     assert "horas-v1" in page.evaluate("caches.keys()")
-    print("PASS PWA: scoped worker v13, app cache, offline shell, standalone manifest, other-app cache retained")
+    print("PASS PWA: scoped worker v14, app cache, offline shell, standalone manifest, other-app cache retained")
     context.close();browser.close()
 server.shutdown()
 print(f"Screenshots: {OUT}")

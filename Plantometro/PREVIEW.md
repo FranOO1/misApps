@@ -1,55 +1,46 @@
-# Probar el PR #1 desde móvil o tablet
+# Probar esta rama desde móvil o tablet
 
-La dirección publicada https://franoo1.github.io/misApps/Plantometro/ sirve
-`main`, no esta rama. El punto rojo y «debía regarse» corresponden a la versión
-antigua. Recargar una PWA instalada no publica el contenido del PR.
+https://franoo1.github.io/misApps/Plantometro/ sirve `main`, actualmente minimalista
+con worker v13. Esta rama prepara seguridad de IA y worker v14; crear el PR no
+publica cambios ni actualiza la PWA instalada.
 
-## Demostración de esta rama
+## Demostración sin usar tu jardín
 
-Abrir en Chrome de Android o en el navegador de la tablet:
+Abrir en Chrome de Android o el navegador de la tablet:
 
-https://htmlpreview.github.io/?https://github.com/FranOO1/misApps/blob/improve/plantometro-humidity-design/Plantometro/preview.html
+https://htmlpreview.github.io/?https://github.com/FranOO1/misApps/blob/fix/plantometro-secure-ai/Plantometro/preview.html
 
-La franja superior identifica la demostración; «Sobre esta prueba» explica qué se simula. Permite probar la portada mínima,
-formularios, sugerencias, diario y correcciones con datos simulados. Bob
-es un ejemplo calculado para mostrar 77 días de revisión pendiente en su ficha; no es vuestra
-ficha. No escribir claves reales ni esperar sincronización con vuestro jardín.
-La página no registra el service worker ni prueba la instalación PWA.
+La franja superior y «Sobre esta prueba» identifican servicios simulados. Permite
+probar formularios, fotos, riegos, diario y consejos legibles. «IA simulada en esta
+prueba» se muestra en la demostración. La app real de la rama muestra «Ayuda con IA
+no disponible» hasta configurar servidor.
 
-Si el visor externo no carga, descargar `preview.html` desde esta rama y abrirlo
-como archivo HTML en el navegador. La demostración es autocontenida.
+Login, datos, clima e IA son simulados. Bob es ejemplo calculado con 77 días pendientes,
+no tu planta ni una medida de humedad. Fotos ilustrativas documentadas en
+`preview-assets/README.md`. La demostración usa preferencias separadas y no cambia
+cuenta, clave antigua ni jardín. No pide claves, instala worker o verifica PWA.
+Si el visor no carga, descarga `preview.html` y ábrelo: es autocontenido con fotos
+embebidas.
 
-## Servicios reales y PWA
+## Lo habitual
 
-La aplicación del PR es `index.html` y sus módulos; la demostración no sustituye
-su validación real. Para una prueba con Google/Firebase hace falta servir esta
-rama en un origen HTTPS controlado y autorizado en Firebase. No se debe autorizar
-el dominio compartido del visor para iniciar sesión. La publicación GitHub Pages
-actual permanece en `main` y el PR no se fusiona.
+- Regar: un toque en «Ya la he regado». Deshacer desde aviso; después, corregir en Historial.
+- Abrir ficha: foto o nombre. Si la tierra está húmeda, salir sin registrar nada.
+- Añadir: botón fijo terracota, nombre/frecuencia y guardar. Foto opcional con botón
+  español/vista previa; cancelar conserva la anterior.
+- Clima, copia o cuenta: Ajustes y la opción correspondiente.
+- IA simulada: ficha → Cuidados → «Revisar los cuidados». Leer consejo, revisar/corregir
+  campos elegidos o descartar; nada cambia sin aceptar y guardar.
 
-Pendientes: login real, reglas/escritura y sincronización entre vuestros móviles,
-Gemini con vuestra clave, clima/GPS real, instalación/actualización y uso sin
-conexión en Android/tablet, y fecha/frecuencia reales de Bob. Las suites locales
-usan servicios simulados y no alteran datos de producción.
+Una acción por planta. Añadir tiene espacio propio y se oculta con ventanas. Sin
+filtros/estadísticas/avisos grandes ni controles para justificar que no has regado.
 
-## Lo habitual, en uno o dos toques
+## Alcance
 
-- Registrar un riego: «Ya la he regado», desde la tarjeta. Deshacer desde el aviso.
-- Abrir una ficha: tocar la foto o el nombre. Cerrar si no hace falta agua, sin
-  registrar una revisión ni posponer.
-- Añadir: botón fijo terracota «+ Añadir planta», escribir nombre/frecuencia y guardar; la foto
-  es opcional: «Añadir foto» muestra la vista previa y «Cambiar foto» permite
-  reemplazarla; cancelar deja la anterior. «Recordarme cada 7 días» configura la
-  frecuencia orientativa. Más detalles y Gemini se usan solo si hacen falta.
-- Clima o cuenta/copias: Ajustes y la opción correspondiente.
+[Matriz](TEST_MATRIX.md): navegador real con servicios simulados; SDK web/Auth/Firestore
+locales; HTTP real Open-Meteo. Gemini/Vertex, App Check válido, OAuth Google y PWA física
+siguen pendientes con sus bloqueos. No se utiliza el jardín personal.
+[Capturas móvil/tablet](captures/).
 
-Se han retirado la vista semanal, filtros, contadores, grandes avisos y botones
-secundarios de la portada. El campo de búsqueda permanece cerrado; con nueve
-plantas o más aparece un acceso discreto en la cabecera, además de Ajustes.
-
-El botón de añadir tiene espacio propio, separado del desplazamiento de las
-plantas, y se oculta mientras hay una ventana abierta. Las fotos se muestran
-completas; una ficha sin foto utiliza un dibujo. «Recordatorio del…» indica una
-fecha orientativa pasada, sin asegurar que la tierra esté seca. Se han comprobado
-ambos temas, texto ampliado, las dos orientaciones de tablet y márgenes del
-sistema/teclado simulados; falta verificarlos en dispositivos físicos.
+Servicios reales necesitan HTTPS controlado y autorizado en Firebase. No autorices
+el visor compartido para sesiones Firebase. [Configuración de nube](SECURE_AI.md).

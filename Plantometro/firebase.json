@@ -1,0 +1,9 @@
+{
+  "functions": [{
+    "source": ".",
+    "codebase": "plantometro-ai",
+    "runtime": "nodejs22",
+    "ignore": ["node_modules", ".git", ".env*", "*.log", "*-debug.log", "index.html", "preview.html", "preview-assets/**", "styles.css", "js/**", "tests/**", "server/tests/**", "scripts/**", "captures/**", "*.md", "sw.js", "manifest.json", "firebase.test.json"]
+  }],
+  "firestore": [{"database":"plantometro-ai","location":"eur3","rules":"server/ai-quota.rules"}]
+}

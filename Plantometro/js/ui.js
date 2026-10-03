@@ -1,10 +1,12 @@
 import { $, esc, todayStr, addDays, diffDays, fmt, LIGHT, PLANT_ART } from "./utils.js";
-import { renderSettingsUI, maybeNotify } from "./settings.js";
+import { renderSettingsUI } from "./settings.js";
 import { plants, alive } from "./sync.js";
 import { weatherContext } from "./weather.js";
 import { plantState, openForm, water, correctWater, fertilize, delPlant, invalidateForm } from "./plants.js";
 import { renderGallery } from "./photos.js";
-import { aiReviewCard, aiPhotoDiag, mdToHtml } from "./gemini.js";
+import { aiReviewCard, aiPhotoDiag, mdToHtml, invalidateAI } from "./gemini.js";
+import { aiEnabled, aiStatus } from "./ai-service.js";
+import { readableSavedAI } from "../shared/ai-response.js";
 
 function toast(msg, actionLabel, actionFn){
   const t = $("toast");
@@ -54,7 +56,6 @@ function render(){
   $("garden-summary").textContent=!list.length ? "Un rincón para tus plantas." : due ? `Hoy toca cuidar ${due===1?"una planta":due+" plantas"}.` : "Hoy, tu jardín puede esperar.";
   $("search-toggle").hidden=list.length<9;
   $("loclist").innerHTML=[...new Set(list.map(p=>p.loc).filter(Boolean))].map(l=>`<option value="${esc(l)}">`).join("");
-  maybeNotify();
   const q=$("q").value.trim().toLocaleLowerCase("es");
   const shown=list.filter(p=>!q || (p.name+" "+(p.species||"")).toLocaleLowerCase("es").includes(q))
     .sort((a,b)=>plantState(a).d-plantState(b).d || a.name.localeCompare(b.name,"es"));
@@ -122,9 +123,11 @@ function openDetail(id){
     $("d-lastai-btn").onclick = ()=>{
       $("ai-title").textContent = p.name;
       $("ai-sub").textContent = `Revisión guardada · ${fmt(p.lastAI.date)}`;
-      $("ai-body").innerHTML = mdToHtml(p.lastAI.text);
+      const text = readableSavedAI(p.lastAI.text);
+      $("ai-body").innerHTML = mdToHtml(text);
       $("ai-apply").style.display="none";
-      $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(p.lastAI.text).then(()=>toast("Copiado 📄")).catch(()=>{}); };
+      $("ai-save").hidden=true;
+      $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(text).then(()=>toast("Copiado.")).catch(()=>{}); };
       openModal("ai-modal");
     };
   } else $("d-lastai").style.display="none";
@@ -135,6 +138,8 @@ function openDetail(id){
   $("d-hist").querySelectorAll("[data-correct]").forEach(b=>b.onclick=()=>{if(confirm("¿Quitar solo este riego accidental? Los demás registros se conservarán."))correctWater(id,b.dataset.correct);});
   $("d-water").onclick = e=>{ water(id, e.currentTarget); openDetail(id); };
   $("d-water").dataset.plantId = id;
+  $("d-ai-availability").textContent = aiStatus();
+  $("d-aiphoto").disabled = $("d-aicard").disabled = !aiEnabled();
   $("d-aiphoto").onclick = ()=>aiPhotoDiag(id);
   $("d-aicard").onclick = ()=>aiReviewCard(id);
   $("d-fertbtn").onclick = ()=>fertilize(id);
@@ -155,7 +160,7 @@ function syncModalLayout(){
   $("app-shell").inert=open;
 }
 function openModal(id){ if(id==="account-modal" || id==="weather-modal")closeModal("settings-modal"); $(id).classList.add("open"); if(id==="settings-modal") renderSettingsUI(); syncModalLayout(); }
-function closeModal(id){ $(id).classList.remove("open"); if(id === "form-modal") invalidateForm(); syncModalLayout(); }
+function closeModal(id){ $(id).classList.remove("open"); if(id === "form-modal") invalidateForm(); if(id === "ai-modal")invalidateAI(); syncModalLayout(); }
 
 function setupLayout(){
   const root=document.documentElement,viewport=window.visualViewport,dock=$("add-dock");

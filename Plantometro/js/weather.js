@@ -10,12 +10,13 @@ async function searchCity(){
   const box = $("georesults"); box.innerHTML = "<p class='note'>Buscando…</p>";
   try{
     const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=es&format=json`);
+    if(r.ok===false)throw Error('weather-search-unavailable');
     const d = await r.json();
     if(!d.results?.length){ box.innerHTML = "<p class='note'>Sin resultados. Prueba con otro nombre.</p>"; return; }
     box.innerHTML = d.results.map((c,i)=>`<button data-city="${i}">📍 ${esc(c.name)}${c.admin1?", "+esc(c.admin1):""} <span style="color:var(--ink2)">(${esc(c.country||"")})</span></button>`).join("");
     box._results = d.results;
     box.querySelectorAll("[data-city]").forEach(b=>b.onclick=()=>pickCity(+b.dataset.city));
-  }catch(e){ box.innerHTML = "<p class='note'>No hay conexión ahora mismo.</p>"; }
+  }catch(e){ box.innerHTML = "<p class='note'>La búsqueda no está disponible ahora. Prueba de nuevo.</p>"; }
 }
 function pickCity(i){
   const c = $("georesults")._results[i];
@@ -68,7 +69,9 @@ async function loadWeather(){
   $("w-city").textContent = settings.city;
   try{
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${settings.lat}&longitude=${settings.lon}&current=temperature_2m,relative_humidity_2m,weather_code&daily=precipitation_probability_max,precipitation_sum&forecast_days=2&timezone=auto`);
+    if(r.ok===false)throw Error('weather-unavailable');
     const d = await r.json(); const c = d.current;
+    if(!c||!Number.isFinite(c.temperature_2m)||!Number.isFinite(c.relative_humidity_2m)||c.relative_humidity_2m<0||c.relative_humidity_2m>100||!Number.isInteger(c.weather_code))throw Error('weather-invalid');
     forecast = {
       temp: c.temperature_2m,
       fetchedAt: Date.now(),
@@ -97,9 +100,9 @@ async function loadWeather(){
     }
   }catch(e){
     forecast = null;
-    $("w-summary").textContent = `${settings.city} · sin conexión`;
+    $("w-summary").textContent = `${settings.city} · clima no disponible`;
     $("w-temp").textContent = "--°"; $("w-hum").textContent = "--%"; $("w-rain").textContent = "--%";
-    $("w-tip").textContent = "Sin conexión: el clima se actualizará cuando la haya.";
+    $("w-tip").textContent = "No se pudo consultar el clima. Puedes volver a intentarlo; tus fechas siguen igual.";
     $("w-tip").style.display = "block";
     render();
   }

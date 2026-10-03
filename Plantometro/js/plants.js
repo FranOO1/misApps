@@ -1,4 +1,5 @@
 import { validateBackup } from "./backup.js";
+import { aiEnabled, aiStatus } from "./ai-service.js";
 import { $, esc, todayStr, addDays, diffDays, dateNumber, PLANT_ART } from "./utils.js";
 import { whoAmI } from "./settings.js";
 import { plants, putPlant, removePlant, putPlantsBatch, updatePlantTransaction, sessionToken } from "./sync.js";
@@ -43,7 +44,8 @@ function openForm(id){
   $("f-potsize").value = p?.potSize || ""; $("f-potdate").value = p?.potDate || "";
   formRevision++;
   $("f-suggestions").hidden = true; $("f-suggestions").replaceChildren();
-  $("f-identify").disabled = false;
+  $("f-identify").disabled = !aiEnabled();
+  $("f-ai-availability").textContent = aiStatus();
   $("f-details").open = !!p;
   $("f-aistatus").style.display = "none";
   formPhoto = p?.photo || null; formLight = p?.light || "";
@@ -55,7 +57,7 @@ function openForm(id){
 async function pickPhoto(e){
   const file = e.target.files[0]; if(!file) return;
   const revision = ++formRevision, session=sessionToken();
-  $("f-identify").disabled = false;
+  $("f-identify").disabled = !aiEnabled();
   $("f-suggestions").hidden = true;
   try{
     const photo = await shrinkImage(file, 640, .68);
@@ -140,7 +142,8 @@ async function delPlant(id){
 }
 
 function invalidateForm(){
-  formRevision++; $("f-identify").disabled=false; $("f-suggestions").hidden=true;
+  formRevision++; $("f-identify").disabled=!aiEnabled(); $("f-suggestions").hidden=true;
+  $("f-aistatus").style.display="none";
 }
 function setFormLight(value){
   formLight=value;
