@@ -177,3 +177,57 @@ details[open]>summary::after{content:'−'}
   .card-info{padding:16px 16px 10px}.card .name{font-size:1.5rem}.card-action{padding:4px 16px 16px}.sheet{padding-left:18px;padding-right:18px}.hero{margin-left:-18px;margin-right:-18px}.row2{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Everyday context stays small; activity and weather details open on demand. */
+.headrow{flex-wrap:wrap}
+.topbtns{flex-shrink:0}
+.activity-bell{position:relative}
+.activity-badge{position:absolute;top:0;right:0;min-width:21px;height:21px;padding:0 4px;border-radius:12px;background:var(--green-deep);color:var(--on-state);font:600 12px/21px system-ui;text-align:center;border:2px solid var(--bg)}
+.weather-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:10px;min-width:0}
+.weather-peek{display:flex;align-items:center;gap:7px;min-width:0;min-height:44px;text-align:left;flex-wrap:wrap;font-size:.875rem;color:var(--ink2);flex:1;border-radius:10px}
+.weather-peek:hover{background:var(--surface2)}
+#weather-peek-city{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#weather-peek-temp{max-width:100%;overflow-wrap:anywhere;flex-shrink:1;font-weight:600;color:var(--ink)}
+#weather-peek-icon{font-size:1.25rem;flex-shrink:0}
+#weather-peek-age{font-size:.75rem;font-weight:600}
+.weather-peek.stale{flex-wrap:wrap}
+.search-shortcut{display:flex;align-items:center;gap:5px;font-size:.875rem;flex-shrink:0;padding:8px 0}
+.search-shortcut svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
+.weather-notice{display:flex;align-items:center;gap:10px;padding:6px 10px 6px 14px;background:var(--surface2);color:var(--ink2);border-radius:14px;margin-top:8px;font-size:.8125rem;line-height:1.5}
+.weather-notice p{flex:1;min-width:0}
+.weather-notice .xbtn{background:transparent;flex-shrink:0}
+.last-change{display:block;margin-top:8px;font-size:.75rem;line-height:1.6;color:var(--ink2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.card{display:flex;flex-direction:column}
+.card-open{flex:1}
+.grid.compact{grid-template-columns:repeat(auto-fill,minmax(min(100%,10rem),1fr));gap:14px}
+.grid.compact .card-photo{aspect-ratio:1.15}
+.grid.compact .card-info{padding:13px 12px 8px}
+.grid.compact .name{font-size:1.1875rem;line-height:1.3}
+.grid.compact .next{font-size:.8125rem;line-height:1.5}
+.grid.compact .card-action{padding:4px 12px 12px}
+.grid.compact .waterbtn{padding:10px 6px;font-size:.8125rem;line-height:1.4;min-height:48px}
+.grid.compact .card-photo>svg{max-width:60%;height:auto}
+.activity-list{list-style:none;margin-top:16px}
+.activity-item{border-bottom:1px solid var(--line)}
+.activity-item button{display:flex;flex-direction:column;gap:4px;text-align:left;width:100%;padding:16px 12px;border-radius:12px;font-size:.875rem;overflow-wrap:anywhere}
+.activity-item.unread button{background:var(--surface2)}
+.activity-name{font-family:'Fraunces',Georgia,serif;font-size:1.125rem;color:var(--ink)}
+.activity-time{font-size:.8125rem;color:var(--ink2)}
+.activity-empty{padding:24px 0;color:var(--ink2)}
+.history-label{font-size:1.125rem;margin:22px 0 12px}
+.plant-change{font-size:.875rem;padding:10px 0;border-top:1px solid var(--line)}
+.plant-change span{display:block;color:var(--ink2);font-size:.8125rem;margin-top:3px}
+.georesults button span{display:block;font-size:.8125rem;color:var(--ink2)}
+.weather-scene{position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden;opacity:0}
+.weather-scene.playing{animation:weather-fade 4.5s ease-out both}
+.weather-scene i{position:absolute;left:var(--x);top:-10%;animation-delay:var(--delay);animation-fill-mode:both}
+.weather-scene[data-kind="rain"] i{height:34px;width:1px;background:var(--blue);opacity:.25;animation-name:weather-rain;animation-duration:1.8s;animation-iteration-count:2}
+.weather-scene[data-kind="snow"] i{width:var(--size);height:var(--size);border-radius:50%;background:var(--ink2);opacity:.3;animation-name:weather-snow;animation-duration:4s}
+.weather-scene[data-kind="wind"] i{top:var(--x);left:0;width:120px;height:1px;background:var(--leaf);opacity:.2;animation-name:weather-wind;animation-duration:2.2s}
+.weather-scene[data-kind="storm"]{background:radial-gradient(ellipse at top,rgba(178,191,135,.14),transparent 75%)}
+@keyframes weather-fade{0%{opacity:0}20%{opacity:.8}75%{opacity:.7}100%{opacity:0}}
+@keyframes weather-rain{from{transform:translate(0,-10vh)}to{transform:translate(-30px,115vh)}}
+@keyframes weather-snow{from{transform:translate(0,-10vh)}to{transform:translate(28px,115vh)}}
+@keyframes weather-wind{from{transform:translate(-200px,0)}to{transform:translate(100vw,24px)}}
+@media(min-width:700px){.grid.compact{grid-template-columns:repeat(auto-fill,minmax(min(100%,13rem),1fr))}}
+@media(prefers-reduced-motion:reduce){.weather-scene,.weather-scene i{animation:none!important}.weather-scene.still{display:none}.weather-notice{background:var(--surface2)}}

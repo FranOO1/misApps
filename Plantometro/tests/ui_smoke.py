@@ -5,6 +5,7 @@ Requires Python Playwright and Chromium (CHROMIUM_PATH can override the binary).
 No production account, stored garden, or real Gemini key is used.
 """
 import base64
+from datetime import datetime,timezone
 import functools
 import http.server
 import json
@@ -33,20 +34,33 @@ export const persistentLocalCache = () => ({});
 export const persistentMultipleTabManager = () => ({});
 export const collection = (...args) => args;
 export const doc = (...args) => args;
-export const onSnapshot = (ref, cb, error) => {
- window.testSnapshotError=error;window.testSnapshot=cb;
- queueMicrotask(()=>cb({docs:window.testPlants.map(p=>({data:()=>p}))}));
+export const arrayUnion = (...values) => ({adapter:'union',values});
+export const arrayRemove = (...values) => ({adapter:'remove',values});
+export const serverTimestamp = () => new Date().toISOString();
+const isActivity=ref=>ref.at(-2)==='plantometroActivity';
+const copy=value=>JSON.parse(JSON.stringify(value));
+const metadata={fromCache:false,hasPendingWrites:false};
+const notify=()=>{window.testSnapshot?.({docs:window.testPlants.map(p=>({data:()=>copy(p)})),metadata});window.testActivitySnapshot?.({data:()=>copy(window.testJournal||{events:[]}),metadata});};
+export const onSnapshot = (ref, options, cb, error) => {
+ if(typeof options==='function'){error=cb;cb=options;}
+ if(isActivity(ref)){window.testActivitySnapshot=cb;queueMicrotask(()=>cb({data:()=>copy(window.testJournal||{events:[]}),metadata}));}
+ else{window.testSnapshotError=error;window.testSnapshot=cb;queueMicrotask(()=>cb({docs:window.testPlants.map(p=>({data:()=>copy(p)})),metadata}));}
  return ()=>{};
 };
+function fields(original,patch){const p=copy(original);for(const [k,v] of Object.entries(patch)){if(v?.adapter==='union'){const a=p[k]||[];p[k]=[...a,...v.values.filter(x=>!a.some(y=>JSON.stringify(x)===JSON.stringify(y)))];}else if(v?.adapter==='remove')p[k]=(p[k]||[]).filter(x=>!v.values.some(y=>JSON.stringify(x)===JSON.stringify(y)));else p[k]=copy(v);}if(p.history)p.history.sort((a,b)=>(b.at||b.date||'').localeCompare(a.at||a.date||''));return p;}
 export const setDoc = async (ref, p) => {
  if(window.testWriteError)throw {code:window.testWriteError};
- window.testWrites.push(JSON.parse(JSON.stringify({ref:ref.slice(1),plant:p})));
- const i=window.testPlants.findIndex(x=>x.id===p.id);if(i>=0)window.testPlants[i]=JSON.parse(JSON.stringify(p));else window.testPlants.push(JSON.parse(JSON.stringify(p)));
+ if(isActivity(ref)){window.testJournal=copy(p);return;}
+ window.testWrites.push(copy({ref:ref.slice(1),plant:p}));
+ const i=window.testPlants.findIndex(x=>x.id===p.id);if(i>=0)window.testPlants[i]=copy(p);else window.testPlants.push(copy(p));
 };
 export const deleteDoc = async ref => {if(window.testWriteError)throw {code:window.testWriteError};(window.testDeletes||=[]).push(ref);window.testPlants=window.testPlants.filter(p=>p.id!==ref.at(-1));};
-export const writeBatch = () => {const changes=[];return {set:(r,p)=>changes.push([r,p]),commit:async()=>{if(window.testWriteError)throw {code:window.testWriteError};for(const [r,p] of changes)await setDoc(r,p);}};};
-export const runTransaction = async (db,cb) => {if(window.testWriteError)throw {code:window.testWriteError};const pending=[];await cb({get:async ref=>{const p=window.testPlants.find(p=>p.id===ref.at(-1));return {exists:()=>!!p,data:()=>JSON.parse(JSON.stringify(p))};},set:(r,p)=>pending.push([r,p])});for(const [r,p] of pending)await setDoc(r,p);};
-
+export const writeBatch = () => {const changes=[];return {set:(r,p,o)=>changes.push(['set',r,p,o]),update:(r,p)=>changes.push(['update',r,p]),delete:r=>changes.push(['delete',r]),commit:async()=>{
+ if(window.testWriteError)throw {code:window.testWriteError};
+ for(const [kind,ref] of changes)if(kind==='update'&&!isActivity(ref)&&!window.testPlants.some(p=>p.id===ref.at(-1)))throw {code:'not-found'};
+ for(let i=0;i<changes.length;i++){const [kind,ref,p,o]=changes[i];if(kind==='delete'){await deleteDoc(ref);continue;}if(kind==='update'&&changes[i+1]?.[0]==='delete'&&changes[i+1][1].at(-1)===ref.at(-1))continue;const original=isActivity(ref)?window.testJournal||{events:[]}:window.testPlants.find(p=>p.id===ref.at(-1));await setDoc(ref,kind==='update'||o?.merge?fields(original||{},p):p);}
+ notify();}};};
+export const runTransaction = async (db,cb) => {if(window.testWriteError)throw {code:window.testWriteError};const batch=writeBatch();await cb({get:async ref=>{const p=isActivity(ref)?window.testJournal:window.testPlants.find(p=>p.id===ref.at(-1));return {exists:()=>!!p,data:()=>copy(p)};},set:batch.set,update:batch.update});await batch.commit();};
 """
 AI_RESPONSE = dict(resumen='Una planta que observar.',consejo='Comprueba la tierra antes de decidir.',confianza='baja',motivo='Foto o nombre insuficientes para confirmar.',sugerencias=dict(nombreComun='Monstera',especie='Monstera deliciosa',revisarCadaDias=5,abonoCadaDias=None,luz='media'))
 APP_CHECK = 'export class ReCaptchaEnterpriseProvider {}; export const initializeAppCheck = () => ({});'
@@ -93,8 +107,7 @@ def route_external(route):
     elif "geocoding-api.open-meteo.com" in url:
         route.fulfill(json={"results":[{"name":"Granada","latitude":37.17,"longitude":-3.59,"country":"España"}]})
     elif "api.open-meteo.com" in url:
-        route.fulfill(json=dict(current=dict(temperature_2m=34,relative_humidity_2m=35,weather_code=61),
-                               daily=dict(precipitation_probability_max=[80,70],precipitation_sum=[4,2])))
+        route.fulfill(json=dict(utc_offset_seconds=0,current=dict(time=datetime.now(timezone.utc).isoformat(),temperature_2m=34,relative_humidity_2m=35,weather_code=61),daily=dict(time=[datetime.now(timezone.utc).date().isoformat()],weather_code=[61],precipitation_probability_max=[80],precipitation_sum=[4])))
     else:
         route.fulfill(body="",content_type="text/css" if "fonts.googleapis" in url else "text/plain")
 
@@ -460,12 +473,12 @@ with sync_playwright() as pw:
     page.locator('#toast button').click()
     page.wait_for_function('testWrites.length===2')
     assert page.evaluate('testWrites.at(-1).plant.lastWater')==str(today-timedelta(days=7))
-    # Larger gardens get a discreet search button, never an always-open input.
+    # Larger gardens show the search field without adding another button.
     page.evaluate("""() => {testSnapshot({docs:Array.from({length:9},(_,i)=>({data:()=>({...testPlants[0],id:'many-'+i,name:'Planta '+i})}))});}""")
-    expect(page.locator('#search-toggle')).to_be_visible()
-    page.locator('#search-toggle').click();page.locator('#q').fill('Planta 8')
+    expect(page.locator('#search-panel')).to_be_visible()
+    page.locator('#q').fill('Planta 8')
     expect(page.locator('#grid .card')).to_have_count(1)
-    page.get_by_role('button',name='Cerrar búsqueda').click()
+    page.locator('#search-clear').click()
     expect(page.locator('#grid .card')).to_have_count(9)
     assert not overflow(page) and not errors,errors
     # Natural labels for no pending plants and an empty garden, with a photo fallback.
@@ -484,9 +497,11 @@ with sync_playwright() as pw:
         context.route("https://**/*",lambda r:r.abort())
         page=context.new_page();errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
         page.goto(URL+"preview.html")
-        expect(page.locator("#grid .card")).to_have_count(2)
+        expect(page.locator("#grid .card")).to_have_count(10)
         expect(page.locator("aside")).to_contain_text("simulados")
+        for image in page.locator('#grid .card-photo img').all():image.scroll_into_view_if_needed()
         page.wait_for_function("[...document.querySelectorAll('#grid .card-photo img')].every(i=>i.complete&&i.naturalWidth>0)")
+        page.locator('.wrap').evaluate('e=>e.scrollTop=0')
         for theme in ['light','dark']:
             open_settings(page)
             page.get_by_role('button',name='Claro' if theme=='light' else 'Oscuro',exact=True).click()
@@ -494,7 +509,7 @@ with sync_playwright() as pw:
             check_contrast(page)
             assert not overflow(page)
             page.screenshot(path=str(OUT/f"preview-{width}-{theme}.png"),full_page=True)
-        page.locator("#grid [data-open]").first.click()
+        page.locator('[data-open="bob-demo"]').click()
         expect(page.locator('#d-next')).to_contain_text('recordatorio de hace 77 días')
         expect(page.locator('#d-water')).to_be_visible()
         page.locator('#detail-modal .xbtn').click()
@@ -547,12 +562,12 @@ with sync_playwright() as pw:
         assert 'Mirar la tierra el ' in page.locator('[data-plant=layout-2] .next').inner_text()
         fresh=page.locator('[data-plant=fresh]');assert fresh.get_attribute('class')=='card ok'
         # Shrink available height while searching, then restore orientation/height.
-        page.locator('#search-toggle').click();page.locator('#q').fill('Planta')
+        page.locator('#q').fill('Planta')
         page.set_viewport_size(dict(width=width,height=max(320,int(height*.55))))
         page.evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
         clear_dock(page)
         page.set_viewport_size(dict(width=width,height=height))
-        page.get_by_role('button',name='Cerrar búsqueda').click()
+        page.locator('#search-clear').click()
         # Global add action is absent behind every app window and returns on close.
         page.locator('.fab').click();expect(page.locator('#form-modal')).to_be_visible();expect(page.locator('.fab')).to_be_hidden()
         page.locator('#f-name').fill('Sin fecha inventada')
@@ -583,8 +598,8 @@ with sync_playwright() as pw:
     page.reload()
     page.wait_for_function("navigator.serviceWorker.controller !== null")
     keys=page.evaluate("caches.keys()")
-    assert "plantometro-v16" in keys
-    assert page.evaluate("caches.open('plantometro-v16').then(c=>c.match(location.href).then(Boolean))")
+    assert "plantometro-v17" in keys
+    assert page.evaluate("caches.open('plantometro-v17').then(c=>c.match(location.href).then(Boolean))")
     # Preserve caches belonging to the other apps on the same GitHub Pages origin.
     page.evaluate("caches.open('horas-v1')")
     sw=page.evaluate("navigator.serviceWorker.getRegistration().then(r=>r.active.scriptURL)")
@@ -594,7 +609,7 @@ with sync_playwright() as pw:
     context.set_offline(True);page.reload()
     expect(page.locator("h1.brand")).to_have_text("Plantómetro")
     assert "horas-v1" in page.evaluate("caches.keys()")
-    print("PASS PWA: scoped worker v15, app cache, offline shell, standalone manifest, other-app cache retained")
+    print("PASS PWA: scoped worker v17, app cache, offline shell, standalone manifest, other-app cache retained")
     context.close();browser.close()
 server.shutdown()
 print(f"Screenshots: {OUT}")

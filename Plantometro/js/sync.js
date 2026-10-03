@@ -1,8 +1,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { $, PLANT_ART } from "./utils.js";
 import { toast, render, closeModal } from "./ui.js";
+import {whoAmI} from './settings.js';
+import {localDeviceId,startActivity,stopActivity} from './activity.js';
+import {makeActivity,sortHistory} from './activity-model.js';
 
 /* ============ Firebase: configuración (incrustada, proyecto misApps) ============ */
 const fbConfig = {
@@ -17,15 +20,17 @@ try { localStorage.removeItem("pg3_fbconfig"); } catch(e){} // limpieza de la co
 
 /* ============ Firebase: sesión y datos ============ */
 let auth=null, fs=null, user=null, unsub=null, plants=[];
-let epoch=0, operations=new Map(), confirmed=new Map(),transactions=new Set(),pendingWrites=new Set();
+let epoch=0, operations=new Map(), confirmed=new Map(),transactions=new Set(),pendingWrites=new Set(),remotePlants=new Map();
 const hasPendingWrites=()=>pendingWrites.size>0||transactions.size>0;
-function notifySyncIdle(){if(typeof window.dispatchEvent==='function')window.dispatchEvent(new Event('plantometro:sync-idle'));}
+// Awaiting actions must finish their UI (notably Undo) before an update reloads.
+function notifySyncIdle(){if(typeof window.dispatchEvent==='function')setTimeout(()=>window.dispatchEvent(new Event('plantometro:sync-idle')),0);}
 const clone = value => JSON.parse(JSON.stringify(value));
 const cacheKey = uid => "pg3_cache_" + uid;
 try{localStorage.removeItem("pg3_cache");}catch(e){}
 function clearGarden(uid){
   epoch++; if(unsub){unsub();unsub=null;}
-  plants=[]; confirmed.clear(); operations.clear();transactions.clear();pendingWrites.clear();
+  stopActivity();
+  plants=[]; confirmed.clear();remotePlants.clear(); operations.clear();transactions.clear();pendingWrites.clear();
   try{localStorage.removeItem("pg3_cache");if(uid)localStorage.removeItem(cacheKey(uid));}catch(e){}
   document.querySelectorAll(".modal.open").forEach(m=>closeModal(m.id));
   $("acc-name").textContent=""; $("acc-email").textContent=""; $("acc-photo").src="";
@@ -44,6 +49,7 @@ function reportWriteError(err,action){
     : code.includes("unauthenticated") ? "La sesión ha caducado. Vuelve a entrar con Google."
     : code.includes("unavailable") ? "El servicio no está disponible. La operación falló; revisa la conexión y vuelve a intentarlo."
     : code.includes("resource-exhausted") ? "Se ha alcanzado un límite de Firestore. Vuelve a intentarlo más tarde."
+    : code==='not-found' ? "La planta ya no existe. No se guardó ni se volvió a crear."
     : "No se pudo " + action + ". El cambio no está confirmado; vuelve a intentarlo.";
   $("sync-status").textContent=message;toast(message);
 }
@@ -55,14 +61,15 @@ function rollback(id){const previous=confirmed.get(id);plants=plants.filter(p=>p
 function track(ids,action,write){
   const session=epoch,uid=user.uid,op=Symbol(); ids.forEach(id=>operations.set(id,op));
   pendingWrites.add(op);
+  render();
   $("sync-status").textContent=navigator.onLine===false ? "Cambios pendientes en este dispositivo; se enviarán al volver la conexión." : "Guardando cambios…";
   return Promise.resolve().then(write).then(()=>{
     if(epoch!==session || user?.uid!==uid)return false;
-    ids.forEach(id=>{if(operations.get(id)===op){const p=plants.find(p=>p.id===id);if(p)confirmed.set(id,clone(p));else confirmed.delete(id);operations.delete(id);}});
-    $("sync-status").textContent="Cambios confirmados en la nube.";saveCache();return true;
+    ids.forEach(id=>{if(operations.get(id)===op){operations.delete(id);const p=remotePlants.get(id)||plants.find(p=>p.id===id);plants=plants.filter(x=>x.id!==id);if(p){plants.push(clone(p));confirmed.set(id,clone(p));}else confirmed.delete(id);}});
+    $("sync-status").textContent="Cambios confirmados en la nube.";saveCache();render();return true;
   }).catch(err=>{
     if(epoch!==session || user?.uid!==uid)return false;
-    ids.forEach(id=>{if(operations.get(id)===op){rollback(id);operations.delete(id);}});reportWriteError(err,action);return false;
+    ids.forEach(id=>{if(operations.get(id)===op){operations.delete(id);rollback(id);}});reportWriteError(err,action);return false;
   }).finally(()=>{pendingWrites.delete(op);notifySyncIdle();});
 }
 
@@ -88,7 +95,7 @@ function startFirebase(){
       try{const cached=JSON.parse(localStorage.getItem(cacheKey(u.uid))||"[]");if(Array.isArray(cached))plants=cached;}catch(e){}
       confirmed=new Map(plants.map(p=>[p.id,clone(p)]));
       $("acc-name").textContent=u.displayName||"";$("acc-email").textContent=u.email||"";$("acc-photo").src=u.photoURL||"";
-      render();showGate(null);listenPlants();
+      render();showGate(null);listenPlants();startActivity(fs,u.uid);
     }else{clearGarden(oldUid);showGate("login");}
   });
 }
@@ -117,53 +124,86 @@ async function doSignOut(){
 }
 function listenPlants(){
   if(unsub)unsub();const uid=user.uid,session=epoch;
-  unsub=onSnapshot(collection(fs,"users",uid,"plants"),snap=>{
+  unsub=onSnapshot(collection(fs,"users",uid,"plants"),{includeMetadataChanges:true},snap=>{
     if(session!==epoch || user?.uid!==uid)return;
-    const remote=snap.docs.map(d=>d.data());
+    const remote=snap.docs.map(d=>{const p=d.data();return {...p,history:sortHistory(p.history),gallery:sortHistory(p.gallery)};});
+    remotePlants=new Map(remote.map(p=>[p.id,clone(p)]));
     if(!snap.metadata?.hasPendingWrites){
-      for(const p of remote)if(!operations.has(p.id))confirmed.set(p.id,clone(p));
-      for(const id of confirmed.keys())if(!remote.some(p=>p.id===id)&&!operations.has(id))confirmed.delete(id);
+      for(const p of remote)confirmed.set(p.id,clone(p));
+      for(const id of confirmed.keys())if(!remote.some(p=>p.id===id))confirmed.delete(id);
     }
     plants=[...remote.filter(p=>!operations.has(p.id)),...plants.filter(p=>operations.has(p.id))];
     saveCache();render();
   },err=>{if(session===epoch){reportWriteError(err,"cargar el jardín");}});
 }
-function putPlant(p){
-  if(!requireSession())return Promise.resolve(false);
-  if(new TextEncoder().encode(JSON.stringify(p)).length>850000){rollback(p.id);toast("La ficha es demasiado grande. Exporta una copia antes de reducir fotos; no se eliminó ninguna automáticamente.");return Promise.resolve(false);}
-  optimistic(p);const uid=user.uid;
-  return track([p.id],"guardar",()=>setDoc(doc(fs,"users",uid,"plants",p.id),clone(p)));
+function journalRef(){return doc(fs,'users',user.uid,'plantometroActivity','recent');}
+function appendActivity(batch,event,ref=journalRef()){batch.set(ref,{events:arrayUnion(event),updatedAt:serverTimestamp()},{merge:true});}
+function fitsPlant(p){
+  if(new TextEncoder().encode(JSON.stringify(p)).length<=850000)return true;
+  toast('La ficha es demasiado grande. Exporta una copia antes de reducir fotos; no se eliminó ninguna automáticamente.');return false;
+}
+function putPlant(p,options={}){
+  if(!requireSession()||!fitsPlant(p))return Promise.resolve(false);
+  const previous=confirmed.get(p.id),batch=writeBatch(fs),ref=doc(fs,'users',user.uid,'plants',p.id);
+  if(!previous){
+    const event=makeActivity('created',p,whoAmI(),localDeviceId);
+    const saved={...clone(p),lastActivity:event};batch.set(ref,saved);appendActivity(batch,event);optimistic(saved);
+  }else{
+    const patch=options.patch||Object.fromEntries(Object.entries(p).filter(([key,value])=>JSON.stringify(previous[key])!==JSON.stringify(value)));
+    const meaningful=Object.keys(patch).some(key=>!['updatedAt','updatedBy'].includes(key));
+    if(!meaningful)return Promise.resolve(true);
+    const event=options.type?makeActivity(options.type,p,whoAmI(),localDeviceId):null;
+    const fields={...patch,updatedAt:p.updatedAt||new Date().toISOString(),updatedBy:p.updatedBy||whoAmI(),...(event?{lastActivity:event}:{})};
+    batch.update(ref,fields);if(event)appendActivity(batch,event);optimistic({...previous,...p,...(event?{lastActivity:event}:{})});
+  }
+  return track([p.id],'guardar la ficha y su actividad',()=>batch.commit());
+}
+// Field transforms preserve concurrent histories/photos and cannot recreate a
+// plant deleted on another device. One batch confirms the action and its event.
+function patchPlant(p,fields,type,extra={},eventId){
+  if(!requireSession()||!fitsPlant(p))return Promise.resolve(false);
+  const event=makeActivity(type,p,whoAmI(),localDeviceId,eventId,extra),batch=writeBatch(fs);
+  batch.update(doc(fs,'users',user.uid,'plants',p.id),{...fields,updatedAt:p.updatedAt||event.occurredAt,updatedBy:event.author,lastActivity:event});
+  appendActivity(batch,event);optimistic({...p,lastActivity:event});
+  return track([p.id],'guardar el cambio y su actividad',()=>batch.commit());
 }
 function removePlant(id){
   if(!requireSession())return Promise.resolve(false);
-  plants=plants.filter(p=>p.id!==id);saveCache();render();const uid=user.uid;
-  return track([id],"eliminar",()=>deleteDoc(doc(fs,"users",uid,"plants",id)));
+  const p=plants.find(p=>p.id===id);if(!p)return Promise.resolve(false);
+  const batch=writeBatch(fs),event=makeActivity('deleted',p,whoAmI(),localDeviceId);
+  const ref=doc(fs,'users',user.uid,'plants',id);
+  // An existence precondition keeps a queued second deletion from announcing
+  // an action on an already removed plant. Both writes commit atomically.
+  batch.update(ref,{updatedAt:event.occurredAt});batch.delete(ref);appendActivity(batch,event);
+  plants=plants.filter(p=>p.id!==id);saveCache();render();
+  return track([id],'eliminar la planta y guardar su actividad',()=>batch.commit());
 }
 function putPlantsBatch(list){
   if(!requireSession())return Promise.resolve(false);
-  const uid=user.uid,batch=writeBatch(fs);
-  for(const p of list){batch.set(doc(fs,"users",uid,"plants",p.id),clone(p));optimistic(p);}
-  return track(list.map(p=>p.id),"restaurar la copia",()=>batch.commit());
+  const batch=writeBatch(fs),event=makeActivity('restored',{id:'',name:'Tu jardín'},whoAmI(),localDeviceId);
+  for(const p of list){batch.set(doc(fs,'users',user.uid,'plants',p.id),clone(p));optimistic(p);}
+  appendActivity(batch,event);
+  return track(list.map(p=>p.id),'restaurar la copia',()=>batch.commit());
 }
-async function updatePlantTransaction(id,transform){
+async function updatePlantTransaction(id,transform,activity={}){
   if(!requireSession())return false;
-  const session=epoch,uid=user.uid;
+  const session=epoch,uid=user.uid,p=plants.find(p=>p.id===id),activityRef=journalRef();
+  const event=makeActivity('corrected',p,whoAmI(),localDeviceId,undefined,activity);
   const operation=Symbol();transactions.add(operation);
   try{
     await runTransaction(fs,async tx=>{
-      const ref=doc(fs,"users",uid,"plants",id),snap=await tx.get(ref);
-      if(!snap.exists())throw new Error("missing");
-      const changed=transform(snap.data());if(!changed)throw new Error("missing-event");
-      tx.set(ref,changed);
+      const ref=doc(fs,'users',uid,'plants',id),snap=await tx.get(ref);
+      if(!snap.exists())throw {code:'not-found'};
+      const changed=transform(snap.data());if(!changed)throw {code:'already-corrected'};
+      tx.set(ref,{...changed,lastActivity:event});appendActivity(tx,event,activityRef);
     });
     if(session!==epoch)return false;
-    // The snapshot listener publishes the transaction's current document.
-    const current=plants.find(p=>p.id===id),changed=current && transform(clone(current));
-    if(changed){optimistic(changed);confirmed.set(id,clone(changed));}
-    toast("Riego corregido. Los demás registros se conservan.");return true;
-  }catch(err){if(session===epoch)reportWriteError(err,"corregir ese riego (requiere conexión)");return false;}
+    toast('Riego corregido. Los demás registros se conservan.');return true;
+  }catch(err){if(session===epoch){if(err.code==='already-corrected')toast('Este riego ya estaba corregido. No se ha creado otro cambio.');else reportWriteError(err,'corregir ese riego (requiere conexión)');}return false;}
   finally{transactions.delete(operation);notifySyncIdle();}
 }
 const alive=()=>plants;
-const sessionToken=()=>user?user.uid+":"+epoch:null;
-export {plants,auth,showGate,startFirebase,doSignIn,doSignOut,putPlant,removePlant,putPlantsBatch,updatePlantTransaction,alive,sessionToken,hasPendingWrites};
+const sessionToken=()=>user?user.uid+':'+epoch:null;
+const isPlantPending=id=>operations.has(id);
+const confirmedPlant=id=>confirmed.get(id);
+export {plants,auth,showGate,startFirebase,doSignIn,doSignOut,putPlant,patchPlant,removePlant,putPlantsBatch,updatePlantTransaction,alive,sessionToken,hasPendingWrites,isPlantPending,confirmedPlant,arrayUnion,arrayRemove};
