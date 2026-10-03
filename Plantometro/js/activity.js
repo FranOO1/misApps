@@ -1,4 +1,4 @@
-import {doc,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {doc,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js';
 import {$,esc} from './utils.js';
 import {openModal,closeModal,openDetail,render,toast} from './ui.js';
 import {ACTIVITY_LIMIT,ACTIONS,deviceId,recentActivities,shortActivityDate,updateReadState} from './activity-model.js';

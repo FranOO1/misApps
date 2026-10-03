@@ -1,7 +1,8 @@
+import {openCameraPhoto} from "./camera.js";
 import { $, esc, todayStr } from "./utils.js";
 import { settings, whoAmI } from "./settings.js";
-import { plants, putPlant, sessionToken } from "./sync.js";
-import { seasonContext, weatherContext } from "./weather.js";
+import { plants, putPlant, arrayUnion, sessionToken } from "./sync.js";
+import { seasonContext, forecast } from "./weather.js";
 import { formPhoto, formLight, formRevision, openForm, setFormLight, updateReminderUnit } from "./plants.js";
 import { shrinkImage } from "./photos.js";
 import { toast, openModal, closeModal, openDetail } from "./ui.js";
@@ -33,13 +34,22 @@ function mdToHtml(t){
 }
 
 
-function aiContext(p){return {city:settings.city,date:todayStr(),season:seasonContext(),weather:p?weatherContext(p):''};}
+function aiContext(p){
+ const fresh=forecast&&forecast.city===settings.city&&forecast.lat===Number(settings.lat)&&forecast.lon===Number(settings.lon)&&Number.isFinite(forecast.observedAt)&&Date.now()-forecast.observedAt<3*3600000&&navigator.onLine!==false;
+ return {city:settings.city,date:todayStr(),season:seasonContext(),weather:fresh?'Lectura actual aproximada de Open-Meteo ('+new Date(forecast.observedAt).toISOString()+'): '+forecast.temp+' °C, humedad '+forecast.humidity+'%. No hay historial meteorológico anterior fiable.':'No hay lectura ni historial meteorológico reciente fiable. No uses la previsión futura como tiempo pasado.'};
+}
 let aiBusy=false,aiRun=0,aiPhotoPlantId=null;
 function invalidateAI(){aiRun++;aiBusy=false;}
 function showReview(response){
   const b=$('ai-body');b.replaceChildren();
   const title=document.createElement('h3');title.textContent=response.resumen;b.append(title);
-  const advice=document.createElement('p');advice.textContent=response.consejo;b.append(advice);
+  if(response.analisis){
+    for(const [label,value] of [['Lo que se ve',response.analisis.observado],['Causas posibles',response.analisis.causas],['Qué comprobar ahora',response.analisis.comprobar],['Un paso práctico',response.analisis.recomendacion]]){
+      const h=document.createElement('h4');h.textContent=label;b.append(h);
+      const body=document.createElement(Array.isArray(value)?'ol':'p');if(Array.isArray(value))for(const item of value){const li=document.createElement('li');li.textContent=item;body.append(li);}else body.textContent=value;b.append(body);
+    }
+  }
+  if(!response.analisis){const advice=document.createElement('p');advice.textContent=response.consejo;b.append(advice);}
   const confidence=document.createElement('p');confidence.className='note';
   confidence.textContent=(response.confianza==='alta'?'Recomendación orientativa. ':'Identificación o cuidados dudosos. ')+response.motivo;b.append(confidence);
   const label=document.createElement('p');label.className='note';label.textContent='Son sugerencias. La ficha sigue igual hasta que decidas guardar.';b.append(label);
@@ -49,8 +59,9 @@ async function saveReview(id,response,photo,session,button){
   const current=plants.find(p=>p.id===id);if(!current)return;
   button.disabled=true;
   const updated={...current,lastAI:{date:todayStr(),text:aiResponseText(response)},updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
-  if(photo)updated.gallery=[{date:todayStr(),img:photo,note:response.resumen.slice(0,140)},...(current.gallery||[])];
-  const saved=await putPlant(updated);
+  const patch={lastAI:updated.lastAI};
+  if(photo){const entry={id:crypto.randomUUID(),at:new Date().toISOString(),date:todayStr(),by:whoAmI(),img:photo,note:response.resumen.slice(0,140)};updated.gallery=[entry,...(current.gallery||[])];patch.gallery=arrayUnion(entry);}
+  const saved=await putPlant(updated,{patch,type:photo?'photoAdded':'edited'});
   if(session!==sessionToken())return;
   button.disabled=false;
   if(saved){
@@ -70,6 +81,7 @@ async function runAI(p,subtitle,request,diaryPhoto=null){
   try{
     const response=await callPlantAI(request);if(!current())return null;
     showReview(response);
+    if(request.mode==='photo'){const note=document.createElement('p');note.className='note';note.textContent='No hay historial del tiempo disponible. Solo se incluye una lectura actual aproximada si está reciente.';$('ai-body').append(note);}
     $('ai-copy').onclick=()=>navigator.clipboard?.writeText(aiResponseText(response)).then(()=>toast('Consejo copiado.')).catch(()=>toast('No se pudo copiar.'));
     const save=$('ai-save');save.hidden=false;save.disabled=false;save.textContent=diaryPhoto?'Guardar foto y consejo':'Guardar consejo en la ficha';
     save.onclick=()=>saveReview(p.id,response,diaryPhoto,session,save);
@@ -96,7 +108,8 @@ function aiReviewCard(id){
 }
 function aiPhotoDiag(id){
   if(!aiEnabled()){toast(aiErrorMessage({code:'unavailable'}));return;}
-  aiPhotoPlantId=id;$('ai-file').value='';$('ai-file').click();
+  const p=plants.find(x=>x.id===id);if(!p)return;const session=sessionToken();
+  openCameraPhoto(photo=>{if(session===sessionToken()&&plants.some(x=>x.id===id))runAI(p,'Qué se ve y qué comprobar',{mode:'photo',plantId:id,photo,context:aiContext(p)},photo);});
 }
 async function aiPhotoPicked(e){
   const file=e.target.files[0];if(!file)return;
@@ -131,7 +144,7 @@ function showPlantSuggestions(j){
   const note = document.createElement("p"); note.className = "note";
   note.textContent = confidence + " " + (typeof j.motivo === "string" ? j.motivo.slice(0,600) : ""); box.append(note);
   const candidates = [
-    ["nombreComun", "Nombre común", "f-name"], ["especie", "Especie / tipo", "f-species"],
+    ["nombreComun", "Nombre común", "f-name"], ["especie", "Especie / tipo", "f-species"], ["ubicacion", "Ubicación recomendada", "f-loc"],
     ["revisarCadaDias", "Recordarme cada (días)", "f-freq"], ["luz", "Luz orientativa", "f-light"],
     ["abonoCadaDias", "Abono cada (días; 0 = sin abono)", "f-fertfreq"]
   ];
@@ -171,6 +184,7 @@ function showPlantSuggestions(j){
     $("f-details").open = true; box.hidden=true;
     $("f-aistatus").textContent="Sugerencias elegidas en el formulario. Revisa los datos y guarda la planta.";
   };
+  apply.hidden=!choices.length;
   const discard = document.createElement("button"); discard.type="button"; discard.className="btn soft"; discard.textContent="Descartar sugerencias";
   discard.onclick=()=>{box.hidden=true;box.replaceChildren();$("f-aistatus").textContent="Sugerencias descartadas. Tus datos siguen igual.";};
   box.append(apply,discard);
