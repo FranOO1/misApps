@@ -88,7 +88,9 @@ html=html.replace('<link rel="stylesheet" href="./styles.css">','<style>'+(root/
 html=re.sub(r'<link rel="manifest"[^>]+>','',html)
 html=re.sub(r'<link[^>]+(?:fonts.googleapis|fonts.gstatic)[^>]+>','',html)
 html=html.replace('<script type="module" src="./js/pwa.js"></script>','')
-html=html.replace('<script type="module" src="./js/app.js"></script>','<script type="module">'+mock+'\n'+ '\n'.join(codes)+'</script>')
+# Some HTML viewers execute inline modules as classic scripts. Keep their
+# lexical names (for example weather's `location`) isolated from window.
+html=html.replace('<script type="module" src="./js/app.js"></script>','<script type="module">(()=>{\n'+mock+'\n'+ '\n'.join(codes)+'\n})();</script>')
 html=html.replace('<div class="app-shell" id="app-shell">','<div class="app-shell" id="app-shell"><aside class="preview-notice">Vista previa · jardín de ejemplo<details><summary>Sobre esta prueba</summary><p>Datos, login, clima, actividad y Gemini simulados. No usa vuestro jardín ni claves reales. Bob es un ejemplo de un recordatorio de hace 77 días, visible en su ficha. Esta demostración no prueba Firebase de producción, push, avisos oficiales ni instalación PWA reales.</p><div class="preview-actions"><button id="preview-other">Simular un riego de Rosita</button><button id="preview-rain">Simular lluvia</button><button id="preview-normal">Tiempo normal</button></div></details></aside>')
 html=html.replace('</style>','\n.app-shell{grid-template-rows:auto minmax(0,1fr) auto}.preview-notice{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 18px;padding:6px 18px;background:var(--surface2);color:var(--ink2);font:12px system-ui;line-height:1.5}.preview-notice summary{min-height:32px;padding:4px 0;font:inherit;text-decoration:underline;text-underline-offset:3px}.preview-notice summary::after{display:none}.preview-notice details[open]{width:min(100%,700px)}.preview-notice p{padding-bottom:10px}.preview-actions{display:flex;flex-wrap:wrap;gap:6px}.preview-actions button{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:10px}</style>',1)
 (root/'preview.html').write_text(html)
