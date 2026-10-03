@@ -28,3 +28,12 @@ simulados. No sustituyen las capturas ni las pruebas anteriores de IA.
 
 [Matriz específica](../TEST_MATRIX_WEATHER_ACTIVITY.md). Firebase de producción,
 push y teléfonos Android físicos siguen separados de esta simulación.
+
+## Gemini y apodo por cuenta (PR de IA)
+
+`gemini-photo-390.png` / `gemini-photo-768.png`: selector y vista previa.
+`gemini-analysis-390.png` / `gemini-analysis-768.png`: diagnóstico estructurado.
+También hay variantes estrechas de 320 px. Capturadas con Chromium real y
+`tests/gemini_onboarding_ui.py`, usando datos, SDK de servicio y respuestas de
+modelo simulados. No son una consulta Gemini real ni un teléfono físico.
+Las capturas anteriores de clima corresponden al PR #3 que esta rama conserva.

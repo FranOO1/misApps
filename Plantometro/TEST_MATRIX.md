@@ -1,3 +1,5 @@
+> Matriz histórica de la preparación anterior. La arquitectura y resultados actuales de Gemini están en [TEST_MATRIX_GEMINI_ONBOARDING.md](TEST_MATRIX_GEMINI_ONBOARDING.md).
+
 # Matriz de cobertura — seguridad y flujos
 
 Ejecutada en esta rama con datos desechables. Ninguna prueba accede al jardín personal.

@@ -7,7 +7,7 @@ import {initializeApp} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 import {onCall,HttpsError} from 'firebase-functions/v2/https';
-import {createAIHandler} from '../server/core.js';
+import {createAIHandler,googleAccountAllowed} from '../server/core.js';
 import {createStore} from '../server/store.js';
 
 const project='demo-plantometro';
@@ -20,7 +20,7 @@ initializeApp({projectId:project});const db=getFirestore(),auth=getAuth();
 const quotaDb=db;
 const response={resumen:'Ejemplo de consejo.',consejo:'Comprueba la tierra.',confianza:'baja',motivo:'Proveedor de prueba, no Gemini.',sugerencias:{nombreComun:null,especie:null,revisarCadaDias:7,abonoCadaDias:null,luz:null}};
 let modelCalls=0;const handler=createAIHandler({store:createStore(db,{quotaDb}),generate:async()=>{modelCalls++;return response;},dailyUserLimit:3,dailyGlobalLimit:6,
-  authorize:async uid=>{const user=await auth.getUser(uid);return !user.disabled&&user.customClaims?.plantometroAI===true;}});
+  authorize:async uid=>{const user=await auth.getUser(uid);return googleAccountAllowed(user);}});
 // App Check has no local signed-token issuer. This harness bypasses ONLY that
 // boundary, while exercising real callable Auth verification and Firestore.
 const callable=onCall({cors:['https://franoo1.github.io']},async req=>{
@@ -33,7 +33,7 @@ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const url='http://127.0.0.1:'+server.address().port;
 after(async()=>{await new Promise(resolve=>server.close(resolve));await db.terminate();});
 async function token(uid,allowed=true){
-  await auth.createUser({uid});await auth.setCustomUserClaims(uid,{plantometroAI:allowed});
+  await auth.createUser({uid});if(allowed)await auth.updateUser(uid,{providerToLink:{providerId:'google.com',uid:'google-'+uid}});
   const custom=await auth.createCustomToken(uid);
   const r=await fetch('http://'+process.env.FIREBASE_AUTH_EMULATOR_HOST+'/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=local-test-only',{
     method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:custom,returnSecureToken:true})});
@@ -43,7 +43,7 @@ async function invoke(idToken,data={mode:'identify',draft:{name:'Test'}},path='/
   const r=await fetch(url+path,{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://franoo1.github.io',...(idToken?{Authorization:'Bearer '+idToken}:{})},body:JSON.stringify({data}),signal:AbortSignal.timeout(10000)});
   return {status:r.status,body:await r.json()};
 }
-test('Real local Auth and callable: unauthenticated and unapproved accounts rejected',async()=>{
+test('Real local Auth and callable: unauthenticated and accounts without Google provider rejected',async()=>{
   assert.equal((await invoke()).status,401);
   const t=await token('unapproved',false);assert.equal((await invoke(t)).status,403);assert.equal(modelCalls,0);
 });
@@ -74,9 +74,9 @@ test('Real local security rules: own garden only; private quota inaccessible',as
   const privateRead=await fetch(privateBase+'_plantometro_ai_limits/2026-10-02',{headers:{Authorization:'Bearer '+t}});assert.equal(privateRead.status,403);
   const privateWrite=await fetch(privateBase+'_plantometro_ai_limits/2026-10-03',{method:'PATCH',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({fields:{calls:{integerValue:'0'}}})});assert.equal(privateWrite.status,403);
 });
-test('Revocation is immediate even while an old signed token still has the access claim',async()=>{
-  const t=await token('revoked-user');await auth.setCustomUserClaims('revoked-user',{});
-  const before=modelCalls;assert.equal((await invoke(t)).status,403);assert.equal(modelCalls,before);
+test('Disabling a Google account rejects even an existing signed token',async()=>{
+  const t=await token('revoked-user');await auth.updateUser('revoked-user',{disabled:true});
+  const before=modelCalls;assert.equal((await invoke(t)).status,401);assert.equal(modelCalls,before);
 });
 test('Actual browser SDK synchronizes disposable mobile/tablet accounts through real local services',async()=>{
   await auth.createUser({uid:'browser-owner'});await auth.createUser({uid:'browser-other'});

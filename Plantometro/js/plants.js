@@ -23,7 +23,8 @@ function renderFormPhoto(){
   $("f-prev").innerHTML = formPhoto ? `<img src="${esc(formPhoto)}" alt="Vista previa de la foto">` : PLANT_ART;
   $("f-photo-button").textContent = formPhoto ? "Cambiar foto" : "Añadir foto";
 }
-function chooseFormPhoto(){
+function chooseFormPhoto(source){
+  if(source==='camera')$("f-photo").setAttribute("capture","environment");else $("f-photo").removeAttribute("capture");
   // Reset only the picker: cancelling leaves the current photo and draft intact.
   $("f-photo").value = "";
   $("f-photo").click();
@@ -57,6 +58,7 @@ function openForm(id){
 }
 async function pickPhoto(e){
   const file = e.target.files[0]; if(!file) return;
+  if(file.size>12*1024*1024){toast("La foto es demasiado grande. Elige una de menos de 12 MB.");return;}
   const revision = ++formRevision, session=sessionToken();
   $("f-identify").disabled = !aiEnabled();
   $("f-suggestions").hidden = true;
