@@ -583,8 +583,8 @@ with sync_playwright() as pw:
     page.reload()
     page.wait_for_function("navigator.serviceWorker.controller !== null")
     keys=page.evaluate("caches.keys()")
-    assert "plantometro-v14" in keys
-    assert page.evaluate("caches.open('plantometro-v14').then(c=>c.match(location.href).then(Boolean))")
+    assert "plantometro-v15" in keys
+    assert page.evaluate("caches.open('plantometro-v15').then(c=>c.match(location.href).then(Boolean))")
     # Preserve caches belonging to the other apps on the same GitHub Pages origin.
     page.evaluate("caches.open('horas-v1')")
     sw=page.evaluate("navigator.serviceWorker.getRegistration().then(r=>r.active.scriptURL)")
@@ -594,7 +594,7 @@ with sync_playwright() as pw:
     context.set_offline(True);page.reload()
     expect(page.locator("h1.brand")).to_have_text("Plantómetro")
     assert "horas-v1" in page.evaluate("caches.keys()")
-    print("PASS PWA: scoped worker v14, app cache, offline shell, standalone manifest, other-app cache retained")
+    print("PASS PWA: scoped worker v15, app cache, offline shell, standalone manifest, other-app cache retained")
     context.close();browser.close()
 server.shutdown()
 print(f"Screenshots: {OUT}")

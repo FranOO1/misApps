@@ -11,7 +11,9 @@ Los errores no exponen tokens, detalles del SDK ni respuestas sin validar.
 `js/ai-config.js`: `enabled:false`, sin clave de sitio App Check. La aplicación indica
 **«Ayuda con IA no disponible»** y permite todos los cuidados manuales.
 No se desplegó servidor: este entorno no tiene identidades/credenciales/vinculaciones
-de secretos de Google Cloud ni `gcloud`. El permiso de GitHub permite subir código,
+de secretos de Google Cloud ni `gcloud`. Se buscaron conexiones Firebase/Google Cloud:
+no hay conexión administradora callable; Drive/Calendar no dan esos permisos.
+El permiso de GitHub permite subir código,
 no administrar ese proyecto. La demostración no implica que funcione Gemini real.
 
 ## Arquitectura preparada
@@ -45,8 +47,9 @@ cuotas y reglas/IAM.
 
 1. Abre https://console.firebase.google.com/project/mishoras-bb0cc/overview con la
    cuenta administradora del proyecto existente. Functions/Vertex requieren
-   facturación habilitada (Blaze). Configura presupuesto/alertas: alertar no limita
-   por sí mismo el gasto.
+   facturación habilitada (Blaze). **No actives facturación ni aceptes costes sin
+   explicar primero los precios y obtener la decisión expresa del propietario.**
+   Presupuesto/alertas no limitan por sí mismos el gasto.
 2. Abre https://console.cloud.google.com/home/dashboard?project=mishoras-bb0cc.
    Pulsa `>_` (Cloud Shell) en la barra superior; en tablet puede ayudar «Sitio para
    ordenador». Usa allí tu identidad, sin descargar credenciales ni iniciar otra
@@ -92,7 +95,7 @@ GOOGLE_CLOUD_PROJECT=mishoras-bb0cc node server/grant-access.js UID_DE_PRUEBA gr
 
    Conserva las autorizaciones de otras apps. Vuelve a iniciar sesión para renovar
    token. Para revocar, utiliza el mismo comando con `revoke`.
-6. Comprueba disponibilidad de `gemini-2.5-flash` en Vertex `europe-west1`, IAM,
+6. Comprueba disponibilidad de `gemini-3.1-flash-lite` en Vertex `global`, IAM,
    cuotas/facturación y texto/fotos. Si no está disponible, revisa modelo fijo y
    pruebas antes de cambiarlo; nunca un endpoint/modelo arbitrario del cliente.
 7. Solo después, cambia en esta rama `js/ai-config.js`: `enabled:true` y
@@ -104,13 +107,24 @@ GOOGLE_CLOUD_PROJECT=mishoras-bb0cc node server/grant-access.js UID_DE_PRUEBA gr
    revisarse. No autorices HTMLPreview para sesiones Firebase. Con la cuenta de
    prueba verifica modelo real, App Check válido/ausente/token reutilizado, cuenta
    sin permiso, revocación, cuotas y denegación de acceso a `plantometro-ai`.
-   Completa la matriz antes de activar IA para cuentas personales. Este PR no
-   se fusiona automáticamente.
+   Completa la matriz antes de activar IA para cuentas personales. Publicar el cliente
+   con IA desactivada no despliega la función ni configura facturación.
 
 Los contadores tienen `expireAt`: TTL opcional de ocho días solo en colecciones de
 cuotas de la base privada, nunca en plantas/historial. Mantener límites de Vertex
 además de la cuota global de la app. No activar logs de cuerpos, fotos, respuestas,
 tokens o credenciales.
+
+## Modelo preparado
+
+La función permanece en `europe-west1`; el endpoint Vertex del modelo es `global`.
+Esto no garantiza procesamiento restringido a la UE. Modelo fijo
+`gemini-3.1-flash-lite`, salida máxima 1.000 tokens y razonamiento MINIMAL.
+Se evita `gemini-2.5-flash`, cuyo retiro está anunciado para 20 de octubre de 2026.
+Fuente: [modelo y disponibilidad de Google](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-lite)
+y [ciclo de vida](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions).
+Transporte/errores/endpoint se verificaron con adaptador; disponibilidad, precios,
+cuotas y una consulta real siguen requiriendo acceso a Google.
 
 ## Comprobado y límites
 

@@ -8,6 +8,7 @@ desactivado en esta rama.
 | --- | --- |
 | `styles.css` | Portada, temas, contraste y adaptación táctil. |
 | `js/app.js` | Arranque y eventos. |
+| `js/pwa.js` | Actualización segura al terminar formularios, guardados y deshacer. |
 | `js/utils.js` | Fechas, texto seguro y dibujo vegetal sin foto. |
 | `js/ui.js` | Portada, búsqueda discreta, ficha y ventanas. |
 | `js/plants.js` | Formulario, recordatorios, riegos, abono y corrección de historial. |
@@ -53,9 +54,12 @@ como texto legible sin reescribirlo.
 
 Se elimina campo de clave y opción de notificaciones: no había avisos con app cerrada.
 La migración borra solo `geminiKey`; incluso con escritura bloqueada carga preferencias
-y no usa la clave. Worker `plantometro-v14`: shell, módulos, contrato compartido y SDK
+y no usa la clave. Worker `plantometro-v15`: shell, módulos, contrato compartido y SDK
 estático; sin caché de respuestas IA, autenticación ni documentos Firestore; conserva
-cachés ajenas. Rutas y manifest siguen bajo `/misApps/Plantometro/`.
+cachés ajenas. Instala el conjunto completo con descargas frescas y sirve HTML/módulos
+de la misma versión; no mezcla la caché HTTP anterior. Comprueba actualizaciones al
+abrir/volver y espera si hay formularios, escrituras pendientes o un aviso Deshacer.
+Rutas y manifest siguen bajo `/misApps/Plantometro/`.
 
 ## Pruebas reproducibles
 
@@ -69,6 +73,8 @@ node --experimental-vm-modules --test Plantometro/tests/migration.test.mjs
 python Plantometro/scripts/build_preview.py
 python -u Plantometro/tests/ui_smoke.py
 python -u Plantometro/tests/security_ui.py
+node --experimental-vm-modules Plantometro/tests/auth_cancel.mjs
+python -u Plantometro/tests/pwa_update.py
 ```
 
 Desde `Plantometro/`, con Node 22:
@@ -101,3 +107,9 @@ se ejecuta con middleware Functions real.
 [captures/](captures/) proceden del navegador con demostración, no de tu jardín.
 [SECURE_AI.md](SECURE_AI.md) contiene configuración exacta pendiente. IA desactivada
 hasta verificarla, sin afirmar que funciona con Google por pasar las simulaciones.
+
+`tests/published_update.py` comprueba una actualización real de GitHub Pages en un
+perfil sin sesión, conservando preferencias y una ficha local desechable. Espera
+`/tmp/plantometro-pages-v15-ready` (o `PLANTOMETRO_RELEASE_SIGNAL`) antes de comprobar
+la versión publicada. No usa adaptadores ni inicia sesión; prueba shell/SDK, clima
+y caché offline, no CRUD de producción ni instalación física Android.

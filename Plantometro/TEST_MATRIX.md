@@ -1,7 +1,8 @@
 # Matriz de cobertura — seguridad y flujos
 
-Ejecutada en esta rama con datos desechables. Ninguna prueba accede al jardín personal
-ni escribe en producción. Las etiquetas describen alcance, no sustituyen pruebas
+Ejecutada en esta rama con datos desechables. Ninguna prueba accede al jardín personal.
+Los intentos de crear cuentas desechables en Auth de producción fueron rechazados;
+no crearon usuarios ni plantas. Las etiquetas describen alcance, no sustituyen pruebas
 pendientes en Google o dispositivos físicos.
 
 - **Probado en navegador:** Chromium real; servicios adaptados salvo indicación local.
@@ -101,7 +102,7 @@ Evidencias: `tests/ui_smoke.py` (UI), `tests/security_ui.py` (SEG), `tests/modul
 | Worker v14, rutas/caché ajena | Probado en navegador; revisado en código | UI/MOD: worker real Chromium, shell cacheado, alcance relativo y caché ajena intacta. PASS. |
 | Abrir shell sin conexión | Probado en navegador | UI: navegación offline con worker real, servicios externos adaptados. PASS. |
 | Manifest standalone/instalación/rutas | Probado en navegador; revisado en código | UI/MOD: manifiesto/subdirectorio válidos, nuevos archivos cacheados. PASS. |
-| PWA instalada/actualizada y sesión personal offline | Pendiente | Hardware y HTTPS autorizado de rama. No se fusionó ni publicó main. |
+| PWA física y sesión personal offline | Pendiente | Requiere Android/tablet y cuenta Google; una prueba de Chromium no verifica instalación física. |
 | Sintaxis/paquetes | Revisado en código | 19 módulos/worker node --check, MOD, SRV 7/7; audit ejecución 0 vulnerabilidades. PASS. |
 
 ## Resultados
@@ -110,4 +111,27 @@ Sin fallos: MOD, MIG 2/2, SRV 7/7, INT 7/7 (incluye BINT), UI y SEG. Capturas re
 de navegador sobre simulación en [captures/](captures/).
 No se declaran probados Gemini, Google OAuth, App Check positivo, Firebase producción
 ni PWA física. [SECURE_AI.md](SECURE_AI.md) contiene los pasos pendientes concretos.
-El PR conserva main, datos y reglas existentes.
+La revisión inicial conservó main. La continuación autorizada publica el cliente
+al fusionar el mismo PR, sin cambiar datos ni reglas del proyecto.
+
+
+## Continuación del PR #2 (3 de octubre de 2026)
+
+Se conservan los resultados anteriores; se ejecutan regresiones para los riesgos
+nuevos de publicación, sin repetir las suites completas.
+
+| Caso concreto | Alcance | Resultado o bloqueo |
+| --- | --- | --- |
+| Cancelar popup Google / popup bloqueado | Revisado en código | `tests/auth_cancel.mjs`: cerrar/cancelar no redirige; popup bloqueado permite redirect. PASS. No sustituye Google OAuth real. |
+| Modelo cercano a retirada / endpoint fijo | Revisado en código | 2/2 casos Vertex controlados: Gemini 3.1 Flash Lite global, MINIMAL, límite de salida y rechazo de otro modelo. PASS; sin consulta Google. |
+| Actualizar v13 → v15 con caché HTTP anterior | Probado en navegador | `tests/pwa_update.py`, Chromium/worker reales y SDK adaptado: shell completo fresco, solo borra clave antigua; preferencias/ficha/fotos/historial/caché ajena conservados. PASS. |
+| Actualización durante formulario y guardado | Probado en navegador | PWA: espera al cerrar formulario y al confirmar escritura; mantiene borrador y deshacer, recarga una vez. PASS. |
+| Nueva versión offline | Probado en navegador | PWA: shell nuevo coherente, fotos/historial locales conservados. PASS, SDK adaptado. |
+| Foto eliminada mientras desaparece ficha remota | Probado en navegador | PWA: sin excepción ni resurrección de ficha. PASS, servicio adaptado. |
+| Firebase producción, alta de cuenta de prueba | Probado con servicio real | SDK real desde origen Pages: anónimo `auth/admin-restricted-operation`; correo `auth/operation-not-allowed`. Sin cuenta creada ni datos personales consultados. No se cambiaron proveedores. |
+| CRUD/sesión de producción | Pendiente | Solo proveedor Google disponible; falta una cuenta Google de prueba. Emuladores anteriores no verifican reglas/OAuth de producción. |
+| Pages publicada, actualización real y offline | Pendiente al publicar | `tests/published_update.py`: perfil real v13 preparado, sin sesión ni adaptadores; v15 se verifica después de la publicación. Resultado final en PR #2. |
+| Conexión administradora Google Cloud | Pendiente | Entorno sin identidades cloud y búsqueda sin conexión Firebase administradora. Acción mínima: abrir consola del proyecto y pulsar >_ Activar Cloud Shell. Sin facturación activada. |
+
+La IA permanece desactivada y muestra «Ayuda con IA no disponible». No se publican
+secretos ni se afirma que Gemini/Google OAuth/Android físico estén probados.

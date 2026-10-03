@@ -52,7 +52,7 @@ for name in ['utils','ai-response','ai-config','ai-service','backup','settings',
           return normalizeAIResponse({resumen:'Consejos de ejemplo para esta planta.',consejo:'Observa la tierra y ajusta la frecuencia si lo necesitas.',confianza:'baja',motivo:'IA simulada: no se ha identificado tu foto ni consultado Gemini real.',sugerencias:{nombreComun:'Monstera (ejemplo)',especie:'Monstera deliciosa',revisarCadaDias:7,abonoCadaDias:null,luz:'media'}});
         }\n'''
         text=text.replace("'Ayuda opcional: revisa las sugerencias antes de guardar.'","'Ayuda con IA simulada en esta prueba.'")
-    if name=='app':text=re.sub(r'if\("serviceWorker" in navigator\).*?;\n','',text)
+    if name=='app':text=text.replace('startPWA();','')
     codes.append(text)
 html=html.replace('<link rel="stylesheet" href="./styles.css">','<style>'+(root/'styles.css').read_text()+'</style>')
 html=re.sub(r'<link rel="manifest"[^>]+>','',html)

@@ -111,10 +111,11 @@ assert.throws(()=>backup.validateBackup([bob,bob]));
 const one={...existing,gallery:[],history:[]};assert.equal(backup.validateBackup([one]).length,1);
 // Execute service-worker lifecycle with a cache adapter, checking scope and routes.
 const events={},cacheKeys=new Set(['plantometro-v7','horas-v1','parte-v2']),core=[];
-const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async paths=>core.push(...paths)};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL});
+const scope='https://franoo1.github.io/misApps/Plantometro/';
+const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},registration:{scope},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async requests=>core.push(...requests.map(r=>{assert.equal(r.cache,'reload');return r.url.startsWith(scope)?'./'+r.url.slice(scope.length):r.url;}))};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL,Request});
 vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),swcontext);
 let pending;events.install({waitUntil:p=>pending=p});await pending;events.activate({waitUntil:p=>pending=p});await pending;
-assert(cacheKeys.has('plantometro-v14'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
+assert(cacheKeys.has('plantometro-v15'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
 for(const file of core.filter(f=>f!=='./' && !f.startsWith('https:')))assert(fs.existsSync(path.join(root,file)),`Missing cache asset ${file}`);
 for(const file of ['styles.css',...fs.readdirSync(path.join(root,'js')).map(n=>'js/'+n)])assert(core.includes('./'+file),`Uncached asset ${file}`);
 let intercepted=false;events.fetch({request:{method:'POST',url:'https://generativelanguage.googleapis.com/'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);

@@ -51,9 +51,11 @@ test('Vertex uses runtime identity with a fixed model and structured output',asy
   let sent;
   const vertex=createVertex({project:'demo-plantometro',googleAuth:{getAccessToken:async()=>'test-only-token'},fetcher:async(url,opts)=>{sent={url,opts};return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:JSON.stringify(response)}]}}]})};}});
   assert.deepEqual(normalizeAIResponse(await vertex({prompt:'Care',photo:null})),response);
-  assert.match(sent.url,/aiplatform.googleapis.com/);assert(!sent.url.includes('key='));
+  assert.equal(new URL(sent.url).hostname,'aiplatform.googleapis.com');assert.match(sent.url,/locations\/global\/publishers\/google\/models\/gemini-3\.1-flash-lite:/);assert(!sent.url.includes('key='));
   assert.equal(sent.opts.headers.Authorization,'Bearer test-only-token');assert(!('x-goog-api-key' in sent.opts.headers));
-  assert.equal(JSON.parse(sent.opts.body).generationConfig.responseMimeType,'application/json');
+  const config=JSON.parse(sent.opts.body).generationConfig;
+  assert.equal(config.responseMimeType,'application/json');assert.equal(config.maxOutputTokens,1000);assert.equal(config.thinkingConfig.thinkingLevel,'MINIMAL');
+  assert.throws(()=>createVertex({project:'demo-plantometro',model:'arbitrary-model'}),error('unavailable'));
 });
 test('Vertex empty, quota, invalid JSON and network/timeout errors are safe',async()=>{
   for(const [fetcher,expected] of [

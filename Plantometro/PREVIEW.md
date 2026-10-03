@@ -1,8 +1,7 @@
 # Probar esta rama desde móvil o tablet
 
-https://franoo1.github.io/misApps/Plantometro/ sirve `main`, actualmente minimalista
-con worker v13. Esta rama prepara seguridad de IA y worker v14; crear el PR no
-publica cambios ni actualiza la PWA instalada.
+https://franoo1.github.io/misApps/Plantometro/ sirve `main`. El PR #2 prepara seguridad de IA y worker v15; sus cambios se publican
+al fusionarlo. Crear un PR por sí solo no actualiza la aplicación instalada.
 
 ## Demostración sin usar tu jardín
 
@@ -44,3 +43,11 @@ siguen pendientes con sus bloqueos. No se utiliza el jardín personal.
 
 Servicios reales necesitan HTTPS controlado y autorizado en Firebase. No autorices
 el visor compartido para sesiones Firebase. [Configuración de nube](SECURE_AI.md).
+
+## Actualizar la aplicación instalada
+
+Con conexión, abre la dirección publicada en Chrome y pulsa Recargar. Cierra
+Plantómetro desde Recientes y vuelve a abrirla. La actualización automática espera
+si estás editando o guardando una planta. No borres datos del sitio ni desinstales
+para actualizar: se conservan preferencias, fotos e historial. La instalación,
+cámara, teclado y sesión física de Android requieren comprobarse en el dispositivo.

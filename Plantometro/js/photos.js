@@ -23,7 +23,7 @@ function openDiaryPhoto(id, i){
     if(index==null||index<0){toast('Esta foto ya no está en el diario.');return;}
     const updated={...current,gallery:current.gallery.filter((_,n)=>n!==index),updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
     if(await putPlant(updated) && session===sessionToken()){
-      closeModal('photo-modal');renderGallery(plants.find(x=>x.id===id));toast('Foto quitada del diario.');
+      closeModal('photo-modal');const saved=plants.find(x=>x.id===id);if(saved)renderGallery(saved);toast('Foto quitada del diario.');
     }
   };
   openModal("photo-modal");
@@ -57,7 +57,7 @@ async function galleryPicked(e){
   try{
     const small = await shrinkImage(file, 480, .6);
     if(session!==sessionToken() || !plants.some(x=>x.id===p.id))return;
-    if(await pushDiary(plants.find(x=>x.id===p.id), small, "")){renderGallery(plants.find(x=>x.id===p.id)); toast("Foto añadida al diario 📷");}
+    if(await pushDiary(plants.find(x=>x.id===p.id), small, "")){const saved=plants.find(x=>x.id===p.id);if(saved)renderGallery(saved);toast("Foto añadida al diario.");}
   }catch(err){ toast("No se pudo leer la imagen ❌"); }
 }
 

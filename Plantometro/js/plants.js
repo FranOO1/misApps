@@ -134,7 +134,7 @@ function fertilize(id){
 }
 async function delPlant(id){
   const p = plants.find(x=>x.id===id); if(!p) return;
-  if(!confirm(`¿Eliminar "${p.name}"? Desaparecerá también del móvil de tu pareja.`)) return;
+  if(!confirm(`¿Eliminar "${p.name}"? También desaparecerá de tus otros dispositivos.`)) return;
   closeModal("detail-modal");
   const session=sessionToken();
   if(await removePlant(id))toast("Planta eliminada y confirmada en la nube.");
