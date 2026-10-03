@@ -1,6 +1,6 @@
 # Probar esta rama desde móvil o tablet
 
-https://franoo1.github.io/misApps/Plantometro/ sirve `main`. El PR #2 prepara seguridad de IA y worker v15; sus cambios se publican
+https://franoo1.github.io/misApps/Plantometro/ sirve `main`. El PR #2 prepara seguridad de IA y worker v16; sus cambios se publican
 al fusionarlo. Crear un PR por sí solo no actualiza la aplicación instalada.
 
 ## Demostración sin usar tu jardín

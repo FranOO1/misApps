@@ -54,7 +54,7 @@ como texto legible sin reescribirlo.
 
 Se elimina campo de clave y opción de notificaciones: no había avisos con app cerrada.
 La migración borra solo `geminiKey`; incluso con escritura bloqueada carga preferencias
-y no usa la clave. Worker `plantometro-v15`: shell, módulos, contrato compartido y SDK
+y no usa la clave. Worker `plantometro-v16`: shell, módulos, contrato compartido y SDK
 estático; sin caché de respuestas IA, autenticación ni documentos Firestore; conserva
 cachés ajenas. Instala el conjunto completo con descargas frescas y sirve HTML/módulos
 de la misma versión; no mezcla la caché HTTP anterior. Comprueba actualizaciones al
@@ -75,6 +75,7 @@ python -u Plantometro/tests/ui_smoke.py
 python -u Plantometro/tests/security_ui.py
 node --experimental-vm-modules Plantometro/tests/auth_cancel.mjs
 python -u Plantometro/tests/pwa_update.py
+python -u Plantometro/tests/pwa_real_sdk.py
 ```
 
 Desde `Plantometro/`, con Node 22:
@@ -109,7 +110,9 @@ se ejecuta con middleware Functions real.
 hasta verificarla, sin afirmar que funciona con Google por pasar las simulaciones.
 
 `tests/published_update.py` comprueba una actualización real de GitHub Pages en un
-perfil sin sesión, conservando preferencias y una ficha local desechable. Espera
-`/tmp/plantometro-pages-v15-ready` (o `PLANTOMETRO_RELEASE_SIGNAL`) antes de comprobar
+perfil sin sesión, conservando preferencias y una ficha local desechable.
+`js/pwa.js` arranca por separado desde HTML: los módulos antiguos recuperados
+por la caché HTTP no pueden bloquear la instalación/recarga de la nueva versión. Espera
+`/tmp/plantometro-pages-v16-ready` (o `PLANTOMETRO_RELEASE_SIGNAL`) antes de comprobar
 la versión publicada. No usa adaptadores ni inicia sesión; prueba shell/SDK, clima
 y caché offline, no CRUD de producción ni instalación física Android.

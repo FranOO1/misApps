@@ -96,7 +96,8 @@ el('use-revisarCadaDias').checked=true;
 el('f-suggestions').children.find(c=>c.tagName==='BUTTON').click();
 assert.equal(el('f-freq-unit').textContent,'día');
 assert(!/<style|on(click|change|input|submit)=/.test(html));
-assert.equal((html.match(/<script/g)||[]).length,1);
+assert.equal((html.match(/<script/g)||[]).length,2);
+assert(html.includes('src="./js/pwa.js"'));
 // Calendar dates are exact across DST; a synthetic 77-day delay remains 77.
 const utils=ns('utils.js'),backup=ns('backup.js');
 assert.equal(utils.diffDays('2026-03-28','2026-03-30'),2);
@@ -115,7 +116,7 @@ const scope='https://franoo1.github.io/misApps/Plantometro/';
 const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},registration:{scope},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async requests=>core.push(...requests.map(r=>{assert.equal(r.cache,'reload');return r.url.startsWith(scope)?'./'+r.url.slice(scope.length):r.url;}))};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL,Request});
 vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),swcontext);
 let pending;events.install({waitUntil:p=>pending=p});await pending;events.activate({waitUntil:p=>pending=p});await pending;
-assert(cacheKeys.has('plantometro-v15'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
+assert(cacheKeys.has('plantometro-v16'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
 for(const file of core.filter(f=>f!=='./' && !f.startsWith('https:')))assert(fs.existsSync(path.join(root,file)),`Missing cache asset ${file}`);
 for(const file of ['styles.css',...fs.readdirSync(path.join(root,'js')).map(n=>'js/'+n)])assert(core.includes('./'+file),`Uncached asset ${file}`);
 let intercepted=false;events.fetch({request:{method:'POST',url:'https://generativelanguage.googleapis.com/'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);

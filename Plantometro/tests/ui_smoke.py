@@ -583,8 +583,8 @@ with sync_playwright() as pw:
     page.reload()
     page.wait_for_function("navigator.serviceWorker.controller !== null")
     keys=page.evaluate("caches.keys()")
-    assert "plantometro-v15" in keys
-    assert page.evaluate("caches.open('plantometro-v15').then(c=>c.match(location.href).then(Boolean))")
+    assert "plantometro-v16" in keys
+    assert page.evaluate("caches.open('plantometro-v16').then(c=>c.match(location.href).then(Boolean))")
     # Preserve caches belonging to the other apps on the same GitHub Pages origin.
     page.evaluate("caches.open('horas-v1')")
     sw=page.evaluate("navigator.serviceWorker.getRegistration().then(r=>r.active.scriptURL)")

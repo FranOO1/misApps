@@ -1,13 +1,17 @@
-import {hasPendingWrites} from './sync.js';
-
 // Apply a downloaded update when it cannot interrupt a form or an unconfirmed save.
-function startPWA(){
-  if(!('serviceWorker' in navigator))return;
+// This module starts separately from app.js: an old cached module must not prevent
+// the new worker from installing and recovering a partially updated legacy page.
+let started=false,pendingCheck=null;
+function startPWA(check){
+  if(typeof check==='function')pendingCheck=check;
+  if(started||!('serviceWorker' in navigator))return;
+  started=true;
   let alreadyControlled=!!navigator.serviceWorker.controller;
   let registration,updateReady=false,reloading=false,lastCheck=0;
   const reloadWhenIdle=()=>{
     const editing=document.querySelector('.modal.open,#toast.show button') || document.activeElement?.matches('input,textarea,select,[contenteditable="true"]');
-    if(!updateReady||reloading||document.hidden||editing||hasPendingWrites())return;
+    const saving=pendingCheck?pendingCheck():/Guardando cambios|Cambios pendientes en este dispositivo/.test(document.getElementById('sync-status')?.textContent||'');
+    if(!updateReady||reloading||document.hidden||editing||saving)return;
     reloading=true;location.reload();
   };
   const checkUpdate=()=>{
@@ -26,4 +30,5 @@ function startPWA(){
   window.addEventListener('plantometro:sync-idle',reloadWhenIdle);
   navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(value=>{registration=value;checkUpdate();}).catch(()=>{});
 }
+startPWA();
 export {startPWA};

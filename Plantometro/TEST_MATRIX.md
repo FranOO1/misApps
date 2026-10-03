@@ -135,3 +135,26 @@ nuevos de publicación, sin repetir las suites completas.
 
 La IA permanece desactivada y muestra «Ayuda con IA no disponible». No se publican
 secretos ni se afirma que Gemini/Google OAuth/Android físico estén probados.
+
+
+### Riesgo detectado al publicar y corrección v16
+
+La publicación v15 abre con perfil limpio, pero la prueba real de actualización
+v13 detectó un arranque incompleto. Con SDK Firebase real se reprodujo: caché HTTP
+con scripts antiguos y HTML nuevo (`renderSettingsUI` sobre un campo retirado).
+Las pruebas anteriores con SDK adaptado no reprodujeron ese orden de descargas.
+
+La v16 inicia `js/pwa.js` por separado antes de `app.js`, sin dependencias Firebase,
+para instalar la versión completa y recuperarse aunque falle un módulo antiguo.
+La recarga sigue esperando formularios, escrituras y Deshacer; no borra datos.
+`tests/pwa_real_sdk.py` reproduce v13→v16 con SDK público real y ficheros locales,
+cacheados una hora: no adapta Firebase/clima ni inicia sesión; verifica recuperación,
+preferencias/ficha/fotos/historial locales y shell offline. No verifica CRUD cloud.
+`tests/pwa_update.py` conserva los casos de formulario/guardado/Deshacer con adaptadores.
+`tests/published_update.py` comprueba Pages v15→v16 sin adaptadores después de publicar.
+Los resultados finales, incluida la corrección tras fusionar, se añaden al mismo PR #2.
+
+Resultados de la corrección v16 antes de publicar: grafo de módulos PASS;
+PWA adaptada 5/5 PASS; actualización antigua con SDK real PASS; preview reconstruida
+en móvil/tablet sin worker ni errores PASS. Pages v15→v16 se comprueba al publicar;
+resultado final en PR #2. La función Gemini continúa sin desplegar.

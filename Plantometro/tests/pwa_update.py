@@ -39,7 +39,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             mime='application/javascript' if path.endswith('.js') else 'text/css' if path.endswith('.css') else 'application/json' if path.endswith('.json') else 'text/html'
         if text is None:self.send_error(404);return
         for name in mocks:text=text.replace('https://www.gstatic.com/firebasejs/10.12.2/'+name,'./vendor/'+name if path=='sw.js' else '../vendor/'+name)
-        if path=='sw.js' and phase['value']>15:text=text.replace('plantometro-v15','plantometro-v'+str(phase['value']))
+        if path=='sw.js' and phase['value']>16:text=text.replace('plantometro-v16','plantometro-v'+str(phase['value']))
         if path=='js/app.js':text+='\nwindow.qaBuild='+str(phase['value'])+';sessionStorage.qaBoots=String(Number(sessionStorage.qaBoots||0)+1);'
         data=text.encode();self.send_response(200);self.send_header('Content-Type',mime);self.send_header('Cache-Control','no-store' if path=='sw.js' else 'public, max-age=3600');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
 
@@ -54,38 +54,41 @@ try:
     expect(page.locator('#grid .card')).to_have_count(1);page.evaluate('navigator.serviceWorker.ready');page.wait_for_function('!!navigator.serviceWorker.controller')
     assert 'plantometro-v13' in page.evaluate('caches.keys()')
     page.evaluate("caches.open('horas-v1')")
-    phase['value']=15;page.reload();page.wait_for_function('window.qaBuild===15')
-    page.wait_for_function("caches.keys().then(k=>k.includes('plantometro-v15')&&!k.includes('plantometro-v13'))")
+    phase['value']=16;page.reload();page.wait_for_function('window.qaBuild===16')
+    page.wait_for_function("caches.keys().then(k=>k.includes('plantometro-v16')&&!k.includes('plantometro-v13'))")
+    page.wait_for_function("navigator.serviceWorker.getRegistration().then(r=>r.active?.state==='activated'&&navigator.serviceWorker.controller===r.active)")
     expected={k:v for k,v in legacy.items() if k!='geminiKey'}
     assert page.evaluate('JSON.parse(localStorage.getItem("pg3b_settings"))')==expected
     assert page.evaluate("import('./js/sync.js').then(s=>s.plants)")==[plant]
     assert 'horas-v1' in page.evaluate('caches.keys()')
-    print('PASS PWA v13→v15: real worker, secret-only migration, garden/photos/history/preferences preserved, other-app cache retained',flush=True)
+    print('PASS PWA v13→v16: real worker, secret-only migration, garden/photos/history/preferences preserved, other-app cache retained',flush=True)
 
     page.locator('.fab').click();page.locator('#f-name').fill('Borrador sin guardar')
-    boots=page.evaluate('sessionStorage.qaBoots');phase['value']=16
-    page.evaluate('navigator.serviceWorker.getRegistration().then(r=>r.update())')
-    page.wait_for_function("caches.keys().then(k=>k.includes('plantometro-v16')&&!k.includes('plantometro-v15'))")
-    assert page.evaluate('sessionStorage.qaBoots')==boots;expect(page.locator('#f-name')).to_have_value('Borrador sin guardar')
-    # With a new worker active, responses use one coherent new version; the old
-    # running form remains intact until the user closes it.
-    assert page.evaluate("fetch('./js/app.js').then(r=>r.text()).then(t=>t.includes('window.qaBuild=16'))")
-    page.locator('#form-modal .xbtn').click();page.wait_for_function('window.qaBuild===16');assert int(page.evaluate('sessionStorage.qaBoots'))==int(boots)+1
-    print('PASS pending PWA update waits for the open form; closing it reloads once with coherent cached modules',flush=True)
-
-    page.evaluate('window.testHoldWrite=true');page.locator('[data-water=keep]').click();page.wait_for_function('typeof finishSave==="function"')
     boots=page.evaluate('sessionStorage.qaBoots');phase['value']=17
     page.evaluate('navigator.serviceWorker.getRegistration().then(r=>r.update())')
     page.wait_for_function("caches.keys().then(k=>k.includes('plantometro-v17')&&!k.includes('plantometro-v16'))")
+    page.wait_for_function("navigator.serviceWorker.getRegistration().then(r=>r.active?.state==='activated'&&navigator.serviceWorker.controller===r.active)")
+    assert page.evaluate('sessionStorage.qaBoots')==boots;expect(page.locator('#f-name')).to_have_value('Borrador sin guardar')
+    # With a new worker active, responses use one coherent new version; the old
+    # running form remains intact until the user closes it.
+    assert page.evaluate("fetch('./js/app.js').then(r=>r.text()).then(t=>t.includes('window.qaBuild=17'))")
+    page.locator('#form-modal .xbtn').click();page.wait_for_function('window.qaBuild===17');assert int(page.evaluate('sessionStorage.qaBoots'))==int(boots)+1
+    print('PASS pending PWA update waits for the open form; closing it reloads once with coherent cached modules',flush=True)
+
+    page.evaluate('window.testHoldWrite=true');page.locator('[data-water=keep]').click();page.wait_for_function('typeof finishSave==="function"')
+    boots=page.evaluate('sessionStorage.qaBoots');phase['value']=18
+    page.evaluate('navigator.serviceWorker.getRegistration().then(r=>r.update())')
+    page.wait_for_function("caches.keys().then(k=>k.includes('plantometro-v18')&&!k.includes('plantometro-v17'))")
+    page.wait_for_function("navigator.serviceWorker.getRegistration().then(r=>r.active?.state==='activated'&&navigator.serviceWorker.controller===r.active)")
     assert page.evaluate('sessionStorage.qaBoots')==boots
     page.evaluate('window.testHoldWrite=false;finishSave()');page.wait_for_function("import('./js/sync.js').then(s=>!s.hasPendingWrites())")
     # Preserve the visible Undo action as well as the write itself.
     expect(page.locator('#toast button')).to_be_visible();assert page.evaluate('sessionStorage.qaBoots')==boots
-    page.wait_for_function('window.qaBuild===17',timeout=15000)
+    page.wait_for_function('window.qaBuild===18',timeout=15000)
     saved=page.evaluate("import('./js/sync.js').then(s=>s.plants[0])")
     assert len(saved['history'])==2 and saved['gallery']==plant['gallery'] and saved['unknownField']=='keep'
     print('PASS PWA update waits for unconfirmed write and Undo; confirmed history/photos survive reload',flush=True)
-    ctx.set_offline(True);page.reload();expect(page.locator('#grid .card')).to_have_count(1);assert page.evaluate('qaBuild')==17
+    ctx.set_offline(True);page.reload();expect(page.locator('#grid .card')).to_have_count(1);assert page.evaluate('qaBuild')==18
     assert not errors,errors
     print('PASS updated app shell opens offline with coherent cached modules; Firebase/weather explicitly adapted',flush=True)
     ctx.set_offline(False)
