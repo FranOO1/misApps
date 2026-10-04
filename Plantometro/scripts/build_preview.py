@@ -66,8 +66,8 @@ setTimeout(()=>{document.getElementById('preview-other')?.addEventListener('clic
 photos='\n'.join('const '+constant+'='+repr('data:image/jpeg;base64,'+base64.b64encode((root/'preview-assets'/name).read_bytes()).decode())+';' for constant,name in [('DEMO_FICUS','ficus.jpg'),('DEMO_PLANT','plant.jpg')])
 mock=photos+'\n'+mock
 codes=[]
-for name in ['utils','activity-model','weather-model','weather-effects','ai-response','ai-config','ai-service','backup','settings','activity','sync','weather','plants','photos','gemini','ui','app']:
-    text=(root/('shared' if name=='ai-response' else 'js')/f'{name}.js').read_text()
+for name in ['utils','activity-model','weather-model','weather-effects','ai-input','ai-response','ai-config','ai-service','backup','settings','activity','sync','weather','plants','photos','camera','gemini','ui','app']:
+    text=(root/('shared' if name in ['ai-response','ai-input'] else 'js')/f'{name}.js').read_text()
     text=re.sub(r'^import .*?;\s*','',text,flags=re.M)
     text=re.sub(r'^export \{[^}]*\};?\s*','',text,flags=re.M)
     if name=='sync':text=re.sub(r'const fbConfig = \{[\s\S]*?\};','const fbConfig = {};',text,count=1)
@@ -75,11 +75,11 @@ for name in ['utils','activity-model','weather-model','weather-effects','ai-resp
     if name=='activity':text=text.replace('pg3_activity_read_','pg3_preview_activity_read_')
     if name=='weather':text=text.replace('pg3_weather_v1','pg3_preview_weather_v1')
     if name=='weather-effects':text=text.replace('pg3_weather_seen_v1','pg3_preview_weather_seen_v1')
-    if name=='settings':text=text.replace('pg3b_settings','pg3b_preview_settings')
-    if name=='ai-config':text=text.replace('enabled:false','enabled:true').replace("appCheckSiteKey:''","appCheckSiteKey:'public-demo'")
+    if name=='settings':text=text.replace('pg3b_settings','pg3b_preview_settings').replace('pg3_nickname_', 'pg3_preview_nickname_')
+    if name=='ai-config':text=re.sub(r"appCheckSiteKey:'[^']*'","appCheckSiteKey:'public-demo'",text).replace('enabled:false','enabled:true')
     if name=='ai-service':
-        text=text[:text.index('let client=')]+'''\nasync function callPlantAI(data){
-          return normalizeAIResponse({resumen:'Consejos de ejemplo para esta planta.',consejo:'Observa la tierra y ajusta la frecuencia si lo necesitas.',confianza:'baja',motivo:'IA simulada: no se ha identificado tu foto ni consultado Gemini real.',sugerencias:{nombreComun:'Monstera (ejemplo)',especie:'Monstera deliciosa',revisarCadaDias:7,abonoCadaDias:null,luz:'media'}});
+        text=text[:text.index('let modelClient=')]+'''\nasync function callPlantAI(data){
+          return normalizeAIResponse({resumen:'Consejos de ejemplo para esta planta.',consejo:'Observa la tierra y ajusta la frecuencia si lo necesitas.',confianza:'baja',motivo:'IA simulada: no se ha identificado tu foto ni consultado Gemini real.',sugerencias:{nombreComun:'Monstera (ejemplo)',especie:'Monstera deliciosa',ubicacion:'Interior luminoso (ejemplo)',revisarCadaDias:7,abonoCadaDias:null,luz:'media'},...(data.mode==='photo'?{analisis:{observado:'Ejemplo simulado: no se ha examinado esta foto.',causas:['Este ejemplo no identifica ninguna causa real.'],comprobar:['Comprueba cómo está la tierra antes de decidir.'],recomendacion:'Consulta real pendiente de activar; no cambies los cuidados por esta simulación.'}}:{})});
         }\n'''
         text=text.replace("'Ayuda opcional: revisa las sugerencias antes de guardar.'","'Ayuda con IA simulada en esta prueba.'")
     if name=='app':text=text.replace('startPWA(hasPendingWrites);','')

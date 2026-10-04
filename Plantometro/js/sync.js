@@ -1,9 +1,9 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 import { $, PLANT_ART } from "./utils.js";
 import { toast, render, closeModal } from "./ui.js";
-import {whoAmI} from './settings.js';
+import {whoAmI,selectNickname} from './settings.js';
 import {localDeviceId,startActivity,stopActivity} from './activity.js';
 import {makeActivity,sortHistory} from './activity-model.js';
 
@@ -90,7 +90,7 @@ function startFirebase(){
   onAuthStateChanged(auth, u => {
     const oldUid=user?.uid;
     if(oldUid !== u?.uid)clearGarden(oldUid);
-    user=u;
+    user=u;selectNickname(u?.uid);
     if(u){
       try{const cached=JSON.parse(localStorage.getItem(cacheKey(u.uid))||"[]");if(Array.isArray(cached))plants=cached;}catch(e){}
       confirmed=new Map(plants.map(p=>[p.id,clone(p)]));

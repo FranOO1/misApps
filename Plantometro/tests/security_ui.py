@@ -63,6 +63,7 @@ with sync_playwright() as pw:
         ctx.route('https://**/*',helpers['route_external']);helpers['enable_test_ai'](ctx)
         ctx.add_init_script('window.testPlants='+json.dumps([plant])+';window.testWrites=[];')
         page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto(URL);expect(page.locator('#grid .card')).to_have_count(1)
+        if page.locator('#nickname-gate').is_visible():page.locator('#nickname-input').fill('Prueba');page.locator('#nickname-form button').click()
         page.locator('.fab').click();page.locator('#f-name').fill('Nombre personal')
         # Empty, invalid, quota, latency and unavailable results never alter a draft.
         for code,message in [('functions/resource-exhausted','límite'),('functions/deadline-exceeded','tardando'),('functions/permission-denied','esta cuenta'),('functions/unavailable','no disponible')]:
@@ -88,10 +89,11 @@ with sync_playwright() as pw:
         close(page,'detail-modal');page.evaluate('window.testAIWait=true');ficha(page);section(page,'d-ai-section');page.locator('#d-aicard').click();page.wait_for_function('typeof finishAI==="function"');close(page,'ai-modal');page.evaluate('window.testAIWait=false;finishAI()');close(page,'detail-modal');assert page.evaluate('testWrites.length')==1
         # Photo advice requires an explicit save; decoding errors/cancel preserve data.
         ficha(page);section(page,'d-ai-section')
-        with page.expect_file_chooser() as event:page.locator('#d-aiphoto').click()
+        page.locator('#d-aiphoto').click()
+        with page.expect_file_chooser() as event:page.get_by_role('button',name='Elegir foto',exact=True).click()
         event.value.set_files([]);assert page.evaluate('testWrites.length')==1
-        page.locator('#ai-file').set_input_files(dict(name='broken.jpg',mimeType='image/jpeg',buffer=b'invalid'));expect(page.locator('#toast')).to_contain_text('No se pudo leer la foto')
-        page.locator('#ai-file').set_input_files(str(ROOT/'Plantometro/preview-assets/ficus.jpg'));expect(page.locator('#ai-save')).to_have_text('Guardar foto y consejo');assert page.evaluate('testWrites.length')==1
+        page.locator('#camera-file').set_input_files(dict(name='broken.jpg',mimeType='image/jpeg',buffer=b'invalid'));expect(page.locator('#camera-status')).to_contain_text('No se pudo leer la foto')
+        page.locator('#camera-file').set_input_files(str(ROOT/'Plantometro/preview-assets/ficus.jpg'));expect(page.locator('#camera-image')).to_be_visible();page.get_by_role('button',name='Analizar esta foto').click();expect(page.locator('#ai-save')).to_have_text('Guardar foto y consejo');assert page.evaluate('testWrites.length')==1
         page.locator('#ai-save').click();page.wait_for_function('testWrites.length===2');assert len(page.evaluate('testPlants[0].gallery'))==2
         section(page,'d-photo-section');page.locator('#d-gal [data-g="0"]').click();page.evaluate("window.testWriteError='permission-denied'");page.locator('#pm-del').click();expect(page.locator('#sync-status')).to_contain_text('rechazó el permiso');expect(page.locator('#photo-modal')).to_be_visible();assert len(page.evaluate('testPlants[0].gallery'))==2
         page.evaluate('window.testWriteError=null');page.locator('#pm-del').click();expect(page.locator('#photo-modal')).to_be_hidden();assert len(page.evaluate('testPlants[0].gallery'))==1

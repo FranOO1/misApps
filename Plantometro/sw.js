@@ -1,13 +1,13 @@
 // App files and static SDKs only; account data remains in Firebase's own cache.
-const CACHE = "plantometro-v17";
+const CACHE = "plantometro-v19";
 const CORE = ["./", "./index.html", "./manifest.json", "./styles.css",
-  "./js/backup.js", "./js/app.js", "./js/utils.js", "./js/settings.js", "./js/sync.js", "./js/weather.js", "./js/plants.js", "./js/photos.js", "./js/gemini.js", "./js/ui.js",
-  "./js/ai-config.js", "./js/ai-service.js", "./js/pwa.js", "./js/activity.js", "./js/activity-model.js", "./js/weather-model.js", "./js/weather-effects.js", "./shared/ai-response.js",
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js",
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js",
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"];
+  "./js/backup.js", "./js/app.js", "./js/utils.js", "./js/settings.js", "./js/sync.js", "./js/weather.js", "./js/plants.js", "./js/photos.js", "./js/gemini.js", "./js/camera.js", "./js/ui.js",
+  "./js/ai-config.js", "./js/ai-service.js", "./js/pwa.js", "./js/activity.js", "./js/activity-model.js", "./js/weather-model.js", "./js/weather-effects.js", "./shared/ai-response.js", "./shared/ai-input.js",
+  "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js",
+  "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js",
+  "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js",
+  "https://www.gstatic.com/firebasejs/12.10.0/firebase-app-check.js", "https://www.gstatic.com/firebasejs/12.10.0/firebase-ai.js",
+  "https://www.gstatic.com/firebasejs/12.10.0/firebase-functions.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})))).then(() => self.skipWaiting()));

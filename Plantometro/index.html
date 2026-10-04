@@ -31,6 +31,7 @@
       </div>
     </div>
 
+    <p class="current-name" id="current-name" hidden></p>
     <div class="weather-row">
       <button type="button" class="weather-peek" id="weather-peek" data-action="openModal" data-arg="weather-modal" aria-label="Ver detalles del clima"><span id="weather-peek-icon" aria-hidden="true">—</span><span id="weather-peek-city">Tu localidad</span><span id="weather-peek-temp">Clima no disponible</span><span id="weather-peek-age" hidden>Antigua</span></button>
       <button type="button" class="text-button search-shortcut" id="search-toggle" data-action="toggleSearch" aria-controls="search-panel" aria-expanded="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>Buscar</button>
@@ -52,6 +53,8 @@
 <div class="toast" id="toast"></div>
 <div id="weather-scene" class="weather-scene" aria-hidden="true"></div>
 
+<div id="nickname-gate" class="nickname-gate" hidden><form id="nickname-form" class="sheet"><h2>¿Cuál es tu nombre o apodo?</h2><label class="sr-only" for="nickname-input">Nombre o apodo</label><input id="nickname-input" maxlength="40" autocomplete="nickname" required><button class="btn primary" type="submit">Continuar</button></form></div>
+
 <!-- ===== Formulario ===== -->
 <div class="modal" id="form-modal">
   <form class="sheet" id="plant-form">
@@ -64,6 +67,7 @@
     <div class="photopick">
       <div class="prev" id="f-prev" aria-live="polite"><svg viewBox="0 0 160 160" aria-hidden="true"><use href="#plant-art"/></svg></div>
       <button type="button" class="btn soft photo-button" id="f-photo-button" data-action="chooseFormPhoto">Añadir foto</button>
+      <button type="button" class="text-button" data-action="chooseFormPhoto" data-arg="camera">Tomar foto</button>
       <input type="file" accept="image/*" id="f-photo" hidden>
     </div>
     <div class="frequency-field">
@@ -72,7 +76,7 @@
       <span id="f-freq-unit">días</span>
     </div>
     <p class="note" id="f-freq-note">Comprueba la tierra antes de regar</p>
-    <button type="button" class="text-button identify" id="f-identify" data-action="identifyPlant">Pedir ayuda a Gemini</button>
+    <button type="button" class="text-button identify" id="f-identify" data-action="identifyPlant">Sugerir cuidados</button>
     <p class="note" id="f-ai-availability" role="status"></p>
     <p class="note" id="f-aistatus" role="status" style="display:none"></p>
     <section id="f-suggestions" class="suggestions" hidden aria-label="Sugerencias de Gemini"></section>
@@ -144,7 +148,7 @@
       <button class="btn soft" id="d-edit">Editar los datos</button>
       <button class="text-button danger" id="d-del">Eliminar planta</button>
     </details>
-    <input type="file" accept="image/*" capture="environment" id="ai-file" hidden>
+    <input type="file" accept="image/*" id="ai-file" hidden>
     <input type="file" accept="image/*" id="g-file" hidden>
   </div>
 </div>
@@ -190,6 +194,8 @@
 </div>
 
 <!-- ===== IA ===== -->
+<div class="modal" id="camera-modal"><div class="sheet"><div class="mhead"><h2>Consultar una foto</h2><button class="xbtn" data-action="closeModal" data-arg="camera-modal" aria-label="Cerrar">✕</button></div><p class="note" id="camera-status" role="status"></p><video id="camera-video" class="camera-preview" autoplay muted playsinline hidden></video><img id="camera-image" class="camera-preview" alt="Foto que se analizará" hidden><div class="camera-actions"><button class="btn soft" data-action="chooseAnalysisPhoto">Elegir foto</button><button class="btn soft" data-action="startCamera">Abrir cámara</button></div><button id="camera-capture" class="btn primary" data-action="captureAndAnalyze" hidden>Capturar y analizar</button><button id="camera-analyze" class="btn primary" data-action="analyzeCameraImage" hidden>Analizar esta foto</button><input type="file" id="camera-file" accept="image/*" hidden></div></div>
+
 <div class="modal" id="ai-modal">
   <div class="sheet">
     <div class="mhead">

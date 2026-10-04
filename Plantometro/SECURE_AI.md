@@ -1,140 +1,131 @@
-# Ayuda con IA: configuración segura pendiente
+# Gemini: configuración de cliente activada; consulta real pendiente
 
-## Estado de esta rama
+Esta rama parte del PR #3 (`4d0adc61f6da33d7bff3cf49b7e29b9fdee35cc0`),
+que conserva clima, actividad y tarjetas compactas. `main` al iniciar era `a9c9382`.
+Este PR se revisa sobre la rama del PR #3; no fusionar en main antes de integrar
+el PR #3 o cambiar su base tras su publicación. No se ha leído el jardín personal.
 
-El navegador deja de almacenar/enviar una clave de Gemini. No hay campo de clave,
-instrucciones para obtenerla ni llamadas directas al modelo. Se borra exclusivamente
-`geminiKey` de `pg3b_settings`; preferencias, jardín, fotos e historial permanecen.
-Una escritura bloqueada conserva las preferencias y la clave antigua no se usa.
-Los errores no exponen tokens, detalles del SDK ni respuestas sin validar.
+## Opción principal: Firebase AI Logic, sin clave personal
 
-`js/ai-config.js`: `enabled:false`, sin clave de sitio App Check. La aplicación indica
-**«Ayuda con IA no disponible»** y permite todos los cuidados manuales.
-No se desplegó servidor: este entorno no tiene identidades/credenciales/vinculaciones
-de secretos de Google Cloud ni `gcloud`. Se buscaron conexiones Firebase/Google Cloud:
-no hay conexión administradora callable; Drive/Calendar no dan esos permisos.
-El permiso de GitHub permite subir código,
-no administrar ese proyecto. La demostración no implica que funcione Gemini real.
+`js/ai-config.js` tiene `enabled:true`, `provider:'firebase-ai'` y la clave
+**pública** de sitio App Check proporcionada por el propietario, para
+`franoo1.github.io`. El propietario confirma Spark, Gemini Developer API,
+modo de usuarios autenticados y App Check aplicado a Firebase AI Logic.
+Estas confirmaciones no equivalen a una consulta real verificada desde este
+entorno. Manual, fotos, riegos, abono opcional e historial funcionan sin IA.
 
-## Arquitectura preparada
+Se prepara Firebase AI Logic con Gemini Developer API, modelo fijo
+`gemini-3.1-flash-lite`, Firebase Auth y App Check Enterprise. SDK web coherente
+12.10.0 para Auth, Firestore, App Check, Functions y AI; worker v19. Firebase
+administra la credencial Gemini en su proxy, nunca se copia al navegador.
+El SDK envía la **clave pública Firebase** existente al proxy Firebase: esto no es
+una clave secreta de Gemini. No confundir `x-goog-api-key` de ese SDK con enviar
+una clave personal a `generativelanguage.googleapis.com` (ya no existe ese flujo).
 
-- Firebase Auth autentica la callable. La función comprueba además el usuario
-  vigente, habilitado y con autorización `plantometroAI:true`. Revocar rechaza incluso
-  un token antiguo que conserve esa autorización.
-- App Check con reCAPTCHA Enterprise y tokens limitados: `enforceAppCheck` y
-  `consumeAppCheckToken` en servidor, `limitedUseAppCheckTokens` en cliente.
-- Lectura únicamente de `users/{uid autenticado}/plants/{id}`. No acepta otro UID,
-  URLs de imagen, modelos o endpoints del cliente; no escribe en el jardín.
-- Vertex AI/Gemini utiliza la identidad IAM del servidor. No se crea clave de
-  Gemini ni archivo JSON de cuenta de servicio ni secretos descargables.
-- Cuotas atómicas: 10 intentos por cuenta/día y 200 globales/día UTC; una consulta
-  simultánea por cuenta. Intentos fallidos cuentan. Bloqueo 65 s, función 60 s,
-  petición al modelo 35 s y cliente 45 s; sin reintentos automáticos.
-- Máximo 2 instancias/concurrencia 8, entrada/foto limitadas, salida estructurada
-  hasta 1.000 tokens y contrato validado. Se envían datos mínimos de cuidados,
-  nunca autores del historial ni metadatos de cuenta. Fotos/contenido necesario
-  sí se envían a Google al pedir ayuda, nunca al crear o abrir automáticamente.
-- Contadores en base separada **`plantometro-ai`**, con lecturas/escrituras de clientes
-  denegadas. Jardín en `(default)`; no se despliegan reglas de esa base ni otras apps.
-- Respuestas legibles y sugerencias aceptadas/corregidas/descartadas individualmente.
-  Consejo/foto solo se guarda con una acción explícita.
+Fuentes oficiales de modelo/precios revalidadas el 4 de octubre de 2026:
 
-La configuración Firebase existente y la clave de sitio App Check son públicas,
-no secretos de Gemini. La protección depende de Auth, App Check, autorización,
-cuotas y reglas/IAM.
+- [Precios y planes](https://firebase.google.com/docs/ai-logic/pricing): Gemini
+  Developer API admite Spark sin medio de pago; Vertex requiere Blaze.
+- [Solo usuarios autenticados](https://firebase.google.com/docs/ai-logic/auth-mode):
+  Firebase puede exigir Auth **en el servidor**, configuración de todo el proyecto.
+  La comprobación local de login por sí sola NO protege una API.
+- [App Check](https://firebase.google.com/docs/ai-logic/app-check): exige atestación;
+  desde noviembre de 2026 será obligatoria. El alta reciente suele imponerla ya.
+- [Cuotas](https://firebase.google.com/docs/ai-logic/quotas): límite por usuario,
+  región y minuto, 100 RPM por defecto; reducir inicialmente a **5 RPM**.
+  También limita el proveedor/modelo. Esto no es un tope diario ni garantía de
+  gasto. No se presenta un contador local como protección de servidor.
+- [Modelos admitidos](https://firebase.google.com/docs/ai-logic/models):
+  `gemini-3.1-flash-lite` figura como **billing not required** para Developer API.
+- [Modelo y precios](https://ai.google.dev/gemini-api/docs/pricing): 3.1 Flash-Lite,
+  texto/imagen: nivel gratuito sin cargo, con disponibilidad/cuotas limitadas;
+  nivel de pago **USD 0,25 / millón de tokens de entrada y USD 1,50 / millón de
+  salida**, incluyendo razonamiento. Ejemplo 2.000 entrada + 1.000 salida:
+  USD 0,002 por consulta, antes de otros servicios/impuestos. No es presupuesto
+  máximo: imágenes, tokens y tarifas pueden variar. Gemini Pro personal no paga
+  estas consultas. Revalidar el modelo y precios en la consola al activar.
 
-## Pasos desde la tablet (administrador del proyecto)
+El nivel gratuito puede utilizar contenido para mejorar productos según la tabla
+oficial de precios/condiciones. Antes de enviar fotos reales, revisar ese tratamiento;
+no enviar información personal innecesaria. Una foto solo se envía al pedir ayuda.
+App Check Enterprise tiene sus propias cuotas/precios; no activar recursos de pago
+sin decisión del propietario. Si el proyecto ya tiene facturación vinculada,
+**NO asumir que el modelo será gratis** y no activarlo sin revisar costes.
 
-1. Abre https://console.firebase.google.com/project/mishoras-bb0cc/overview con la
-   cuenta administradora del proyecto existente. Functions/Vertex requieren
-   facturación habilitada (Blaze). **No actives facturación ni aceptes costes sin
-   explicar primero los precios y obtener la decisión expresa del propietario.**
-   Presupuesto/alertas no limitan por sí mismos el gasto.
-2. Abre https://console.cloud.google.com/home/dashboard?project=mishoras-bb0cc.
-   Pulsa `>_` (Cloud Shell) en la barra superior; en tablet puede ayudar «Sitio para
-   ordenador». Usa allí tu identidad, sin descargar credenciales ni iniciar otra
-   tarea de Codex.
-3. Ejecuta línea por línea en Cloud Shell, con Node 22 (comprueba `node --version`):
+## Estado de activación y una prueba real sin guardar plantas
 
-```sh
-gcloud config set project mishoras-bb0cc
-git clone --branch fix/plantometro-secure-ai https://github.com/FranOO1/misApps.git
-cd misApps/Plantometro
-node --version
-npm ci
-gcloud services enable cloudfunctions.googleapis.com run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com aiplatform.googleapis.com firebaseappcheck.googleapis.com recaptchaenterprise.googleapis.com firestore.googleapis.com identitytoolkit.googleapis.com
-gcloud iam service-accounts create plantometro-ai --display-name="Plantometro AI"
-gcloud projects add-iam-policy-binding mishoras-bb0cc --member="serviceAccount:plantometro-ai@mishoras-bb0cc.iam.gserviceaccount.com" --role="roles/aiplatform.user"
-gcloud projects add-iam-policy-binding mishoras-bb0cc --member="serviceAccount:plantometro-ai@mishoras-bb0cc.iam.gserviceaccount.com" --role="roles/datastore.user"
-gcloud projects add-iam-policy-binding mishoras-bb0cc --member="serviceAccount:plantometro-ai@mishoras-bb0cc.iam.gserviceaccount.com" --role="roles/firebaseauth.viewer"
-gcloud projects add-iam-policy-binding mishoras-bb0cc --member="serviceAccount:plantometro-ai@mishoras-bb0cc.iam.gserviceaccount.com" --role="roles/firebaseappcheck.tokenVerifier"
-gcloud firestore databases create --database=plantometro-ai --location=eur3 --type=firestore-native --project=mishoras-bb0cc
-npx firebase deploy --project mishoras-bb0cc --only firestore:plantometro-ai
-npx firebase deploy --project mishoras-bb0cc --only functions:plantometro-ai
-```
+El propietario ya ha realizado el alta externa. No volver a pedirle una clave
+Gemini, otra cuenta Google ni activar facturación. Fraud Defense incluye
+reCAPTCHA Enterprise; el cliente utiliza `ReCaptchaEnterpriseProvider`.
+La clave de sitio es pública y no concede acceso administrativo ni sustituye
+Firebase Auth o App Check. No se han cambiado cuotas ni otros servicios desde
+este entorno, que no tiene identidad administradora ni la sesión del móvil.
+La cuota recomendada sigue siendo 5 solicitudes/minuto/usuario/región; el límite
+real de consola no se ha verificado aquí y el código no puede imponerlo.
 
-   Si cuenta de servicio/base existen, verifica nombres y continúa sin recrearlas.
-   Nunca despliegues `tests/firestore.rules` ni reemplaces las reglas de `(default)`.
-   La cuenta de servicio dedicada tiene lectura de Auth, no administración de usuarios.
-   El operador necesita permisos para APIs/IAM/despliegue y usar esa cuenta
-   (`iam.serviceAccounts.actAs`). Para conceder acceso necesita `roles/firebaseauth.admin`.
-   Si el shell pide autorización, autoriza allí; no pegues tokens en el chat. Si falta
-   la identidad ADC para el script, usa `gcloud auth application-default login` en
-   Cloud Shell mediante el navegador; no crees un archivo de clave de servicio.
-4. Google Cloud → Seguridad → reCAPTCHA: crea clave Enterprise de sitio web por
-   puntuación para `franoo1.github.io`. Firebase → App Check: registra la app web
-   **existente** con Enterprise y esa clave pública. No impongas App Check a
-   Firestore/Auth u otras apps: la nueva función ya lo exige. No uses tokens de
-   depuración en producción.
-5. Authentication → Usuarios: crea/elige una cuenta de prueba sin tu jardín personal.
-   Copia su UID y sustituye `UID_DE_PRUEBA`:
+La configuración de esta rama ya intenta Gemini real; **no está publicada**
+mientras los PR #3 y #4 sigan abiertos. Integrar #3 primero y #4 después conserva
+clima/actividad/apodos. GitHub Pages sirve main: HTMLPreview no prueba Gemini
+y no debe autorizarse como origen de acceso real. Worker v19 instala
+la nueva configuración junto con sus módulos sin borrar preferencias/jardines.
 
-```sh
-GOOGLE_CLOUD_PROJECT=mishoras-bb0cc node server/grant-access.js UID_DE_PRUEBA grant
-```
+**Única prueba de usuario, una vez publicada la rama:** en
+https://franoo1.github.io/misApps/Plantometro/, con la cuenta actual,
+pulsa «+ Añadir planta», escribe «Epipremnum aureum» y pulsa
+«Sugerir cuidados». No selecciones sugerencias ni pulses Guardar; cierra
+el formulario. Esto envía un borrador a Gemini sin guardar una planta ni
+usar las existentes como contexto. Si aparecen sugerencias, la consulta de
+texto real ha respondido con tu Auth y App Check. Si falla, comunica el texto
+exacto del mensaje visible; no envíes tokens ni credenciales. Quedan aparte
+la prueba real de foto/cámara y las comprobaciones negativas de protección.
 
-   Conserva las autorizaciones de otras apps. Vuelve a iniciar sesión para renovar
-   token. Para revocar, utiliza el mismo comando con `revoke`.
-6. Comprueba disponibilidad de `gemini-3.1-flash-lite` en Vertex `global`, IAM,
-   cuotas/facturación y texto/fotos. Si no está disponible, revisa modelo fijo y
-   pruebas antes de cambiarlo; nunca un endpoint/modelo arbitrario del cliente.
-7. Solo después, cambia en esta rama `js/ai-config.js`: `enabled:true` y
-   `appCheckSiteKey` con la clave **pública** Enterprise. Región/nombre ya fijados.
-   Incrementa versión de worker al publicar ese cambio. Nunca incluir una clave
-   secreta de Gemini o un JSON IAM.
-8. Sirve rama en HTTPS controlado/autorizado en Firebase/App Check. CORS permite
-   solo `https://franoo1.github.io`; otro origen debe añadirse explícitamente y
-   revisarse. No autorices HTMLPreview para sesiones Firebase. Con la cuenta de
-   prueba verifica modelo real, App Check válido/ausente/token reutilizado, cuenta
-   sin permiso, revocación, cuotas y denegación de acceso a `plantometro-ai`.
-   Completa la matriz antes de activar IA para cuentas personales. Publicar el cliente
-   con IA desactivada no despliega la función ni configura facturación.
+No se puede ejecutar esa consulta desde este entorno: no comparte la sesión
+Firebase Auth de la tablet. Registrar App Check y afirmar Enforced en consola
+son confirmaciones del propietario; ni la simulación ni una prueba sin Auth
+demuestran que una consulta autenticada real esté funcionando.
 
-Los contadores tienen `expireAt`: TTL opcional de ocho días solo en colecciones de
-cuotas de la base privada, nunca en plantas/historial. Mantener límites de Vertex
-además de la cuota global de la app. No activar logs de cuerpos, fotos, respuestas,
-tokens o credenciales.
+## Alternativa preparada: callable + Vertex, solo con decisión sobre costes
 
-## Modelo preparado
+`provider:'callable'` conserva el servidor preparado en `server/`. Se eliminó
+la lista manual/custom claim: acepta cualquier usuario habilitado con Google
+vinculado. Auth real, App Check y antirrepetición; lectura solo del jardín propio.
+Cuotas atómicas: 10 consultas por UID/día, 200 globales/día, una concurrente por UID;
+fallos cuentan. Base privada `plantometro-ai`; clientes no leen contadores.
+2 instancias, concurrencia 8; entrada/fotos limitadas, salida 1.000 tokens; timeout
+modelo 35 s, función 60 s. No genera claves de servicio: usa identidad IAM.
+Vertex global no garantiza procesamiento en la UE. Esta alternativa necesita
+Blaze/Functions/Vertex y aprobación de costes. **No se desplegó ni activó**.
+Para elegirla, revisar primero [precios Vertex](https://cloud.google.com/vertex-ai/generative-ai/pricing)
+y Functions/App Check/Firestore. No desplegar reglas de pruebas en producción.
 
-La función permanece en `europe-west1`; el endpoint Vertex del modelo es `global`.
-Esto no garantiza procesamiento restringido a la UE. Modelo fijo
-`gemini-3.1-flash-lite`, salida máxima 1.000 tokens y razonamiento MINIMAL.
-Se evita `gemini-2.5-flash`, cuyo retiro está anunciado para 20 de octubre de 2026.
-Fuente: [modelo y disponibilidad de Google](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-flash-lite)
-y [ciclo de vida](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions).
-Transporte/errores/endpoint se verificaron con adaptador; disponibilidad, precios,
-cuotas y una consulta real siguen requiriendo acceso a Google.
+## Datos y contexto
 
-## Comprobado y límites
+Apodo por `pg3_nickname_{uid}`, local a cada dispositivo. El apodo antiguo se migra
+solo a la primera cuenta en ese dispositivo; no se hereda entre cuentas distintas.
+No prueba identidad real. Se conserva el resto de `pg3b_settings`, incluida localidad.
+La migración elimina exclusivamente `geminiKey`; no toca plantas, fotos o historial.
 
-7/7 pruebas unitarias de servidor, 2/2 migración y 7/7 integración local. Auth/Firestore
-locales y SDK web son servicios reales de prueba; modelo controlado, no Gemini.
-Middleware real rechaza App Check ausente. Tokens Google válidos no tienen emisor
-local: pendientes. Este emulador no aplica reglas a bases con nombre: contadores en
-colección privada de su base desechable predeterminada únicamente en pruebas.
-El aislamiento cloud/IAM de la base privada requiere comprobación tras desplegar.
+Alta: nombre/foto opcional, sugerencias con selección explícita y campos corregibles,
+ubicación/luz/intervalo; abono opcional. Análisis: selector con vista previa o cámara
+con «Capturar y analizar», una instantánea; tracks se cierran al cerrar/salir.
+Contexto mínimo: nombre, especie, ubicación, luz, observaciones, últimos 12 cuidados
+sin autores, dos fotos anteriores pequeñas si existen. Solo lectura actual reciente
+aproximada de Open-Meteo, fechada; **no hay historial meteorológico fiable** y se
+explica al modelo. Previsión no se usa como tiempo pasado. No cambia pautas ni
+registra riegos. Guardar consejo/foto es explícito, con actualización de campos y
+arrayUnion para conservar fotos concurrentes y actividad compartida.
 
-`npm audit --omit=dev`: cero vulnerabilidades de ejecución. Backend Node 22 excluye
-HTML, imágenes, cliente, pruebas y `.env*` del paquete. App estática sin npm/framework.
-No se utilizó jardín personal ni Gemini real. [Matriz completa](TEST_MATRIX.md).
+## Revocar una clave antigua, si existió o fue expuesta
+
+No se recupera ninguna del historial. Si pegaste una clave en la app anterior,
+revócala aunque ahora se elimine del dispositivo: Google AI Studio → **Get API key**
+([claves](https://aistudio.google.com/api-keys)) → identificar por nombre/proyecto →
+menú de la clave → **Delete API key**. Alternativa: Google Cloud → **APIs & Services
+→ Credentials** ([enlace](https://console.cloud.google.com/apis/credentials)) →
+seleccionar la antigua credencial de **Generative Language/Gemini** → Delete.
+Si pertenecía a otro proyecto, seleccionarlo primero. No borrar la clave pública
+Firebase compartida: rompería login y otras apps. Firebase AI Logic gestiona su
+nueva credencial; no pegar un reemplazo. Si no sabes cuál es, no borrar claves al
+azar: revisar nombre y restricciones en la consola, sin publicar sus valores.
+
+[Resultados y pendientes](TEST_MATRIX_GEMINI_ONBOARDING.md).

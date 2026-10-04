@@ -9,7 +9,7 @@ function startPWA(check){
   let alreadyControlled=!!navigator.serviceWorker.controller;
   let registration,updateReady=false,reloading=false,lastCheck=0;
   const reloadWhenIdle=()=>{
-    const editing=document.querySelector('.modal.open,#toast.show button') || document.activeElement?.matches('input,textarea,select,[contenteditable="true"]');
+    const editing=document.querySelector('.modal.open,#toast.show button,#nickname-gate:not([hidden])') || document.activeElement?.matches('input,textarea,select,[contenteditable="true"]');
     const saving=pendingCheck?pendingCheck():/Guardando cambios|Cambios pendientes en este dispositivo/.test(document.getElementById('sync-status')?.textContent||'');
     if(!updateReady||reloading||document.hidden||editing||saving)return;
     reloading=true;location.reload();
