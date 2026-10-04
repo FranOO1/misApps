@@ -76,7 +76,7 @@ for name in ['utils','activity-model','weather-model','weather-effects','ai-inpu
     if name=='weather':text=text.replace('pg3_weather_v1','pg3_preview_weather_v1')
     if name=='weather-effects':text=text.replace('pg3_weather_seen_v1','pg3_preview_weather_seen_v1')
     if name=='settings':text=text.replace('pg3b_settings','pg3b_preview_settings').replace('pg3_nickname_', 'pg3_preview_nickname_')
-    if name=='ai-config':text=text.replace('enabled:false','enabled:true').replace("appCheckSiteKey:''","appCheckSiteKey:'public-demo'")
+    if name=='ai-config':text=re.sub(r"appCheckSiteKey:'[^']*'","appCheckSiteKey:'public-demo'",text).replace('enabled:false','enabled:true')
     if name=='ai-service':
         text=text[:text.index('let modelClient=')]+'''\nasync function callPlantAI(data){
           return normalizeAIResponse({resumen:'Consejos de ejemplo para esta planta.',consejo:'Observa la tierra y ajusta la frecuencia si lo necesitas.',confianza:'baja',motivo:'IA simulada: no se ha identificado tu foto ni consultado Gemini real.',sugerencias:{nombreComun:'Monstera (ejemplo)',especie:'Monstera deliciosa',ubicacion:'Interior luminoso (ejemplo)',revisarCadaDias:7,abonoCadaDias:null,luz:'media'},...(data.mode==='photo'?{analisis:{observado:'Ejemplo simulado: no se ha examinado esta foto.',causas:['Este ejemplo no identifica ninguna causa real.'],comprobar:['Comprueba cómo está la tierra antes de decidir.'],recomendacion:'Consulta real pendiente de activar; no cambies los cuidados por esta simulación.'}}:{})});

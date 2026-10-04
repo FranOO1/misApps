@@ -117,7 +117,7 @@ const scope='https://franoo1.github.io/misApps/Plantometro/';
 const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},registration:{scope},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async requests=>core.push(...requests.map(r=>{assert.equal(r.cache,'reload');return r.url.startsWith(scope)?'./'+r.url.slice(scope.length):r.url;}))};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL,Request});
 vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),swcontext);
 let pending;events.install({waitUntil:p=>pending=p});await pending;events.activate({waitUntil:p=>pending=p});await pending;
-assert(cacheKeys.has('plantometro-v18'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
+assert(cacheKeys.has('plantometro-v19'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
 for(const file of core.filter(f=>f!=='./' && !f.startsWith('https:')))assert(fs.existsSync(path.join(root,file)),`Missing cache asset ${file}`);
 for(const file of ['styles.css',...fs.readdirSync(path.join(root,'js')).map(n=>'js/'+n)])assert(core.includes('./'+file),`Uncached asset ${file}`);
 let intercepted=false;events.fetch({request:{method:'POST',url:'https://generativelanguage.googleapis.com/'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);

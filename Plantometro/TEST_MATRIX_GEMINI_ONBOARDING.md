@@ -26,10 +26,10 @@ servicios y datos son simulados; no equivale a producción.
 | IA ausente y migración antigua clave | Suite seguridad Chromium, 320 y 768 | Pasa; borra solo geminiKey, conserva preferencias/otros almacenes; cuidados manuales disponibles |
 | Errores, consulta lenta/cierre/cambio de borrador | Suite seguridad, callable/proveedor simulado | Pasa; timeout, respuesta tardía ignorada; sin datos técnicos al usuario |
 | Estrecho/tablet, texto 200%, teclado | Navegador 320/390/768 y altura reducida | Pasa: sin desbordamiento del formulario, botones propios y foto visible; teclado físico Android pendiente |
-| PWA actualización v16→v18 y apertura offline | Worker/cache reales, Auth/Firestore locales y SDK real | Pasa; módulos coherentes, plantas/fotos/historial/preferencias conservados; cachés de otras apps intactas |
-| Gemini de producción: nombre + foto/análisis | Pendiente | Falta administración Firebase para alta AI Logic, Auth obligatorio, App Check y cuotas; enabled:false |
-| Cuotas/atestación producción, modelo Spark y precios de la cuenta | Pendiente | Verificar en consola antes de activar; no se conoce el plan real del proyecto por falta de acceso |
-| Login Google producción, Android instalado, cámara física | Pendiente | Usar cuenta y plantas de prueba en HTTPS propio, tras configurar servicios; no declarar superado por emulación |
+| PWA actualización v16→v19 y apertura offline | Worker/cache reales, Auth/Firestore locales y SDK real | Pasa; módulos coherentes, plantas/fotos/historial/preferencias conservados; cachés de otras apps intactas |
+| Gemini de producción: nombre + foto/análisis | Pendiente | Cliente activado con clave pública; propietario confirma configuración externa. Falta consulta real desde su sesión, sin guardar plantas; esta rama aún no está publicada |
+| Cuotas/atestación producción, modelo Spark y precios de la cuenta | Pendiente | Modelo 3.1 Flash-Lite sin facturación confirmado en documentación oficial; Spark y Auth/App Check aplicados confirmados por propietario. Cuotas y atestación válida no comprobadas con sesión real |
+| Login Google producción, Android instalado, cámara física | Pendiente | Consulta de borrador con cuenta actual, sin guardar ni modificar plantas. Cámara física/PWA instalada pendientes; no declarar superado por emulación |
 
 ## Comandos
 
@@ -67,3 +67,17 @@ modelo **simulados**, no teléfono físico ni diagnóstico real. Fotos fixture p
 de la vista previa. La portada sigue siendo la del PR #3.
 
 [Activación exacta desde tablet, costes y revocación de clave antigua](SECURE_AI.md).
+
+## Activación del cliente (4 de octubre)
+
+Clave pública de sitio del propietario incorporada; `enabled:true`. No hay clave
+personal Gemini. Fuente oficial de modelos confirma `gemini-3.1-flash-lite`
+con Gemini Developer API sin facturación. App Check registrado/aplicado y modo
+Auth son confirmaciones del propietario, no verificaciones administrativas de
+este entorno. No se ha realizado ninguna consulta real al modelo.
+
+El generador mantiene `preview.html` con clave ficticia y proveedor simulado;
+activar el cliente no convierte esa demostración en una prueba real.
+Se comprueba nuevamente la actualización/cache coherente v19 por cambiar un
+archivo cacheado y el transporte SDK oficial con Auth/Firestore locales, modelo
+y atestación adaptados. La prueba real única pendiente está en SECURE_AI.md.

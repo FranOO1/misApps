@@ -6,7 +6,7 @@ import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 assert(process.env.FIRESTORE_EMULATOR_HOST&&process.env.FIREBASE_AUTH_EMULATOR_HOST,'Local emulators required');assert.equal(process.env.GCLOUD_PROJECT,'demo-plantometro');
 initializeApp({projectId:'demo-plantometro'});const db=getFirestore(),auth=getAuth();after(()=>db.terminate());
-test('Actual v16→v18 worker with SDKs and disposable emulator account',async()=>{
+test('Actual v16→v19 worker with SDKs and disposable emulator account',async()=>{
  await auth.createUser({uid:'pwa-owner'});const token=await auth.createCustomToken('pwa-owner');
  const photo='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1e0AAAAASUVORK5CYII=';
  const fixture={id:'pwa-fixture',name:'Planta de prueba PWA',photo,waterFreq:7,lastWater:'2026-01-01',history:[{t:'agua',date:'2026-01-01',by:'Frank'}],gallery:[{date:'2026-01-01',img:photo,note:'No perder'}],futureField:'keep',createdAt:'2026-01-01T12:00:00Z'};

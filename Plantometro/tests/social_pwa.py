@@ -40,12 +40,12 @@ try:
    ctx.route('https://'+host+'/**',reject)
   page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto(URL,wait_until='domcontentloaded');expect(page.locator('#gate')).to_be_hidden(timeout=45000);expect(page.locator('.card')).to_have_count(1,timeout=45000)
   page.evaluate('navigator.serviceWorker.ready');page.wait_for_function('!!navigator.serviceWorker.controller');assert 'plantometro-v16' in page.evaluate('caches.keys()')
-  page.evaluate('caches.open("horas-v1")');phase['legacy']=False;page.reload(wait_until='domcontentloaded');page.wait_for_function("()=>{caches.keys().then(k=>window.updatedCache=k.includes('plantometro-v18')&&!k.includes('plantometro-v16'));return window.updatedCache===true;}",timeout=60000)
+  page.evaluate('caches.open("horas-v1")');phase['legacy']=False;page.reload(wait_until='domcontentloaded');page.wait_for_function("()=>{caches.keys().then(k=>window.updatedCache=k.includes('plantometro-v19')&&!k.includes('plantometro-v16'));return window.updatedCache===true;}",timeout=60000)
   expect(page.locator('#activity-btn')).to_be_visible(timeout=60000);expect(page.locator('#weather-peek')).to_be_visible();expect(page.locator('#gate')).to_be_hidden(timeout=45000);expect(page.locator('.card')).to_have_count(1)
   assert page.evaluate("import('./js/sync.js').then(m=>m.auth.app.options.projectId)")=='demo-plantometro'
   assert page.evaluate("import('./js/sync.js').then(m=>m.plants[0])")==data['fixture'];assert page.evaluate('JSON.parse(localStorage.getItem("pg3b_settings"))')==prefs;assert 'horas-v1' in page.evaluate('caches.keys()')
   expect(page.locator('#weather-peek-temp')).to_contain_text('24');expect(page.locator('#activity-status')).to_contain_text('Cambios recientes');assert not errors,errors
   ctx.set_offline(True);page.reload(wait_until='domcontentloaded');expect(page.locator('#gate')).to_be_hidden(timeout=45000);expect(page.locator('.card')).to_have_count(1,timeout=45000);expect(page.locator('#weather-peek-age')).to_contain_text('Antigua');expect(page.locator('#activity-status')).to_contain_text('Sin conexión');assert page.evaluate("import('./js/sync.js').then(m=>m.plants[0])")==data['fixture'];assert page.evaluate('JSON.parse(localStorage.getItem("pg3b_settings"))')==prefs
-  assert not errors,errors;assert not forbidden,forbidden;print('PASS actual v16→v18 automatic update at /Plantometro/, coherent caches/new modules, preferences/photo/history preserved, unrelated cache kept; authenticated offline reopening with local Firebase SDK/cache and stale weather',flush=True)
+  assert not errors,errors;assert not forbidden,forbidden;print('PASS actual v16→v19 automatic update at /Plantometro/, coherent caches/new modules, preferences/photo/history preserved, unrelated cache kept; authenticated offline reopening with local Firebase SDK/cache and stale weather',flush=True)
   ctx.close();browser.close()
 finally:server.shutdown()

@@ -56,20 +56,8 @@ solo esa planta de esa cuenta; nunca borrar colecciones ni el jardín compartido
 
 Tras comprobar PASS real: integrar #3 en main, cambiar la base de #4 a main,
 comprobar que su diff no elimina clima/actividad, integrar #4 y esperar Pages.
-La versión final seguirá con `enabled:false`: Gemini requiere los pasos externos
-siguientes y una consulta real antes de activar el cliente.
-
-Después se pide únicamente el siguiente dato de consola necesario para Gemini:
-plan Spark/Blaze, pantalla de AI Logic, App Check, y cuotas, de uno en uno.
-No activar facturación, no asumir que Blaze usa gratis la API, no usar la
-suscripción Gemini Pro como autorización de costes.
-
-## Qué se probó aquí
-
-4/4 pruebas unitarias del verificador con HTTP/OAuth **simulados**: contrato válido,
-regla demasiado permisiva, rechazo de jardín no vacío e identidad equivocada;
-limpieza y ausencia de tokens en salida. No son la prueba real pendiente.
-Se revisaron los PR, la ascendencia de ramas, SDK/PWA y conservación de módulos.
-Las unitarias de servidor (11/11) y el grafo de módulos/migración pasan.
-Las integraciones Auth/Firestore y PWA locales del PR ya están documentadas;
-no se presentan como verificación de las reglas del proyecto publicado.
+La configuración del cliente Gemini se actualizó a `enabled:true` con la clave
+pública proporcionada por el propietario, que confirma Spark/Auth/App Check.
+No hay consulta Gemini real verificada: véase [SECURE_AI.md](SECURE_AI.md).
+La prueba de Gemini puede realizarse con la cuenta actual y un borrador sin guardar;
+no requiere la cuenta separada que utiliza este verificador histórico de actividad.

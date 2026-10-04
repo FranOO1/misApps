@@ -1,4 +1,4 @@
-# Gemini: conexión preparada; activación externa pendiente
+# Gemini: configuración de cliente activada; consulta real pendiente
 
 Esta rama parte del PR #3 (`4d0adc61f6da33d7bff3cf49b7e29b9fdee35cc0`),
 que conserva clima, actividad y tarjetas compactas. `main` al iniciar era `a9c9382`.
@@ -7,19 +7,22 @@ el PR #3 o cambiar su base tras su publicación. No se ha leído el jardín pers
 
 ## Opción principal: Firebase AI Logic, sin clave personal
 
-`js/ai-config.js` mantiene `enabled:false`, `provider:'firebase-ai'` y la clave
-**pública** de sitio App Check vacía. Se muestra «Ayuda con IA no disponible».
-Manual, fotos, riegos, abono opcional e historial funcionan sin IA.
+`js/ai-config.js` tiene `enabled:true`, `provider:'firebase-ai'` y la clave
+**pública** de sitio App Check proporcionada por el propietario, para
+`franoo1.github.io`. El propietario confirma Spark, Gemini Developer API,
+modo de usuarios autenticados y App Check aplicado a Firebase AI Logic.
+Estas confirmaciones no equivalen a una consulta real verificada desde este
+entorno. Manual, fotos, riegos, abono opcional e historial funcionan sin IA.
 
 Se prepara Firebase AI Logic con Gemini Developer API, modelo fijo
 `gemini-3.1-flash-lite`, Firebase Auth y App Check Enterprise. SDK web coherente
-12.10.0 para Auth, Firestore, App Check, Functions y AI; worker v18. Firebase
+12.10.0 para Auth, Firestore, App Check, Functions y AI; worker v19. Firebase
 administra la credencial Gemini en su proxy, nunca se copia al navegador.
 El SDK envía la **clave pública Firebase** existente al proxy Firebase: esto no es
 una clave secreta de Gemini. No confundir `x-goog-api-key` de ese SDK con enviar
 una clave personal a `generativelanguage.googleapis.com` (ya no existe ese flujo).
 
-Fuentes oficiales consultadas el 3 de octubre de 2026:
+Fuentes oficiales de modelo/precios revalidadas el 4 de octubre de 2026:
 
 - [Precios y planes](https://firebase.google.com/docs/ai-logic/pricing): Gemini
   Developer API admite Spark sin medio de pago; Vertex requiere Blaze.
@@ -32,6 +35,8 @@ Fuentes oficiales consultadas el 3 de octubre de 2026:
   región y minuto, 100 RPM por defecto; reducir inicialmente a **5 RPM**.
   También limita el proveedor/modelo. Esto no es un tope diario ni garantía de
   gasto. No se presenta un contador local como protección de servidor.
+- [Modelos admitidos](https://firebase.google.com/docs/ai-logic/models):
+  `gemini-3.1-flash-lite` figura como **billing not required** para Developer API.
 - [Modelo y precios](https://ai.google.dev/gemini-api/docs/pricing): 3.1 Flash-Lite,
   texto/imagen: nivel gratuito sin cargo, con disponibilidad/cuotas limitadas;
   nivel de pago **USD 0,25 / millón de tokens de entrada y USD 1,50 / millón de
@@ -47,44 +52,37 @@ App Check Enterprise tiene sus propias cuotas/precios; no activar recursos de pa
 sin decisión del propietario. Si el proyecto ya tiene facturación vinculada,
 **NO asumir que el modelo será gratis** y no activarlo sin revisar costes.
 
-## Pasos exactos desde la tablet: opción sin activar facturación
+## Estado de activación y una prueba real sin guardar plantas
 
-1. Abre [Firebase del proyecto](https://console.firebase.google.com/project/mishoras-bb0cc/overview)
-   con la cuenta administradora. En tablet usa Chrome → ⋮ → «Sitio para ordenador»
-   si no aparece el menú. Comprueba abajo el plan: si es **Blaze** o hay cuenta de
-   facturación, detener la activación de IA y decidir costes primero. No cambiar
-   facturación de este proyecto compartido con otras apps.
-2. Menú **AI Services → AI Logic → Empezar/Get started**. Elige **Gemini Developer
-   API**, NO Vertex. Sigue el alta sin añadir una tarjeta ni actualizar a Blaze.
-   Firebase habilita las APIs y gestiona la clave Gemini del proxy. Si exige pago,
-   no aceptarlo: deja IA desactivada y comunica el requisito exacto. No copies esa
-   clave a código, ajustes, chat o repositorio.
-3. **AI Logic → Settings → Authenticated-users mode → Enforced → Confirm**.
-   Este ajuste afecta a todas las apps de ese proyecto que usen AI Logic: revisar
-   primero que no se bloquea otra app existente sin Auth.
-4. **App Check → Apps → app web existente → Register → reCAPTCHA Enterprise**.
-   Crea/selecciona clave de sitio web por puntuación para `franoo1.github.io`
-   (es **pública**), y registra esa app. No imponer App Check a Firestore/Auth de
-   otras apps. En **App Check → APIs → Firebase AI Logic**, confirma **Enforced**.
-   No usar claves privadas, JSON de servicio ni tokens de depuración en producción.
-5. Abre [cuotas Google Cloud](https://console.cloud.google.com/iam-admin/quotas?project=mishoras-bb0cc).
-   Filtra **Firebase AI Logic API**, busca **Generate content requests per minute
-   per user per region** → Edit quotas → **5**. Revisa además límites del modelo
-   Gemini Developer API en [AI Studio](https://aistudio.google.com/usage).
-   No ampliar automáticamente cuotas ni activar pagos si se agota el nivel gratis.
-6. Solo cuando 2–5 estén confirmados, proporcionar la **clave pública de sitio**
-   y confirmar que sigue Spark. En `js/ai-config.js` se establecerán esa clave y
-   `enabled:true`; actualizar worker y vista previa al publicar. No hace falta
-   ninguna clave personal Gemini ni autorizar manualmente UIDs o correos.
-7. Para la prueba real previa a publicar, servir la rama en un origen HTTPS propio
-   autorizado tanto en Firebase Auth como en App Check. HTMLPreview es solo una
-   simulación; no autorizarlo para sesiones reales. Usa una cuenta Google de prueba
-   y plantas de prueba. Comprobar texto + foto, Auth ausente, App Check inválido y
-   429. Solo entonces activar la aplicación publicada. Este PR no se fusiona aún.
+El propietario ya ha realizado el alta externa. No volver a pedirle una clave
+Gemini, otra cuenta Google ni activar facturación. Fraud Defense incluye
+reCAPTCHA Enterprise; el cliente utiliza `ReCaptchaEnterpriseProvider`.
+La clave de sitio es pública y no concede acceso administrativo ni sustituye
+Firebase Auth o App Check. No se han cambiado cuotas ni otros servicios desde
+este entorno, que no tiene identidad administradora ni la sesión del móvil.
+La cuota recomendada sigue siendo 5 solicitudes/minuto/usuario/región; el límite
+real de consola no se ha verificado aquí y el código no puede imponerlo.
 
-Bloqueo concreto aquí: entorno sin identidad administrativa Google/Firebase,
-secretos o conexión para cambiar AI Logic/App Check/cuotas. GitHub tiene escritura,
-Google Cloud no. No se han habilitado APIs, facturación o servicios pagados.
+La configuración de esta rama ya intenta Gemini real; **no está publicada**
+mientras los PR #3 y #4 sigan abiertos. Integrar #3 primero y #4 después conserva
+clima/actividad/apodos. GitHub Pages sirve main: HTMLPreview no prueba Gemini
+y no debe autorizarse como origen de acceso real. Worker v19 instala
+la nueva configuración junto con sus módulos sin borrar preferencias/jardines.
+
+**Única prueba de usuario, una vez publicada la rama:** en
+https://franoo1.github.io/misApps/Plantometro/, con la cuenta actual,
+pulsa «+ Añadir planta», escribe «Epipremnum aureum» y pulsa
+«Sugerir cuidados». No selecciones sugerencias ni pulses Guardar; cierra
+el formulario. Esto envía un borrador a Gemini sin guardar una planta ni
+usar las existentes como contexto. Si aparecen sugerencias, la consulta de
+texto real ha respondido con tu Auth y App Check. Si falla, comunica el texto
+exacto del mensaje visible; no envíes tokens ni credenciales. Quedan aparte
+la prueba real de foto/cámara y las comprobaciones negativas de protección.
+
+No se puede ejecutar esa consulta desde este entorno: no comparte la sesión
+Firebase Auth de la tablet. Registrar App Check y afirmar Enforced en consola
+son confirmaciones del propietario; ni la simulación ni una prueba sin Auth
+demuestran que una consulta autenticada real esté funcionando.
 
 ## Alternativa preparada: callable + Vertex, solo con decisión sobre costes
 
