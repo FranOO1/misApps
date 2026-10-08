@@ -32,7 +32,7 @@ El service worker versiona y conserva los módulos AI/PDF descargados; uso local
 
 ## Paso concreto para verificar el servicio real
 
-Servir **esta rama**, tras autorización de publicación o en una vista previa en el dominio App Check ya autorizado `franoo1.github.io`, abrir `controlHoras/tests/verify_gemini.html` con la sesión Google existente y pulsar «Autorizar consulta ficticia a Google». Ese verificador no lee registros ni nóminas y no usa Firestore: solo envía 8,25 horas ficticias. Conserva el resultado/error exacto visible. No basta abrir la versión actual de main ni una previsualización de otro dominio. La publicación y una posible revisión del plan/región requieren decisiones posteriores; no se hacen en este PR. No se solicitan claves ni tokens personales, no se emplean debug tokens ni se relaja App Check.
+Se ha preparado una [publicación mínima aislada](PUBLICACION_PRUEBA.md): añadir únicamente los tres archivos de `gemini-prueba/` a la versión publicada, sin fusionar los PR ni sustituir la app actual. URL prevista `https://franoo1.github.io/misApps/gemini-prueba/`, pública y fuera del ámbito de la PWA. Reutiliza la configuración pública de la app publicada, la sesión Google persistida de este navegador y App Check normal. Solo tras autorización explícita envía 8,25 horas ficticias, sin acceder a registros, ajustes, nóminas o Firestore. La publicación sigue pendiente de aprobación. No se solicitan claves ni tokens personales, no se emplean debug tokens ni se relaja App Check. El verificador anterior dentro de `controlHoras/tests/` se conserva como herramienta del PR; no es necesario publicarlo para esta prueba.
 
 ## Capturas revisadas
 

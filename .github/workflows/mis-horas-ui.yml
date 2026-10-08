@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'controlHoras/**'
+      - 'gemini-prueba/**'
       - '.github/workflows/mis-horas-ui.yml'
 permissions:
   contents: read
@@ -24,6 +25,7 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - run: python controlHoras/tests/browser_ui.py
       - run: python controlHoras/tests/browser_gemini.py
+      - run: python controlHoras/tests/browser_probe.py
       - name: Intento real ficticio (no implica integración verificada)
         if: always()
         run: python controlHoras/tests/gemini_live_probe.py
