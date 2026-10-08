@@ -16,12 +16,16 @@ jobs:
         with:
           node-version: '24'
       - run: node controlHoras/tests/ui.test.cjs
+      - run: node controlHoras/tests/ai.test.cjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install playwright==1.55.0
       - run: python -m playwright install --with-deps chromium
       - run: python controlHoras/tests/browser_ui.py
+      - run: python controlHoras/tests/browser_gemini.py
+      - name: Intento real ficticio (no implica integración verificada)
+        run: python controlHoras/tests/gemini_live_probe.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
