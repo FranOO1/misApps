@@ -14,7 +14,9 @@ self.addEventListener('fetch',event=>{
   const dependency=['www.gstatic.com','cdn.jsdelivr.net','cdnjs.cloudflare.com'].includes(url.hostname)&&/firebasejs\/10\.14\.1\/|\/npm\/chart\.js|\/pdf\.js\/2\.16\.105\//.test(url.pathname);
   if(!local&&!dependency)return;
   event.respondWith(fetch(req).then(response=>{
-    if(response.ok){const cloned=response.clone();event.waitUntil(caches.open(CACHE).then(cache=>cache.put(req,cloned)).catch(()=>{}));}
+    const codeResource=['script','worker','style'].includes(req.destination)||/\.(?:js|css|json)$/.test(url.pathname);
+    if(response.type!=='opaque'&&req.mode!=='navigate'&&(!response.ok||(codeResource&&/text\/html/i.test(response.headers.get('content-type')||''))))return Response.error();
+    if(response.ok||response.type==='opaque'){const cloned=response.clone();event.waitUntil(caches.open(CACHE).then(cache=>cache.put(req,cloned)).catch(()=>{}));}
     return response;
   }).catch(async()=>{
     const cache=await caches.open(CACHE),cached=await cache.match(req);if(cached)return cached;
