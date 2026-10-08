@@ -19,13 +19,24 @@ El worker cambia de versión, precarga el HTML/manifest/iconos y elimina exclusi
 
 ## Pruebas y estado
 
-`node controlHoras/tests/ui.test.cjs`: **10/10 PASS** sobre el código inline real con adaptador DOM/Chart/Firebase/red, sin cuentas ni llamadas externas reales. Comprueba importes/horas, persistencia/navegación/remotos/importación, privacidad IA y respuesta pendiente, escape HTML, umbrales, PDF con importes, animaciones/zoom y contraste. La muestra de contraste comprueba WCAG AA >=4,5 para texto pequeño y toda la interpolación en fondos oscuros y tintados.
+`node controlHoras/tests/ui.test.cjs`: **11/11 PASS** sobre el código inline real con adaptador DOM/Chart/Firebase/red, sin cuentas ni llamadas externas reales. Comprueba importes/horas, persistencia/navegación/remotos/importación, privacidad IA y respuesta pendiente, escape HTML, umbrales, PDF con importes, animaciones/zoom y contraste. La muestra de contraste comprueba WCAG AA >=4,5 para texto pequeño y toda la interpolación en fondos oscuros y tintados.
 
 `node --check` del script y worker, `python -m py_compile controlHoras/tests/browser_ui.py`, `git diff --check`: PASS.
 
 `python controlHoras/tests/browser_ui.py`: preparado para Chromium 320, 390, 768 vertical y 1280, capturas visible/oculto, CRUD, decimales, gráficos reales Chart.js, privacidad/remotos, PDF, movimiento reducido, uso local/offline y SW reales. **No ejecutado localmente**: sandbox bloquea sockets de Chromium y servidor incluso en localhost (`EPERM`). Las solicitudes de permiso de red fueron canceladas. No se afirma revisión visual ni funcionamiento Android físico.
 
-El workflow `Mis Horas UI review` ejecuta estas comprobaciones en un runner GitHub al abrir el PR y adjunta capturas como artifact `mis-horas-ui-captures`. No despliega ni modifica Firebase; los servicios externos Auth/Firestore/IA se bloquean en el navegador de prueba. Se documentará su resultado real después de la ejecución, sin confundirlo con pruebas reales de servicios.
+**Verificación real en navegador de GitHub Actions: PASS**, [ejecución del 8 de octubre](https://github.com/FranOO1/misApps/actions/runs/37840352505), commit `fec500df8bd698e638c0b2f6ab5377e81e23eeea`. Ejecutó Chromium 320/390/768 vertical/1280, CRUD/decimales/festivo/descanso, colores en editor y calendario, privacidad/persistencia/navegación, gráfico real Chart.js con dataset de horas, preferencia frente a remoto simulado, ajustes editables, PDF, texto IA escapado y movimiento reducido. Los cuatro tamaños pasaron las comprobaciones de desbordamiento.
+
+También pasó **SW/CacheStorage reales**: instalación, apertura/registro/consulta offline, recarga y preferencia conservada, caché de Plantómetro conservada y fallo de JS sin HTML de sustitución. En el primer intento se detectó una respuesta 404 HTML del servidor para un recurso fallido; se corrigió el worker y la ejecución citada pasó. Es ejecución de navegador real con datos ficticios y Chart.js real; se bloquearon Auth/Firestore/IA externos. No es una prueba de sincronización, sesión o IA de producción.
+
+[Ocho capturas visibles/ocultas](https://github.com/FranOO1/misApps/actions/runs/37840352505/artifacts/11577003671) y copias permanentes en este PR:
+
+| Dispositivo | Importes visibles | Importes ocultos |
+| --- | --- | --- |
+| Móvil 390 × 844 | [Captura](captures/visible-390.png) | [Captura](captures/hidden-390.png) |
+| Tablet vertical 768 × 1024 | [Captura](captures/visible-768.png) | [Captura](captures/hidden-768.png) |
+
+Se han inspeccionado visualmente también 320 px y pantalla ancha 1280 px del artifact. Quedan el teclado/instalación/actualización físicos Android y la actualización desde todas las versiones PWA antiguas; no se afirma que se hayan verificado. El workflow solo prueba y genera artifacts: no despliega ni modifica Firebase.
 
 ## Pendiente para próximas tareas
 
