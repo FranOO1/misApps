@@ -22,7 +22,8 @@ def route_external(route):
  if url.startswith('https://www.gstatic.com/firebasejs/') or url.startswith('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/') or url=='https://cdn.jsdelivr.net/npm/chart.js':
   route.fulfill(body=resource(url),content_type='application/javascript',headers=headers)
  elif 'identitytoolkit.googleapis.com' in url:
-  route.fulfill(json={'idToken':jwt,'refreshToken':'fixture-refresh','expiresIn':'3600','localId':'fixture-user'},headers=headers)
+  if 'accounts:lookup' in url:route.fulfill(json={'users':[{'localId':'fixture-user','createdAt':str(int(time.time()*1000)),'lastLoginAt':str(int(time.time()*1000)),'providerUserInfo':[]}]},headers=headers)
+  else:route.fulfill(json={'idToken':jwt,'refreshToken':'fixture-refresh','expiresIn':'3600','localId':'fixture-user'},headers=headers)
  elif 'recaptcha/enterprise.js' in url:
   route.fulfill(body="window.grecaptcha={enterprise:{ready:f=>f(),render:()=>1,execute:async()=> 'fixture-recaptcha'}};",content_type='application/javascript',headers=headers)
  elif 'firebaseappcheck.googleapis.com' in url:

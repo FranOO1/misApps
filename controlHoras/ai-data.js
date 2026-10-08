@@ -13,7 +13,7 @@
   }
   function normalizePayroll(p){
     if(!plain(p)||Object.keys(p).some(k=>!['period','complete','missing',...fields].includes(k)))throw {kind:'invalid'};
-    if(p.period!==null&&(!/^\d{4}-(0[1-9]|1[0-2])$/.test(p.period)||+p.period.slice(0,4)<1900||+p.period.slice(0,4)>2200))throw {kind:'invalid'};
+    if(p.period!==null&&(typeof p.period!=='string'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(p.period)||+p.period.slice(0,4)<1900||+p.period.slice(0,4)>2200))throw {kind:'invalid'};
     const out={period:p.period};
     for(const k of fields){const v=p[k],max=k.includes('Hours')?1000:k.includes('Rate')?100000:10000000;if(v!==null&&(typeof v!=='number'||!Number.isFinite(v)||v<0||v>max))throw {kind:'invalid'};out[k]=v;}
     if(typeof p.complete!=='boolean'||!Array.isArray(p.missing)||p.missing.length>30||p.missing.some(x=>typeof x!=='string'||x.length>300))throw {kind:'invalid'};
