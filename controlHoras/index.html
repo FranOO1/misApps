@@ -61,7 +61,7 @@
     .day-cell { min-height: 46px; aspect-ratio: 1; border-radius: 10px; border: 1.5px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); padding:0; transition: border-color 0.15s; }
     .day-cell.today { border-color: var(--accent); }
     .day-cell span:first-child { font-size: 13px; font-weight: 600; }
-    .day-cell span:last-child { font-size: 11px; }
+    .day-cell span + span { font-size: 11px; }
     
     .editor { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
     .type-btn { flex: 1; padding: 10px 0; border-radius: 12px; border: 1.5px solid var(--border); font-size: 13px; font-weight: 600; background: transparent; color: var(--muted); }
@@ -102,7 +102,9 @@
     .card, .neto-block { overflow-wrap: anywhere; }
     .config-input { min-width: 0; max-width: 100%; }
     .day-cell span { line-height: 1.4; }
-    .day-symbol { font-size: 10px; }
+    .calendar-legend { display: flex; gap: 18px; margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+    .calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 4px; }
     .tab-enter { animation: fadeIn 180ms ease-out; }
     .money-detail { font-size: 14px; color: var(--text); line-height: 1.6; }
     .hours-total { font-size: 19px; font-weight: 700; margin-top: 8px; }
@@ -162,7 +164,7 @@
     const TYPES = {
       normal:   { label: "Normal",   color: "#4FA3FF", bg: "rgba(79,163,255,0.18)" },
       festivo:  { label: "Festivo",  color: "#FFB04F", bg: "rgba(255,176,79,0.20)" },
-      descanso: { label: "Descanso", color: "#C1CADB", bg: "rgba(193,202,219,0.12)" },
+      descanso: { label: "Descanso", color: "#C1CADB", bg: "rgba(193,202,219,0.20)" },
     };
 
     const state = {
@@ -731,7 +733,7 @@
                   style="border-color:${borderColor}; ${t ? `background:${t.bg}` : ''}" 
                   aria-label="${d} de ${MESES[state.month]}, ${t?t.label:'sin registro'}${e&&e.type!=='descanso'?', '+fmtH(e.hours)+' horas':''}" aria-pressed="${isSel}" onclick="selectDay(${d})">
             <span style="color:${t?t.color:'#AFB8CC'}">${d}</span>
-            ${e && e.type !== 'descanso' ? `<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span><span class="day-symbol" style="color:${t.color}">${e.type==='festivo'?'F':'N'}</span>` : e && e.type==='descanso' ? `<span style="color:var(--muted)">D · zZ</span>` : ''}
+            ${e && e.type !== 'descanso' ? `<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>` : ''}
           </button>`;
       }
       grid.innerHTML = DIAS_SEMANA.map(d=>`<div style="text-align:center;color:var(--muted);font-size:11px;font-weight:600">${d}</div>`).join('') + gridHtml;
@@ -842,7 +844,7 @@
                 <div class="hours-total">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes · ${fmtH(c.hNormal)} normales · ${fmtH(c.hFestivo)} festivas</div>
               </div>
               
-              <p class="privacy-note">Toca un día para registrar tus horas</p><p class="privacy-note">N · Normal　F · Festivo　D · Descanso</p><div id="calendar-grid" class="grid"></div>
+              <p class="privacy-note">Toca un día para registrar tus horas</p><div class="calendar-legend"><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.festivo.bg}"></i>Festivo</span><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.descanso.bg}"></i>Descanso</span></div><div id="calendar-grid" class="grid"></div>
               <div id="editor-container"></div>
             </div>
             

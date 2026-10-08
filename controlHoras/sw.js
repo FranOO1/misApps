@@ -1,5 +1,5 @@
 // UI release: keep all records/preferences in localStorage and other apps' caches.
-const CACHE='horas-v2-ui-20261008';
+const CACHE='horas-v2-ui-20261008-r2';
 const SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})))).then(()=>self.skipWaiting()));

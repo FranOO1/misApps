@@ -23,6 +23,10 @@ try:
    ctx=browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce',service_workers='block')
    ctx.route('https://**/*',external);ctx.add_init_script("if(!localStorage.getItem('horas-app-v2'))localStorage.setItem('horas-app-v2',"+json.dumps(json.dumps(fixture))+");const OriginalDate=Date;window.Date=class extends OriginalDate{constructor(...a){super(...(a.length?a:['2026-10-08T12:00:00Z']));}static now(){return new OriginalDate('2026-10-08T12:00:00Z').getTime();}};")
    page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept());page.goto(URL);expect(page.get_by_text('Toca un día para registrar tus horas')).to_be_visible();no_overflow(page)
+   for day,count in [(1,2),(3,2),(4,1)]:
+    assert page.locator(f'#day-btn-{day} span').count()==count
+   assert page.locator('#day-btn-4').inner_text()=='4'
+   colors=[page.locator(f'#day-btn-{day}').evaluate('e=>getComputedStyle(e).backgroundColor') for day in [1,3,4]];assert len(set(colors))==3
    page.screenshot(path=str(OUT/f'visible-{width}.png'),full_page=True,animations='disabled')
    page.locator('#day-btn-1').click();expect(page.locator('#day-earn-box')).to_be_visible();page.get_by_role('button',name='Ocultar importes').click();assert '10.00 €/h' not in page.locator('#app').inner_text();assert '•••• €/h' in page.locator('#app').inner_text();assert '48,5 h' in page.locator('#app').inner_text();no_overflow(page)
    page.screenshot(path=str(OUT/f'hidden-{width}.png'),full_page=True,animations='disabled')
@@ -32,7 +36,7 @@ try:
    for h,color in [('9.49','rgb(232, 237, 247)'),('9.5','rgb(255, 176, 79)'),('10.75','rgb(255, 152, 104)'),('12','rgb(255, 128, 128)')]:
     if page.evaluate('state.selectedDay')==9:page.locator('#day-btn-9').click()
     page.locator('#day-btn-9').click();page.locator('#draft-hours').fill(h);assert page.locator('#draft-hours').evaluate('e=>getComputedStyle(e).color')==color;page.get_by_role('button',name='✓ Añadir').click();assert page.locator('#day-btn-9').evaluate('e=>getComputedStyle(e.querySelectorAll("span")[1]).color')==color
-   page.locator('#day-btn-10').click();page.get_by_role('button',name='Festivo',exact=True).click();page.get_by_role('button',name='✓ Añadir').click();assert 'F' in page.locator('#day-btn-10').inner_text();page.locator('#day-btn-11').click();page.get_by_role('button',name='Descanso',exact=True).click();page.get_by_role('button',name='✓ Añadir').click();assert page.evaluate('state.allData["2026-10"].days[11].hours')==0
+   page.locator('#day-btn-10').click();page.get_by_role('button',name='Festivo',exact=True).click();page.get_by_role('button',name='✓ Añadir').click();assert 'Festivo' in page.locator('#day-btn-10').get_attribute('aria-label');assert page.locator('#day-btn-10 span').count()==2;page.locator('#day-btn-11').click();page.get_by_role('button',name='Descanso',exact=True).click();page.get_by_role('button',name='✓ Añadir').click();assert page.evaluate('state.allData["2026-10"].days[11].hours')==0
    page.get_by_role('button',name='Ocultar importes').click();page.evaluate('applyRemote({config:{...state.config,hideMoney:false},data:state.allData})');expect(page.get_by_role('button',name='Mostrar importes')).to_be_visible()
    page.get_by_role('button',name='Ajustes',exact=True).click();expect(page.get_by_role('spinbutton',name='Hora normal (€)',exact=True)).to_be_enabled();assert 'copias contienen datos económicos' in page.locator('#app').inner_text();page.get_by_role('button',name='Mes',exact=True).click();page.get_by_role('button',name='Exportar PDF').click();expect(page.get_by_text('El PDF contiene datos económicos aunque estén ocultos en pantalla. Es un resumen estimado, no una nómina real.')).to_be_visible()
    page.get_by_role('button',name='Cancelar',exact=True).click();page.evaluate('processDownload=async()=>{};doExportMonth()');assert page.evaluate('state.pdfReady.blob.size')>1000

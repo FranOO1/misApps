@@ -7,7 +7,7 @@ Rama: `fix/mis-horas-seguridad-gemini`. No fusionada ni publicada.
 
 ## Cambios de esta primera entrega
 
-Se conserva HTML/CSS/JavaScript sencillo, el diseño oscuro y el neto destacado. Texto secundario y números de días más claros; horas totales más visibles; bruto/retenciones legibles. Se distinguen registros, proyección y nómina real. Descanso neutro, símbolos N/F/D y guía para tocar un día. Controles de al menos 44 px, foco visible, zoom permitido, tablet vertical con una columna amplia. Animación de 180 ms solo al entrar/cambiar pestaña; sin volver a animar toda la pantalla al guardar o sincronizar; movimiento reducido también en gráficos.
+Se conserva HTML/CSS/JavaScript sencillo, el diseño oscuro y el neto destacado. Texto secundario y números de días más claros; horas totales más visibles; bruto/retenciones legibles. Se distinguen registros, proyección y nómina real. Festivos en ámbar y descansos en gris azulado neutro, sin letras ni símbolos dentro de las celdas. Cada celda muestra solo el día y sus horas; los descansos, solo el día. Leyenda de colores fuera del calendario y tipos conservados en los nombres accesibles. Guía para tocar un día. Controles de al menos 44 px, foco visible, zoom permitido, tablet vertical con una columna amplia. Animación de 180 ms solo al entrar/cambiar pestaña; sin volver a animar toda la pantalla al guardar o sincronizar; movimiento reducido también en gráficos.
 
 La escala conserva exactamente 9,5 y 12 h: claro por debajo de 9,5, interpolación ámbar→rojo hasta 12, rojo desde 12. Se aclara el rojo final a `rgb(255,128,128)` para que el número alcance contraste AA también sobre el fondo festivo. No se cambia ninguna regla laboral.
 
@@ -19,7 +19,7 @@ El worker cambia de versión, precarga el HTML/manifest/iconos y elimina exclusi
 
 ## Pruebas y estado
 
-`node controlHoras/tests/ui.test.cjs`: **11/11 PASS** sobre el código inline real con adaptador DOM/Chart/Firebase/red, sin cuentas ni llamadas externas reales. Comprueba importes/horas, persistencia/navegación/remotos/importación, privacidad IA y respuesta pendiente, escape HTML, umbrales, PDF con importes, animaciones/zoom y contraste. La muestra de contraste comprueba WCAG AA >=4,5 para texto pequeño y toda la interpolación en fondos oscuros y tintados.
+`node controlHoras/tests/ui.test.cjs`: **12/12 PASS** sobre el código inline real con adaptador DOM/Chart/Firebase/red, sin cuentas ni llamadas externas reales. Comprueba importes/horas, persistencia/navegación/remotos/importación, privacidad IA y respuesta pendiente, escape HTML, umbrales, PDF con importes, animaciones/zoom y contraste. La muestra de contraste comprueba WCAG AA >=4,5 para texto pequeño y toda la interpolación en fondos oscuros y tintados.
 
 `node --check` del script y worker, `python -m py_compile controlHoras/tests/browser_ui.py`, `git diff --check`: PASS.
 
