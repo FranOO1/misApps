@@ -17,10 +17,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <script>
-    if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-  </script>
+  <script src="./ai-data.js"></script>
   
 
   <style>
@@ -186,8 +183,7 @@
       state.config.hideMoney=!state.config.hideMoney;
       localStorage.setItem(MONEY_KEY,state.config.hideMoney?'1':'0');
       // Discard in-flight or previously displayed AI results when privacy changes.
-      privateGeneration++;state.chatMsgs=[];state.chatInput='';state.chatLoading=false;
-      state.nomina={status:'idle',result:null,error:null};render();
+      discardAI();render();
     };
     const eur = (n) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n || 0);
     const fmt = (n) => state.config.hideMoney ? "•••• €" : eur(n);
@@ -249,7 +245,7 @@
     }
 
     async function startSync(user) {
-      if(cloud.user?.uid!==user.uid){privateGeneration++;state.chatMsgs=[];state.chatInput='';state.chatLoading=false;state.nomina={status:'idle',result:null,error:null};}
+      if(cloud.user?.uid!==user.uid){discardAI();}
       cloud.user = user;
       cloud.status = "syncing";
       cloud.errorMsg = "";
@@ -323,7 +319,7 @@
     window.logoutGoogle = async () => {
       vibrate(20);
       if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; }
-      privateGeneration++;state.chatMsgs=[];state.chatInput='';state.chatLoading=false;state.nomina={status:'idle',result:null,error:null};
+      discardAI();
       cloud.user = null; cloud.status = "off"; cloud.synced = false;
       try { await firebase.auth().signOut(); } catch (e) {}
       render();
@@ -333,7 +329,7 @@
       firebase.auth().getRedirectResult().catch(() => {});
       firebase.auth().onAuthStateChanged((user) => {
         if (user) { startSync(user); }
-        else { if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; } cloud.user = null; cloud.status = "off"; cloud.synced = false; render(); }
+        else { discardAI(); if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; } cloud.user = null; cloud.status = "off"; cloud.synced = false; render(); }
       });
     }
 
@@ -602,107 +598,83 @@
     };
 
     // ============================================================
-    // SISTEMA DE IA -> POLLINATIONS (PÚBLICO Y SIN API KEY)
-    // ============================================================
-    
-    async function extractTextFromPDF(file) {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-      let fullText = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        fullText += content.items.map(item => item.str).join(" ") + "\n";
-      }
-      return fullText;
+    // GEMINI: optional assistant, one selected period, no automatic data edits.
+    let aiService;
+    const ai=()=>aiService ||= import('./ai-service.js').catch(e=>{aiService=null;throw e;});
+    const aiSession=()=>`${privateGeneration}:${cloud.user?.uid||''}`;
+    const knownIdentifiers=()=>[state.config.userName,cloud.user?.displayName,cloud.user?.email].filter(Boolean);
+    function discardAI(){privateGeneration++;state.chatMsgs=[];state.chatInput='';state.chatLoading=false;state.nomina={status:'idle',result:null,error:null};if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});}
+    function selectedAIPeriod(){return state.aiPeriod||monthKey(state.year,state.month);}
+    function expectedForPeriod(period){
+      if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(period||''))return null;
+      const [y,m]=period.split('-').map(Number),rec=state.allData[period];if(!rec||!Object.keys(rec.days||{}).length)return null;
+      const dim=new Date(y,m,0).getDate(),cfg=state.config,ei=extraActive(cfg)?calcExtraInfo(state.allData,y,m-1,dim):null,c=calcMonth(rec.days,cfg,dim,ei);
+      return {period,gross:c.bruto,deductions:c.totalDed,net:c.neto,normalHours:c.hNormalPaid,holidayHours:c.hFestivo,extraHours:c.hExtra,normalRate:cfg.rateNormal,holidayRate:cfg.rateNormal+cfg.plusFestivo,extraRate:extraActive(cfg)?cfg.rateExtra:0,recordedHours:c.hNormal+c.hFestivo,workDays:c.diasTrab,restDays:c.diasDesc,generatedExtraHours:c.hExtraGen};
     }
-
-    async function apiCallPublic(messagesArray, isChat = true) {
-      const nmb = state.config.userName || "el trabajador";
-      
-      let sysCtx = `Eres un experto laboral. Responde de forma natural y breve. Te diriges a ${nmb}. Datos: Tarifa normal ${state.config.rateNormal}€, Festiva ${state.config.rateNormal+state.config.plusFestivo}€. Retenciones: ${state.config.deductions.reduce((s,d)=>s+d.pct,0)}%. IMPORTANTE: ESTRICTAMENTE PROHIBIDO devolver JSON o razonamientos internos. Responde solo con el texto final para el usuario.`;
-
-      if(isChat) {
-        const compact = {};
-        for (const [k, rec] of Object.entries(state.allData)) {
-          const days = {};
-          for (const [d, e] of Object.entries(rec.days || {})) {
-            days[d] = e.type === "descanso" ? "D" : (e.type === "festivo" ? "F" : "N") + (Number(e.hours) || 0);
-          }
-          if (Object.keys(days).length) compact[k] = { cerrado: !!rec.closed, dias: days };
-        }
-        sysCtx += `\n\nREGISTROS DE HORAS (N=Normal, F=Festivo, D=Descanso):\n${JSON.stringify(compact)}\nUsa estos datos exactos para contestar sus preguntas de horas y días.`;
+    function minimalContext(question){
+      const period=selectedAIPeriod(),ctx={period,limits:'Solo periodo seleccionado. Se usan tarifas actuales; su correspondencia histórica no está verificada. Estimaciones porcentuales, no nómina exacta.'};
+      const calc=expectedForPeriod(period),financial=/tarifa|retenci|deducci|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question),amounts=/bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question),hours=/hora|jornada|d[ií]a|registr|semana|mes|resumen/i.test(question),day=/\bd[ií]a\s+(\d{1,2})\b/i.exec(question)?.[1],weekly=/semana/i.test(question);
+      if(calc&&amounts&&!day)ctx.calculated=calc;
+      else if(calc&&hours&&!day&&!weekly)ctx.calculated={recordedHours:calc.recordedHours,normalHours:calc.normalHours,holidayHours:calc.holidayHours,extraHours:calc.extraHours,workDays:calc.workDays,restDays:calc.restDays};
+      if(!calc&&(hours||amounts))ctx.missing='No hay registros del periodo.';
+      if(financial){
+        if(/tarifa|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question))ctx.rates={normal:state.config.rateNormal,holiday:state.config.rateNormal+state.config.plusFestivo,extra:extraActive(state.config)?state.config.rateExtra:0};
+        if(/retenci|deducci|neto|calcul|n[oó]mina|compar|salario/i.test(question))ctx.retentionPercentages=state.config.deductions.map((d,i)=>({label:'Retención '+(i+1),pct:d.pct}));
+        if(/extra|sintax|calcul|n[oó]mina|compar/i.test(question))ctx.extraAssumptions=extraActive(state.config)?'Sintax actual: semana lunes-domingo, umbral 40 h normales+festivas; exceso desde último día normal; festivos conservan tarifa; extras se estiman al mes siguiente.':'Sin extras Sintax activas.';
       }
-
-      const payload = [
-        { role: 'system', content: sysCtx },
-        ...messagesArray
-      ];
-
-      let lastErr;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const res = await fetch('https://text.pollinations.ai/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: payload, model: 'openai' })
-          });
-          if (!res.ok) throw new Error("Servidor saturado");
-          return await res.text();
-        } catch(e) {
-          lastErr = e;
-          await new Promise(r => setTimeout(r, 1500)); 
-        }
+      if(weekly){const [y,m]=period.split('-').map(Number),d=day?+day:period===monthKey(new Date().getFullYear(),new Date().getMonth())?new Date().getDate():1,w=calcWeekInfo(new Date(y,m-1,d));ctx.week={from:w.monday.toLocaleDateString('sv-SE'),to:w.sunday.toLocaleDateString('sv-SE'),normalHours:w.hNormal,holidayHours:w.hFestivo,recordedHours:w.total,workDays:w.dias};}
+      if(/jornada|d[ií]a|registr/i.test(question)&&!weekly){ctx.days=Object.entries(state.allData[period]?.days||{}).filter(([d,e])=>e&&(!day||+d===+day)).map(([d,e])=>({day:+d,type:e.type,hours:Number(e.hours)||0}));
+        if(day&&amounts){const e=state.allData[period]?.days?.[+day];if(e)ctx.dailyEstimate={day:+day,gross:e.type==='descanso'?0:(Number(e.hours)||0)*(state.config.rateNormal+(e.type==='festivo'?state.config.plusFestivo:0)),limit:'Misma estimación del editor diario: tarifa por horas. La atribución y pago de extras Sintax se reflejan en el resumen mensual.'};}
       }
-      throw lastErr;
+      return ctx;
     }
-
-    window.sendChat = async (forceText) => {
-      const q=forceText||state.chatInput;if(!q||state.chatLoading||state.config.hideMoney)return;
-      const generation=privateGeneration,uid=cloud.user?.uid;
-      state.chatInput = ""; state.chatMsgs.push({role:'user', text: q}); state.chatLoading = true; render();
-      try {
-        const contextMessages = state.chatMsgs.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
-        let reply = await apiCallPublic(contextMessages, true);
-        
-        try {
-          const parsed = JSON.parse(reply);
-          if (parsed.content) reply = parsed.content;
-          else if (parsed.response) reply = parsed.response;
-        } catch(e) {}
-        
-        reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-        reply = reply.split("```json").join("").split("```").join("").trim();
-        
-        if(reply.includes('"reasoning"')) {
-           reply = "El motor interno se ha saturado intentando procesar datos complejos. Por favor, formúlame la pregunta de una forma más sencilla.";
-        }
-        
-        if(generation===privateGeneration&&uid===cloud.user?.uid&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:reply});
-      } catch(e){if(generation===privateGeneration&&uid===cloud.user?.uid&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:'⚠ Error de red tras varios intentos: '+e.message});}
-      if(generation===privateGeneration){state.chatLoading=false;render();}
+    async function callAI(mode,question,text='',context=null){
+      const session=aiSession(),mod=await ai();if(session!==aiSession())throw {kind:'cancelled'};
+      return mod.query({mode,question,text,context,options:firebaseConfig,user:cloud.user,currentSession:aiSession,session});
+    }
+    async function aiError(e){try{return (await ai()).errorMessage(e);}catch{return 'No se pudo cargar Gemini. Revisa la conexión; puedes seguir usando la app localmente.';}}
+    window.sendChat=async(forceText)=>{
+      const q=String(forceText||state.chatInput).trim();if(!q||state.chatLoading||['reading','loading'].includes(state.nomina.status)||state.config.hideMoney)return;
+      if(q.length>2000){alert('Consulta demasiado larga: máximo 2.000 caracteres.');return;}
+      if(!window.HorasAIData){state.chatMsgs.push({role:'bot',text:'No se pudo cargar Gemini. Reabre la app con conexión; tus registros siguen disponibles.'});render();return;}
+      const period=selectedAIPeriod(),mentioned=q.match(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g)||[],otherMonth=MESES.some((name,i)=>new RegExp('\\b'+name+'\\b','i').test(q)&&i+1!==+period.slice(5));
+      if(mentioned.some(m=>m!==period)||otherMonth){state.chatMsgs.push({role:'bot',text:'Selecciona el periodo de la consulta antes de enviarla. Solo se envían datos del periodo seleccionado.'});render();return;}
+      const session=aiSession(),clean=HorasAIData.redact(q,knownIdentifiers()),context=minimalContext(clean);
+      state.chatInput='';state.chatMsgs.push({role:'user',text:q});state.chatLoading=true;render();
+      try{const reply=await callAI('chat',clean,'',context);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:reply});}
+      catch(e){const message=await aiError(e);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:message});}
+      finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
-
-    window.handleNominaUpload = async (e) => {
-      const file=e.target.files[0];if(!file||state.config.hideMoney||state.nomina.status==='loading')return;
-      const generation=privateGeneration,uid=cloud.user?.uid;
-      e.target.value = ""; 
-      state.nomina.status = "loading"; render();
-      try {
-        const rawText = await extractTextFromPDF(file);
-        const safeText = rawText.substring(0, 3000); 
-        
-        const prompt = `Revisa este texto extraído de una nómina: "${safeText}". Analiza si cuadra el salario sabiendo que la tarifa normal es ${state.config.rateNormal}€/h. Devuelve SOLO un objeto JSON válido con este formato exacto: {"estado":"cuadra"|"no_cuadra", "resumen":"Explicación corta"}. No añadas ni markdown ni comillas fuera del JSON.`;
-        
-        const rawReply = await apiCallPublic([{ role: 'user', content: prompt }], false);
-        
-        const cleanJson = rawReply.split("```json").join("").split("```").join("").trim();
-        if(generation!==privateGeneration||uid!==cloud.user?.uid||state.config.hideMoney)return;
-        state.nomina.result = JSON.parse(cleanJson);
-        state.nomina.status = "done";
-      } catch(err){if(generation!==privateGeneration||uid!==cloud.user?.uid)return;state.nomina.status="error";state.nomina.error="Error al analizar nómina: "+err.message;}
-      if(generation===privateGeneration)render();
+    async function extractTextFromPDF(file){
+      let library;try{library=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');}catch{throw Error('No se pudo cargar el lector PDF. Requiere conexión la primera vez. No se ha enviado.');}
+      library.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+      return HorasAIData.extractPDF(file,library);
+    }
+    window.handleNominaUpload=async(e)=>{
+      const file=e.target.files[0];e.target.value='';if(!file||state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status))return;
+      const session=aiSession();state.nomina={status:'reading',result:null,error:null};render();
+      try{if(file.size>10*1024*1024)throw Error('PDF demasiado grande: máximo 10 MB. No se ha enviado.');const extracted=await extractTextFromPDF(file);if(session===aiSession())state.nomina={status:'review',text:HorasAIData.redact(extracted.text,knownIdentifiers()),pages:extracted.pages,result:null,error:null};}
+      catch(e){if(session===aiSession())state.nomina={status:'error',result:null,error:e.message||'No se pudo preparar el PDF. No se ha enviado.'};}
+      if(session===aiSession())render();
     };
+    window.cancelPayroll=()=>{discardAI();render();};
+    window.authorizePayroll=async()=>{
+      if(state.config.hideMoney||state.chatLoading||state.nomina.status!=='review')return;
+      const text=HorasAIData.redact(getEl('payroll-text').value,knownIdentifiers());if(text.trim().length<30||text.length>120000){state.nomina.error='Texto insuficiente o demasiado grande. No se ha enviado.';render();return;}
+      // If redaction changes user edits, show the exact final text and require approval again.
+      if(text!==getEl('payroll-text').value){state.nomina.text=text;state.nomina.error='Se han retirado identificadores detectados. Revisa de nuevo el texto antes de autorizar.';render();return;}
+      const session=aiSession();state.nomina={...state.nomina,status:'loading',error:null};render();
+      try{const facts=await callAI('payroll','Extrae solo datos explícitos.',text);if(session!==aiSession())return;const expected=expectedForPeriod(facts.period),result=HorasAIData.comparePayroll(facts,expected,false);state.nomina={status:'done',facts,result,confirmed:false,error:null};}
+      catch(e){const message=await aiError(e);if(session===aiSession())state.nomina={status:'error',result:null,error:message};}
+      if(session===aiSession())render();
+    };
+    window.confirmPayrollPeriod=checked=>{if(state.config.hideMoney||!state.nomina.facts)return;state.nomina.confirmed=!!checked;state.nomina.result=HorasAIData.comparePayroll(state.nomina.facts,expectedForPeriod(state.nomina.facts.period),!!checked);render();};
+    function payrollMarkup(){
+      if(state.config.hideMoney)return '';
+      const n=state.nomina,r=n.result;
+      if(n.status==='review')return `<div style="margin-top:12px"><p class="privacy-note">Texto extraído localmente de ${n.pages} páginas. Aún no se ha enviado. Se intentan retirar identificadores; la eliminación automática puede ser incompleta. Revisa y elimina nombres, direcciones e identificadores restantes.</p><label for="payroll-text">Texto exacto que se enviará a Google para extraer periodo, horas, tarifas y totales:</label><textarea id="payroll-text" style="width:100%;min-height:180px;margin:8px 0;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit;font-size:16px" oninput="state.nomina.text=this.value">${esc(n.text)}</textarea><p class="privacy-note">No se envía el PDF original ni tus registros. Después, la comparación se calcula en este dispositivo. Según las condiciones de Google, los servicios gratuitos pueden usar entradas/respuestas para mejorar productos y revisión humana; hay condiciones distintas para servicios de pago y EEE, Suiza y Reino Unido. Google exige Paid Services para clientes en EEE, Suiza y Reino Unido. No se ha verificado el régimen de este proyecto ni se promete confidencialidad. Revisa las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a> y <a href="https://firebase.google.com/docs/ai-logic/data-governance" target="_blank" rel="noopener" style="color:var(--accent)">Firebase AI Logic</a>. La suscripción personal de Gemini no equivale a uso de API.</p>${n.error?`<p role="alert">${esc(n.error)}</p>`:''}<button class="big-btn" style="margin-bottom:8px;color:var(--success)" onclick="authorizePayroll()">Autorizar envío de este texto a Google</button><button class="big-btn" onclick="cancelPayroll()">Cancelar y descartar texto</button></div>`;
+      return `${n.status==='reading'?'<p role="status" class="privacy-note">Extrayendo texto localmente; aún no se ha enviado a Google…</p>':n.status==='loading'?'<p role="status" class="privacy-note">Consultando Gemini con el texto autorizado…</p>':''}${r?`<div style="margin-top:12px" role="status"><strong>${esc(r.label)}</strong><p class="privacy-note">Periodo extraído: ${esc(n.facts.period||'desconocido')}. Revisa los datos: la IA puede equivocarse.</p>${n.facts.period?`<label class="privacy-note" style="display:flex;align-items:center;gap:8px"><input type="checkbox" ${n.confirmed?'checked':''} onchange="confirmPayrollPeriod(this.checked)">Confirmo que los registros están completos y que las tarifas y retenciones actuales corresponden a este periodo.</label>`:''}${r.checked.map(d=>`<p class="privacy-note">${esc(d.label)}: nómina ${esc(d.actual)} ${esc(d.unit)} · estimación ${esc(Math.round(d.expected*10000)/10000)} ${esc(d.unit)}${r.differences.some(x=>x.label===d.label)?' · diferencia':''}</p>`).join('')}${r.limits.map(x=>`<p class="privacy-note">${esc(x)}</p>`).join('')}<p class="privacy-note">Estimación por porcentajes, no nómina exacta ni verificación del convenio. No se modifica ni guarda ningún registro o ajuste.</p><button class="big-btn" onclick="cancelPayroll()">Descartar análisis</button></div>`:''}${n.error?`<p role="alert" style="color:var(--danger);font-size:12px">${esc(n.error)}</p>`:''}`;
+    }
 
     // ============================================================
     // AISLAMIENTO DOM (CERO PARPADEOS)
@@ -874,11 +846,10 @@
 
               <div class="card">
                 <div class="card-title">Comprobar Nómina (IA)</div>${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: análisis y resultados de IA ocultos.</p>':''}
-                <button class="big-btn" style="border-color:var(--success); color:var(--success)" ${state.config.hideMoney?'disabled':''} onclick="vibrate(20); getEl('nomina-upload').click()">
-                  ${state.nomina.status==='loading'?'⏳ Extrayendo PDF y consultando IA externa…':'📑 Subir nómina (PDF)'}
+                <button class="big-btn" style="border-color:var(--success); color:var(--success)" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="vibrate(20); getEl('nomina-upload').click()">
+                  ${state.nomina.status==='reading'?'⏳ Extrayendo texto localmente…':state.nomina.status==='loading'?'⏳ Consultando Gemini…':'📑 Subir nómina (PDF)'}
                 </button>
-                ${!state.config.hideMoney && state.nomina.result ? `<div style="margin-top:10px; font-size:13px; color:var(--text); background:rgba(255,255,255,0.05); padding:10px; border-radius:8px">${esc(state.nomina.result.resumen)}</div>` : ''}
-                ${!state.config.hideMoney && state.nomina.error ? `<div style="color:var(--danger); font-size:12px; margin-top:8px">${esc(state.nomina.error)}</div>` : ''}
+                ${payrollMarkup()}
               </div>
 
               <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:10px" onclick="openExportModal()">📄 Exportar PDF</button>
@@ -931,17 +902,17 @@
         content = `
           <div class="tab-content"><div class="ia-wrap">
             <div class="card" style="display:flex; flex-direction:column; flex:1; max-height: 70vh; min-height: 50vh;">
-              <div class="card-title">Asistente IA (Público)</div>
+              <div class="card-title">Asistente Gemini · Mis Horas</div>
               
-              <div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
-                ${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: conversaciones y resultados de IA ocultos.</p>':''}${!state.config.hideMoney && state.chatMsgs.length === 0 ? `<p style="color:var(--muted); font-size:13px">Servicio actual de IA externa (Pollinations). La migración a Gemini está pendiente. Evita incluir datos personales.</p>` : ''}
+              <label class="privacy-note" for="ai-period">Periodo de la consulta</label><input id="ai-period" type="month" class="config-input" style="width:100%;text-align:left;margin-bottom:8px" value="${esc(selectedAIPeriod())}" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onchange="if(/^\\d{4}-(0[1-9]|1[0-2])$/.test(this.value)){state.aiPeriod=this.value;discardAI();render();}"><p class="privacy-note">Se envían a Google solo la consulta y los datos necesarios del periodo seleccionado, sin conversaciones anteriores ni otros meses. Evita datos personales.</p><div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
+                ${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: conversaciones y resultados de IA ocultos.</p>':''}${!state.config.hideMoney && state.chatMsgs.length === 0 ? `<p style="color:var(--muted); font-size:13px">Gemini explica los cálculos de la app y ayuda a consultar horas, tarifas y retenciones. No cambia tus registros. Necesita conexión y sesión Google.</p>` : ''}
                 ${(state.config.hideMoney?[]:state.chatMsgs).map(m => `<div class="bubble ${m.role === 'user' ? 'user' : 'bot'}">${esc(m.text)}</div>`).join('')}
-                ${!state.config.hideMoney && state.chatLoading ? `<div class="bubble bot">Escribiendo...</div>` : ''}
+                ${!state.config.hideMoney && state.chatLoading ? `<div class="bubble bot">Consultando Gemini…</div>` : ''}
               </div>
               
               <div style="display:flex; gap:8px">
-                <input class="config-input" style="flex:1; text-align:left" id="chat-input" aria-label="Consulta al asistente" ${state.config.hideMoney||state.chatLoading?'disabled':''} placeholder="Pregunta algo..." value="${esc(state.config.hideMoney?'':state.chatInput)}" oninput="state.chatInput=this.value" onkeydown="if(event.key==='Enter') sendChat()">
-                <button class="big-btn" style="flex:0 0 auto; width:auto; border-color:var(--accent); color:var(--accent)" ${state.config.hideMoney||state.chatLoading?'disabled':''} onclick="sendChat()">Enviar</button>
+                <input class="config-input" style="flex:1; text-align:left" id="chat-input" aria-label="Consulta al asistente" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} placeholder="Pregunta algo..." value="${esc(state.config.hideMoney?'':state.chatInput)}" oninput="state.chatInput=this.value" onkeydown="if(event.key==='Enter') sendChat()">
+                <button class="big-btn" style="flex:0 0 auto; width:auto; border-color:var(--accent); color:var(--accent)" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="sendChat()">Enviar</button>
               </div>
             </div>
           </div></div>`;
