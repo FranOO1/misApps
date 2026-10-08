@@ -1,0 +1,3 @@
+# Trabajo conservado para tareas posteriores
+
+Snapshot del 8 de octubre de 2026. Esta rama conserva código parcial de cálculos, seguridad, migración histórica, sincronización y Gemini. No es la primera entrega solicitada, no está listo para fusionar ni publicar. Pasaron 12 pruebas puras de core y 7 de sincronización simulada. Chromium y consulta real Gemini no se verificaron: el sandbox bloqueó sockets, no existe sesión Firebase autenticada ni identidad administradora GCP. Las reglas Firestore de producción no se inspeccionaron. La primera entrega limitada a diseño y privacidad estará en fix/mis-horas-seguridad-gemini.
