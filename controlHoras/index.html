@@ -613,11 +613,19 @@
     }
     function minimalContext(question){
       const period=selectedAIPeriod(),ctx={period,limits:'Solo periodo seleccionado. Se usan tarifas actuales; su correspondencia histórica no está verificada. Estimaciones porcentuales, no nómina exacta.'};
-      const calc=expectedForPeriod(period),financial=/tarifa|retenci|deducci|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan/i.test(question),hours=/hora|jornada|d[ií]a|registr|semana|mes|resumen/i.test(question);
-      if(calc&&(hours||financial))ctx.calculated=financial?calc:{recordedHours:calc.recordedHours,normalHours:calc.normalHours,holidayHours:calc.holidayHours,extraHours:calc.extraHours,workDays:calc.workDays,restDays:calc.restDays};
-      if(!calc&&(hours||financial))ctx.missing='No hay registros del periodo.';
-      if(financial){ctx.rates={normal:state.config.rateNormal,holiday:state.config.rateNormal+state.config.plusFestivo,extra:extraActive(state.config)?state.config.rateExtra:0};ctx.retentionPercentages=state.config.deductions.map((d,i)=>({label:'Retención '+(i+1),pct:d.pct}));ctx.extraAssumptions=extraActive(state.config)?'Sintax actual: semana lunes-domingo, umbral 40 h normales+festivas; exceso desde último día normal; festivos conservan tarifa; extras se estiman al mes siguiente.':'Sin extras Sintax activas.';}
-      if(/jornada|d[ií]a|registr/i.test(question)){const day=/\bd[ií]a\s+(\d{1,2})\b/i.exec(question)?.[1];ctx.days=Object.entries(state.allData[period]?.days||{}).filter(([d,e])=>e&&(!day||+d===+day)).map(([d,e])=>({day:+d,type:e.type,hours:Number(e.hours)||0}));}
+      const calc=expectedForPeriod(period),financial=/tarifa|retenci|deducci|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question),amounts=/bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question),hours=/hora|jornada|d[ií]a|registr|semana|mes|resumen/i.test(question),day=/\bd[ií]a\s+(\d{1,2})\b/i.exec(question)?.[1],weekly=/semana/i.test(question);
+      if(calc&&amounts&&!day)ctx.calculated=calc;
+      else if(calc&&hours&&!day&&!weekly)ctx.calculated={recordedHours:calc.recordedHours,normalHours:calc.normalHours,holidayHours:calc.holidayHours,extraHours:calc.extraHours,workDays:calc.workDays,restDays:calc.restDays};
+      if(!calc&&(hours||amounts))ctx.missing='No hay registros del periodo.';
+      if(financial){
+        if(/tarifa|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question))ctx.rates={normal:state.config.rateNormal,holiday:state.config.rateNormal+state.config.plusFestivo,extra:extraActive(state.config)?state.config.rateExtra:0};
+        if(/retenci|deducci|neto|calcul|n[oó]mina|compar|salario/i.test(question))ctx.retentionPercentages=state.config.deductions.map((d,i)=>({label:'Retención '+(i+1),pct:d.pct}));
+        if(/extra|sintax|calcul|n[oó]mina|compar/i.test(question))ctx.extraAssumptions=extraActive(state.config)?'Sintax actual: semana lunes-domingo, umbral 40 h normales+festivas; exceso desde último día normal; festivos conservan tarifa; extras se estiman al mes siguiente.':'Sin extras Sintax activas.';
+      }
+      if(weekly){const [y,m]=period.split('-').map(Number),d=day?+day:period===monthKey(new Date().getFullYear(),new Date().getMonth())?new Date().getDate():1,w=calcWeekInfo(new Date(y,m-1,d));ctx.week={from:w.monday.toLocaleDateString('sv-SE'),to:w.sunday.toLocaleDateString('sv-SE'),normalHours:w.hNormal,holidayHours:w.hFestivo,recordedHours:w.total,workDays:w.dias};}
+      if(/jornada|d[ií]a|registr/i.test(question)&&!weekly){ctx.days=Object.entries(state.allData[period]?.days||{}).filter(([d,e])=>e&&(!day||+d===+day)).map(([d,e])=>({day:+d,type:e.type,hours:Number(e.hours)||0}));
+        if(day&&amounts){const e=state.allData[period]?.days?.[+day];if(e)ctx.dailyEstimate={day:+day,gross:e.type==='descanso'?0:(Number(e.hours)||0)*(state.config.rateNormal+(e.type==='festivo'?state.config.plusFestivo:0)),limit:'Misma estimación del editor diario: tarifa por horas. La atribución y pago de extras Sintax se reflejan en el resumen mensual.'};}
+      }
       return ctx;
     }
     async function callAI(mode,question,text='',context=null){

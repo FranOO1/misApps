@@ -24,7 +24,7 @@ Gemini devuelve solo datos explícitos estructurados; tipos, campos, fechas, ran
 
 ## Pruebas (actualizar con resultados de CI)
 
-- Local: `ui.test.cjs` 14/14 PASS y `ai.test.cjs` 9/9 PASS. Adaptadores/simulación, no consulta real. Cubre privacidad/contexto, consentimiento/cancelación/escape, validación, tres estados, extracción completa/límites, cuota/offline/sesión, timeout, lock y descarte. Sintaxis y diff: PASS.
+- Local: `ui.test.cjs` 15/15 PASS y `ai.test.cjs` 9/9 PASS. Adaptadores/simulación, no consulta real. Cubre privacidad/contexto, consentimiento/cancelación/escape, validación, tres estados, extracción completa/límites, cuota/offline/sesión, timeout, lock y descarte. Sintaxis y diff: PASS.
 - Preparado: Chromium 320/390/768/1280 del PR #5 y nuevo Chromium 390/768 con SDKs oficiales 10/12/PDF, sesión, atestación y modelo simulados. Verifica compatibilidad del puente Auth, petición/schema/headers reales, PDF local, consentimiento, cálculos, respuestas inválidas/cuota/offline y privacidad. **Aún pendiente de ejecución.**
 - Intento HTTP real con datos ficticios: **bloqueado**, HTTP `401 UNAUTHENTICATED`, mensaje exacto `Firebase App Check token is invalid.` en [CI](https://github.com/FranOO1/misApps/actions/runs/37846076672). No se obtuvo respuesta de modelo. Un rechazo HTTP no demuestra que Gemini funciona. No hay acceso a la sesión de la tablet ni administración Firebase desde este entorno; no se cambiarán configuración, dominios o facturación para eludir un bloqueo.
 
