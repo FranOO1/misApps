@@ -63,7 +63,7 @@ try{
       result.textContent=answer;status.textContent='Respuesta recibida de Gemini con datos ficticios. No se han modificado datos de Mis Horas.';
     }catch(e){
       if(token!==session())return;
-      status.textContent=e.stage==='appcheck'?'No se pudo obtener una atestación válida de App Check. La consulta ficticia no se ha enviado a Gemini.':e.kind==='permission'?'Google rechazó la consulta después de obtener App Check. No se ha cambiado la configuración.':service.errorMessage(e);
+      status.textContent=e.stage==='appcheck'?'No se pudo obtener una atestación válida de App Check. La consulta ficticia no se ha enviado a Gemini.':e.kind==='permission'?'Gemini o App Check rechazó la consulta tras obtener un token de App Check. No se ha cambiado la configuración.':service.errorMessage(e);
       const stage={initialization:'Carga del SDK',appcheck:'App Check',auth:'Sesión Firebase',model:'Gemini'}[e.stage]||'Preparación';
       result.textContent='Etapa: '+stage+'\nReferencia: '+String(e.kind||'unavailable')+(e.code?' · '+e.code:'')+(e.status?' · HTTP '+e.status:'');
     }finally{
