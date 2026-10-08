@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Prueba ficticia de Gemini · Mis Horas</title>
+  <style>
+    *{box-sizing:border-box}body{background:#11151F;color:#E8EDF7;font:16px/1.5 system-ui;margin:0;padding:24px 16px}main{max-width:640px;margin:auto}h1{font-size:1.6rem}p{overflow-wrap:anywhere}.card{background:#171C2A;border:1px solid #3E4B65;border-radius:12px;padding:16px}button{min-height:48px;width:100%;background:#4FA3FF;color:#11151F;border:0;border-radius:10px;padding:12px;font:inherit;font-weight:600;cursor:pointer}button:disabled{background:#35435C;color:#D0D9EB;cursor:default}button:focus-visible,a:focus-visible{outline:3px solid #7BE8A8;outline-offset:4px}a{color:#70B6FF}pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere}#status{color:#D0D9EB}@media(prefers-reduced-motion:reduce){*{animation:none;transition:none}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Prueba ficticia de Gemini</h1>
+  <p>Página pública de prueba, separada de Mis Horas. No lee ni modifica jornadas, ajustes o nóminas, no conecta Firestore y no instala una PWA.</p>
+  <div class="card">
+    <p>Solo enviará a Gemini esta consulta y un total calculado aquí con datos ficticios:</p>
+    <p><strong>4 + 4,25 = 8,25 horas ficticias.</strong></p>
+    <p id="preview">Explica únicamente las 8,25 horas ficticias aportadas, sin calcular importes.</p>
+    <p>Usa la configuración existente, la sesión Google de este navegador y App Check normal. Google recibe los tokens necesarios de autenticación y atestación; no se incluyen nombres ni identificadores personales en la consulta.</p>
+    <p>Se aplican las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer">condiciones de Google</a>. Esta página no activa facturación ni cambia permisos. La respuesta permanece en esta página, sin guardarla.</p>
+    <button id="send" disabled>Autorizar consulta ficticia a Google</button>
+  </div>
+  <p id="status" role="status" aria-live="polite">Cargando configuración y comprobando sesión…</p>
+  <pre id="result" aria-label="Respuesta o referencia del error"></pre>
+</main>
+<script type="module">
+const button=document.getElementById('send'),status=document.getElementById('status'),result=document.getElementById('result');
+let generation=0,busy=false,auth=null,service=null;
+const session=()=>`${generation}:${auth?.currentUser?.uid||''}`;
+function available(){
+  button.disabled=busy||!auth?.currentUser||!navigator.onLine;
+  if(busy)return;
+  status.textContent=!navigator.onLine?'Sin conexión. La prueba necesita conexión.':!auth?.currentUser?'No hay sesión disponible. Abre esta página en el navegador donde ya tengas iniciada la sesión de Mis Horas. No se ha enviado ninguna consulta.':'Sesión disponible. Pulsa el botón para autorizar la consulta ficticia.';
+}
+try{
+  // Read only the public configuration from the existing app's source. Never execute its scripts.
+  const response=await fetch('../controlHoras/index.html',{cache:'no-store'});
+  if(!response.ok)throw Error('No se pudo leer la configuración pública existente. No se ha enviado ninguna consulta.');
+  const source=await response.text(),block=source.match(/const firebaseConfig\s*=\s*\{([^}]+)\}/)?.[1];
+  const keys=['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'];
+  const options=Object.fromEntries([...String(block||'').matchAll(/(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId)\s*:\s*"([^"]+)"/g)].map(m=>[m[1],m[2]]));
+  if(keys.some(k=>!options[k])||options.projectId!=='mishoras-bb0cc'||options.authDomain!=='mishoras-bb0cc.firebaseapp.com')throw Error('No se reconoció la configuración pública de Mis Horas. No se ha enviado ninguna consulta.');
+  const [apps,auths,ai]=await Promise.all([
+    import('https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js'),
+    import('./ai-service.js')
+  ]);
+  service=ai;auth=auths.getAuth(apps.initializeApp(options));
+  auths.onAuthStateChanged(auth,()=>{generation++;service.invalidate();busy=false;result.textContent='';available();},()=>{button.disabled=true;status.textContent='No se pudo comprobar la sesión existente. No se ha enviado ninguna consulta.';});
+  window.addEventListener('online',available);
+  window.addEventListener('offline',()=>{available();if(busy)status.textContent='Sin conexión durante la consulta. Esperando el resultado o el límite de tiempo…';});
+  window.addEventListener('pagehide',()=>{generation++;service.invalidate();busy=false;result.textContent='';available();});
+  window.addEventListener('pageshow',e=>{if(e.persisted)available();});
+  button.addEventListener('click',async()=>{
+    if(busy||!auth.currentUser||!navigator.onLine)return;
+    busy=true;button.disabled=true;const token=session();result.textContent='';status.textContent='Consultando Gemini con 8,25 horas ficticias…';
+    const hours=[4,4.25].reduce((sum,value)=>sum+value,0);
+    try{
+      const answer=await service.query({mode:'chat',question:document.getElementById('preview').textContent,context:{fictitious:true,calculated:{recordedHours:hours}},options,user:auth.currentUser,currentSession:session,session:token});
+      if(token!==session())return;
+      result.textContent=answer;status.textContent='Respuesta recibida de Gemini con datos ficticios. No se han modificado datos de Mis Horas.';
+    }catch(e){
+      if(token!==session())return;
+      status.textContent=e.kind==='permission'?'Gemini o App Check rechazó la consulta. No se ha cambiado la configuración.':service.errorMessage(e);
+      result.textContent='Referencia: '+String(e.kind||'unavailable')+(e.code?' · '+e.code:'')+(e.status?' · HTTP '+e.status:'');
+    }finally{
+      if(token===session()){busy=false;button.disabled=!auth.currentUser||!navigator.onLine;}
+    }
+  });
+}catch(e){button.disabled=true;status.textContent=e.message?.startsWith('No se')?e.message:'No se pudo cargar la prueba. Comprueba la conexión y recarga. No se ha enviado ninguna consulta.';}
+</script>
+</body>
+</html>
