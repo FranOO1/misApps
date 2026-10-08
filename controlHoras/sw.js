@@ -1,27 +1,26 @@
-const CACHE = "horas-v1";
-
-self.addEventListener("install", (e) => {
-  self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then((c) => c.add("./index.html").catch(() => {})));
+// UI release: keep all records/preferences in localStorage and other apps' caches.
+const CACHE='horas-v2-ui-20261008-r2';
+const SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})))).then(()=>self.skipWaiting()));
 });
-
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())
-  );
+self.addEventListener('activate',event=>{
+  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('horas-v')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));
 });
-
-self.addEventListener("fetch", (e) => {
-  if (e.request.method !== "GET") return;
-  e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        if (e.request.url.startsWith(self.location.origin)) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
-        }
-        return res;
-      })
-      .catch(() => caches.match(e.request).then((m) => m || caches.match("./index.html")))
-  );
+self.addEventListener('fetch',event=>{
+  const req=event.request,url=new URL(req.url),scope=new URL(self.registration.scope);
+  if(req.method!=='GET')return;
+  const local=url.origin===scope.origin&&url.pathname.startsWith(scope.pathname);
+  const dependency=['www.gstatic.com','cdn.jsdelivr.net','cdnjs.cloudflare.com'].includes(url.hostname)&&/firebasejs\/10\.14\.1\/|\/npm\/chart\.js|\/pdf\.js\/2\.16\.105\//.test(url.pathname);
+  if(!local&&!dependency)return;
+  event.respondWith(fetch(req).then(response=>{
+    const codeResource=['script','worker','style'].includes(req.destination)||/\.(?:js|css|json)$/.test(url.pathname);
+    if(response.type!=='opaque'&&req.mode!=='navigate'&&(!response.ok||(codeResource&&/text\/html/i.test(response.headers.get('content-type')||''))))return Response.error();
+    if(response.ok||response.type==='opaque'){const cloned=response.clone();event.waitUntil(caches.open(CACHE).then(cache=>cache.put(req,cloned)).catch(()=>{}));}
+    return response;
+  }).catch(async()=>{
+    const cache=await caches.open(CACHE),cached=await cache.match(req);if(cached)return cached;
+    if(req.mode==='navigate'&&local){const shell=await cache.match(new URL('./index.html',scope));if(shell)return shell;}
+    return Response.error(); // Never return HTML for a missing script/resource.
+  }));
 });

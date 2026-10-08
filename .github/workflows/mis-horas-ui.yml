@@ -1,0 +1,30 @@
+name: Mis Horas UI review
+on:
+  pull_request:
+    paths:
+      - 'controlHoras/**'
+      - '.github/workflows/mis-horas-ui.yml'
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node controlHoras/tests/ui.test.cjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright==1.55.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python controlHoras/tests/browser_ui.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mis-horas-ui-captures
+          path: controlHoras/captures/*.png
+          if-no-files-found: warn
