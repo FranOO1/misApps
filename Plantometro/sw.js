@@ -1,8 +1,8 @@
 // App files and static SDKs only; account data remains in Firebase's own cache.
-const CACHE = "plantometro-v16";
+const CACHE = "plantometro-v17";
 const CORE = ["./", "./index.html", "./manifest.json", "./styles.css",
   "./js/backup.js", "./js/app.js", "./js/utils.js", "./js/settings.js", "./js/sync.js", "./js/weather.js", "./js/plants.js", "./js/photos.js", "./js/gemini.js", "./js/ui.js",
-  "./js/ai-config.js", "./js/ai-service.js", "./js/pwa.js", "./shared/ai-response.js",
+  "./js/ai-config.js", "./js/ai-service.js", "./js/pwa.js", "./js/activity.js", "./js/activity-model.js", "./js/weather-model.js", "./js/weather-effects.js", "./shared/ai-response.js",
   "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
   "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
   "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js",

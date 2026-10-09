@@ -1,6 +1,8 @@
 import { $, esc, todayStr, addDays, diffDays, fmt, LIGHT, PLANT_ART } from "./utils.js";
 import { renderSettingsUI } from "./settings.js";
-import { plants, alive } from "./sync.js";
+import { plants, alive, isPlantPending, confirmedPlant } from "./sync.js";
+import { activityLine } from "./activity-model.js";
+import { renderPlantActivity } from "./activity.js";
 import { weatherContext } from "./weather.js";
 import { plantState, openForm, water, correctWater, fertilize, delPlant, invalidateForm } from "./plants.js";
 import { renderGallery } from "./photos.js";
@@ -40,47 +42,58 @@ function careDate(p){
   if(d===1)return "Mañana, " + dateWords(next);
   return "Mirar la tierra el " + dateWords(next);
 }
+let searchRequested=false;
 function toggleSearch(){
   const panel=$("search-panel");
   closeModal("settings-modal");
-  if(!panel.hidden){closeSearch();return;}
+  if(alive().length<5&&searchRequested){closeSearch();return;}
+  searchRequested=true;
   panel.hidden=false;$("search-toggle").setAttribute("aria-expanded","true");
   $("q").focus();
 }
 function closeSearch(){
-  $("search-panel").hidden=true;$("q").value="";
+  searchRequested=false;$("search-panel").hidden=alive().length<5;$("q").value="";
   $("search-toggle").setAttribute("aria-expanded","false");render();
 }
 function render(){
   const list=alive(),due=list.filter(p=>plantState(p).d<=0).length;
   $("garden-summary").textContent=!list.length ? "Un rincón para tus plantas." : due ? `Hoy toca cuidar ${due===1?"una planta":due+" plantas"}.` : "Hoy, tu jardín puede esperar.";
-  $("search-toggle").hidden=list.length<9;
+  $("search-toggle").hidden=true;
+  $("search-panel").hidden=list.length<5&&!searchRequested;
+  $("search-clear").textContent=list.length>=5?"Limpiar":"Cerrar";
+  $("search-clear").hidden=list.length>=5&&!$("q").value;
+  $("grid").classList.toggle("compact",list.length>=5);
   $("loclist").innerHTML=[...new Set(list.map(p=>p.loc).filter(Boolean))].map(l=>`<option value="${esc(l)}">`).join("");
   const q=$("q").value.trim().toLocaleLowerCase("es");
   const shown=list.filter(p=>!q || (p.name+" "+(p.species||"")).toLocaleLowerCase("es").includes(q))
     .sort((a,b)=>plantState(a).d-plantState(b).d || a.name.localeCompare(b.name,"es"));
   if(!shown.length){
     $("grid").innerHTML=`<div class="empty">${PLANT_ART}<h2>${list.length?"No encuentro esa planta":"Tu jardín empieza aquí"}</h2><p>${list.length?"Prueba con otro nombre.":"Añade tu primera planta con el botón +."}</p></div>`;
-    return;
+    refreshOpenDetail(list);return;
   }
   $("grid").innerHTML=shown.map(p=>{
-    const {state}=plantState(p);
+    const {state}=plantState(p),lastChange=activityLine(confirmedPlant(p.id)||p),pending=isPlantPending(p.id);
     return `<article class="card ${state}" data-plant="${esc(p.id)}">
       <button type="button" class="card-open" data-open="${esc(p.id)}" aria-label="Abrir ficha de ${esc(p.name)}">
         <span class="card-photo">${PLANT_ART}${p.photo?`<img src="${esc(p.photo)}" alt="" loading="lazy" decoding="async">`:""}</span>
-        <span class="card-info"><span class="name">${esc(p.name)}</span><span class="next ${state}">${careDate(p)}</span></span>
+        <span class="card-info"><span class="name">${esc(p.name)}</span><span class="next ${state}">${careDate(p)}</span><span class="last-change" title="${esc(lastChange)}">${esc(lastChange)}</span></span>
       </button>
-      <div class="card-action"><button type="button" class="waterbtn" data-water="${esc(p.id)}">Ya la he regado</button></div>
+      <div class="card-action"><button type="button" class="waterbtn" data-water="${esc(p.id)}" ${pending?'disabled aria-busy="true"':''}>Ya la he regado</button></div>
     </article>`;
   }).join("");
   $("grid").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>openDetail(el.dataset.open));
   $("grid").querySelectorAll("[data-water]").forEach(el=>el.onclick=()=>water(el.dataset.water,el));
   // A failed image keeps a gentle placeholder; the saved photograph is untouched.
   $("grid").querySelectorAll(".card-photo img").forEach(img=>img.addEventListener("error",()=>img.remove()));
+  refreshOpenDetail(list);
+}
+function refreshOpenDetail(list){
+  if(!$("detail-modal").classList.contains("open"))return;const id=$("d-water").dataset.plantId;
+  if(list.some(p=>p.id===id))openDetail(id);else closeModal("detail-modal");
 }
 
 function openDetail(id){
-  const p = plants.find(x=>x.id===id); if(!p) return;
+  const p = plants.find(x=>x.id===id); if(!p){toast("Esta planta ya no está en el jardín. El cambio sigue en la actividad reciente.");return;}
   const {next,d,state,f} = plantState(p);
   $("d-name").textContent = p.name; $("d-species").textContent = p.species || "";
   $("d-photo").innerHTML = p.photo ? `<img src="${esc(p.photo)}" alt="${esc(p.name)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--surface2)">` : PLANT_ART;
@@ -133,8 +146,11 @@ function openDetail(id){
   } else $("d-lastai").style.display="none";
   renderGallery(p);
   $("d-hist").innerHTML = (p.history?.length)
-    ? p.history.map(h=>`<div class="h">${h.t==="agua"?"Riego":"Abono"} · <b>${esc(h.by||"")}</b><span class="d">${fmt(h.date)}</span>${h.t==="agua" && h.eventId?`<button type="button" class="history-correct" data-correct="${esc(h.eventId)}">Corregir este riego</button>`:""}</div>`).join("")
+    ? p.history.map(h=>`<div class="h">${h.t==="agua"?"Riego":"Abono"} · <b>${esc(h.by||"Sin apodo")}</b><span class="d">${fmt(h.date)}</span>${h.t==="agua" && h.eventId?`<button type="button" class="history-correct" data-correct="${esc(h.eventId)}">Corregir este riego</button>`:""}</div>`).join("")
     : "<p class='note'>Aún sin registros. El primer riego lo estrena.</p>";
+  renderPlantActivity(id);
+  $("d-water").disabled=isPlantPending(id);
+  $("d-fertbtn").disabled=isPlantPending(id);
   $("d-hist").querySelectorAll("[data-correct]").forEach(b=>b.onclick=()=>{if(confirm("¿Quitar solo este riego accidental? Los demás registros se conservarán."))correctWater(id,b.dataset.correct);});
   $("d-water").onclick = e=>{ water(id, e.currentTarget); openDetail(id); };
   $("d-water").dataset.plantId = id;
@@ -159,7 +175,7 @@ function syncModalLayout(){
   document.documentElement.classList.toggle("dialog-open",open);
   $("app-shell").inert=open;
 }
-function openModal(id){ if(id==="account-modal" || id==="weather-modal")closeModal("settings-modal"); $(id).classList.add("open"); if(id==="settings-modal") renderSettingsUI(); syncModalLayout(); }
+function openModal(id){ if(id==="account-modal" || id==="weather-modal" || id==="activity-modal")closeModal("settings-modal"); $(id).classList.add("open"); if(id==="settings-modal") renderSettingsUI(); syncModalLayout(); }
 function closeModal(id){ $(id).classList.remove("open"); if(id === "form-modal") invalidateForm(); if(id === "ai-modal")invalidateAI(); syncModalLayout(); }
 
 function setupLayout(){

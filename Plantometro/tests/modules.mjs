@@ -11,7 +11,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const elements=new Map();
 
 class Element{
-  constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.style={};this.dataset={};this.value='';this.hidden=false;this.checked=false;this.open=false;this.textContent='';this.innerHTML='';this.classList={items:new Set(),add(...x){x.forEach(v=>this.items.add(v));},remove(...x){x.forEach(v=>this.items.delete(v));},contains(x){return this.items.has(x);},toggle(x,enabled){if(enabled)this.add(x);else this.remove(x);}};}
+  constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.style={setProperty(){}};this.dataset={};this.value='';this.hidden=false;this.checked=false;this.open=false;this.textContent='';this.innerHTML='';this.classList={items:new Set(),add(...x){x.forEach(v=>this.items.add(v));},remove(...x){x.forEach(v=>this.items.delete(v));},contains(x){return this.items.has(x);},toggle(x,enabled){if(enabled)this.add(x);else this.remove(x);}};}
   set id(v){this._id=v;elements.set(v,this);} get id(){return this._id;}
   append(...children){this.children.push(...children);}
   appendChild(child){this.append(child);}
@@ -32,14 +32,14 @@ const originalSettings={name:'Fran',city:'Granada',lat:37.1773,lon:-3.5986,theme
 const storage=new Map([['pg3b_settings',JSON.stringify(originalSettings)]]);
 const writes=[];
 const existing={id:'old',name:'Mi planta',species:'Monstera',light:'media',waterFreq:7,lastWater:'2020-01-01',loc:'Terraza',gallery:[{date:'2020-01-01',note:'old',img:''}],history:Array.from({length:65},()=>({t:'agua',date:'2020-01-01',by:'Pareja'})),createdAt:'2020-01-01T12:00:00Z',futureField:'preserve'};
-const context=vm.createContext({document,window:{},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},matchMedia:()=>({matches:false,addEventListener(){}}),navigator:{},setTimeout:()=>0,clearTimeout(){},Date,console,URL,Blob,TextEncoder,crypto:webcrypto,confirm:()=>true,fetch:async url=>{
-  if(url.includes('open-meteo'))return {json:async()=>({current:{temperature_2m:34,relative_humidity_2m:30,weather_code:61},daily:{precipitation_probability_max:[80,70],precipitation_sum:[4,2]}})};
+const context=vm.createContext({document,window:{addEventListener(){}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},matchMedia:()=>({matches:false,addEventListener(){}}),navigator:{},setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},AbortController,URLSearchParams,Date,console,URL,Blob,TextEncoder,crypto:webcrypto,confirm:()=>true,fetch:async url=>{
+  if(url.includes('open-meteo'))return {ok:true,json:async()=>({utc_offset_seconds:0,current:{time:new Date().toISOString(),temperature_2m:34,relative_humidity_2m:30,weather_code:61},daily:{time:[new Date().toISOString().slice(0,10)],weather_code:[61],precipitation_probability_max:[80],precipitation_sum:[4]}})};
   return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:JSON.stringify({nombreComun:'Monstera',especie:'Monstera deliciosa',revisarCadaDias:5,luz:'media',confianza:'baja',motivo:'Dudosa',consejo:'Comprueba la humedad'})}]}}]})};
 }});
 const mocks={
  'firebase-app.js': 'export const initializeApp=()=>({});',
  'firebase-auth.js': `export const getAuth=()=>({currentUser:{uid:'test'}});export class GoogleAuthProvider{};export const getRedirectResult=async()=>{};export const onAuthStateChanged=(a,cb)=>cb({uid:'test',displayName:'Test',email:'test@example.invalid'});export const signInWithPopup=async()=>{};export const signInWithRedirect=async()=>{};export const signOut=async()=>{};`,
- 'firebase-firestore.js': `export const initializeFirestore=()=>({});export const persistentLocalCache=()=>({});export const persistentMultipleTabManager=()=>({});export const collection=(...a)=>a;export const doc=(...a)=>a;export const onSnapshot=(r,cb)=>{cb({docs:[{data:()=>testExisting}]});return ()=>{};};export const writeBatch=()=>({set(){},commit:async()=>{}});export const runTransaction=async(db,cb)=>cb({get:async()=>({exists:()=>true,data:()=>testExisting}),set:(ref,p)=>{Object.assign(testExisting,p);testWrites.push(JSON.parse(JSON.stringify({ref:ref.slice(1),plant:p})));}});export const setDoc=async(r,p)=>testWrites.push(JSON.parse(JSON.stringify({ref:r.slice(1),plant:p})));export const deleteDoc=async()=>{};`
+ 'firebase-firestore.js': fs.readFileSync(path.join(root,'tests/firebase_module_adapter.mjs'),'utf8')
 };
 context.testExisting=existing;context.testWrites=writes;
 const modules=new Map();
@@ -116,7 +116,7 @@ const scope='https://franoo1.github.io/misApps/Plantometro/';
 const swcontext=vm.createContext({self:{location:{origin:'https://franoo1.github.io'},registration:{scope},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>events[name]=fn},caches:{open:async name=>{cacheKeys.add(name);return {addAll:async requests=>core.push(...requests.map(r=>{assert.equal(r.cache,'reload');return r.url.startsWith(scope)?'./'+r.url.slice(scope.length):r.url;}))};},keys:async()=>[...cacheKeys],delete:async name=>cacheKeys.delete(name)},URL,Request});
 vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),swcontext);
 let pending;events.install({waitUntil:p=>pending=p});await pending;events.activate({waitUntil:p=>pending=p});await pending;
-assert(cacheKeys.has('plantometro-v16'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
+assert(cacheKeys.has('plantometro-v17'));assert(!cacheKeys.has('plantometro-v7'));assert(cacheKeys.has('horas-v1'));assert(cacheKeys.has('parte-v2'));
 for(const file of core.filter(f=>f!=='./' && !f.startsWith('https:')))assert(fs.existsSync(path.join(root,file)),`Missing cache asset ${file}`);
 for(const file of ['styles.css',...fs.readdirSync(path.join(root,'js')).map(n=>'js/'+n)])assert(core.includes('./'+file),`Uncached asset ${file}`);
 let intercepted=false;events.fetch({request:{method:'POST',url:'https://generativelanguage.googleapis.com/'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);
