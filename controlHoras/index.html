@@ -38,10 +38,12 @@
     
     .app-root { max-width: 640px; margin: 0 auto; padding: 12px 14px 12px; display: flex; flex-direction: column; flex: 1; width: 100%; }
     
-    .tabs-bar { display: flex; gap: 6px; background: rgba(255,255,255,0.04); border-radius: 14px; padding: 4px; margin-bottom: 14px; flex: 0 0 auto;}
-    .tab-btn { flex: 1; padding: 9px 0; border-radius: 11px; color: var(--muted); font-size: 14px; font-weight: 600; transition: all 0.15s; }
-    .tab-btn.active { background: var(--border-light); color: var(--text); }
-    .eye-btn { width: 42px; border-radius: 11px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .tabs-bar { display: flex; gap: 4px; background: #1B2333; border: 1px solid #56627B; border-radius: 14px; padding: 5px; margin-bottom: 14px; flex: 0 0 auto;}
+    .tab-btn { flex: 1 1 0; min-width: 0; min-height: 46px; padding: 10px 3px; border: 1px solid #495875; background: #273247; border-radius: 9px; color: #DCE5F5; font-size: 14px; font-weight: 600; transition: all 0.15s; }
+    .tab-btn.active { background: #375E88; border-color: #80BAFF; color: #F6FAFF; box-shadow: inset 0 -2px #9FCBFF; }
+    .rest-marker { font-weight: 700; font-size: 13px; }
+    .hours-breakdown { margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .eye-btn { width: 44px; flex: 0 0 44px; border-radius: 11px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
     .eye-btn.active { background: rgba(255,176,79,0.12); color: var(--warning); }
     
     .tab-content { flex: 1; display: flex; flex-direction: column;  }
@@ -163,7 +165,7 @@
     const TYPES = {
       normal:   { label: "Normal",   color: "#4FA3FF", bg: "rgba(79,163,255,0.18)" },
       festivo:  { label: "Festivo",  color: "#FFB04F", bg: "rgba(255,176,79,0.20)" },
-      descanso: { label: "Descanso", color: "#C1CADB", bg: "rgba(193,202,219,0.20)" },
+      descanso: { label: "Descanso", color: "#FFD5DB", bg: "#432F38" },
     };
 
     const state = {
@@ -171,7 +173,7 @@
       config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
       allData: {},
       tab: "mes", selectedDay: null, draft: null, dayConfirmed: false,
-      chatMsgs: [], chatInput: "", chatLoading: false,
+      chatMsgs: [], chatInput: "", chatLoading: false, aiEnabled: false, aiBlocked: false,
       nomina: { status: "idle", result: null, error: null },
       pdfReady: null
     };
@@ -477,6 +479,8 @@
 
     // ============================================================
     // GEMINI: optional assistant, one selected period, no automatic data edits.
+    const AI_UNAVAILABLE='La IA no está disponible ahora. Tus horas siguen guardándose con normalidad.';
+    const canUseAI=()=>state.aiEnabled&&!state.aiBlocked;
     let aiService;
     const ai=()=>aiService ||= import('./ai-service.js').catch(e=>{aiService=null;throw e;});
     const aiSession=()=>`${privateGeneration}:${cloud.user?.uid||''}`;
@@ -508,22 +512,23 @@
       return ctx;
     }
     async function callAI(mode,question,text='',context=null){
+      if(!canUseAI())throw {kind:'configuration',code:'probe/ai-paused'};
       const session=aiSession(),mod=await ai();if(session!==aiSession())throw {kind:'cancelled'};
       state.aiDiagnostic={stage:'session',state:'running'};
       return mod.query({mode,question,text,context,options:firebaseConfig,user:cloud.user,currentSession:aiSession,session,onStage:(stage,phase)=>{if(session!==aiSession()||state.config.hideMoney)return;state.aiDiagnostic={stage,state:phase};const el=getEl('ai-diagnostic');if(el)el.textContent=diagnosticText();}});
     }
     const AI_STAGES={session:'Sesión Firebase',initialization:'Carga de SDK',instances:'Instancias Firebase',appcheck:'Atestación App Check',auth:'Sesión del cliente AI Logic',model:'Firebase AI Logic / Gemini'};
     function diagnosticText(){const d=state.aiDiagnostic;if(!d||state.config.hideMoney)return '';return [AI_STAGES[d.stage]||'Gemini',d.state==='ok'?'correcto':d.state==='error'?'error':'en curso',d.code,d.status?'HTTP '+d.status:'',d.message,...(d.reasons||[])].filter(Boolean).join(' · ');}
-    async function aiError(e){try{const mod=await ai();state.aiDiagnostic={...mod.classify(e),stage:Object.hasOwn(AI_STAGES,e?.stage)?e.stage:state.aiDiagnostic?.stage,state:'error'};return mod.errorMessage(e)+'\n'+diagnosticText();}catch{return 'No se pudo cargar Gemini. Revisa la conexión; puedes seguir usando la app localmente.';}}
+    async function aiError(e){try{const mod=await ai();state.aiDiagnostic={...mod.classify(e),stage:Object.hasOwn(AI_STAGES,e?.stage)?e.stage:state.aiDiagnostic?.stage,state:'error'};if(['permission','configuration'].includes(state.aiDiagnostic.kind))state.aiBlocked=true;}catch{}return AI_UNAVAILABLE;}
     window.verifyGemini=async()=>{
-      if(state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status))return;
+      if(!canUseAI()||state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status))return;
       const session=aiSession();state.chatMsgs=[];state.chatLoading=true;render();
       try{const result=await callAI('chat','Explica únicamente las 8,25 horas ficticias aportadas, sin calcular importes.','',{fictional:true,recordedHours:[4,4.25].reduce((sum,h)=>sum+h,0)});if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs=[{role:'bot',text:'Respuesta real recibida de Gemini para la consulta ficticia:\n'+result}];}
       catch(e){if(session!==aiSession())return;const message=await aiError(e);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs=[{role:'bot',text:message}];}
       finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
     window.sendChat=async(forceText)=>{
-      const q=String(forceText||state.chatInput).trim();if(!q||state.chatLoading||['reading','loading'].includes(state.nomina.status)||state.config.hideMoney)return;
+      const q=String(forceText||state.chatInput).trim();if(!canUseAI()||!q||state.chatLoading||['reading','loading'].includes(state.nomina.status)||state.config.hideMoney)return;
       if(q.length>2000){alert('Consulta demasiado larga: máximo 2.000 caracteres.');return;}
       if(!window.HorasAIData){state.chatMsgs.push({role:'bot',text:'No se pudo cargar Gemini. Reabre la app con conexión; tus registros siguen disponibles.'});render();return;}
       const period=selectedAIPeriod(),mentioned=q.match(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g)||[],otherMonth=MESES.some((name,i)=>new RegExp('\\b'+name+'\\b','i').test(q)&&i+1!==+period.slice(5));
@@ -548,7 +553,7 @@
     };
     window.cancelPayroll=()=>{discardAI();render();};
     window.authorizePayroll=async()=>{
-      if(state.config.hideMoney||state.chatLoading||state.nomina.status!=='review')return;
+      if(!canUseAI()||state.config.hideMoney||state.chatLoading||state.nomina.status!=='review')return;
       const text=HorasAIData.redact(getEl('payroll-text').value,knownIdentifiers());if(text.trim().length<30||text.length>120000){state.nomina.error='Texto insuficiente o demasiado grande. No se ha enviado.';render();return;}
       // If redaction changes user edits, show the exact final text and require approval again.
       if(text!==getEl('payroll-text').value){state.nomina.text=text;state.nomina.error='Se han retirado identificadores detectados. Revisa de nuevo el texto antes de autorizar.';render();return;}
@@ -567,7 +572,7 @@
     function payrollMarkup(){
       if(state.config.hideMoney)return '';
       const n=state.nomina,r=n.result;
-      if(n.status==='review')return `<div style="margin-top:12px"><p class="privacy-note">Texto extraído localmente de ${n.pages} páginas. Aún no se ha enviado. Se intentan retirar identificadores; la eliminación automática puede ser incompleta. Revisa y elimina nombres, direcciones e identificadores restantes.</p><label for="payroll-text">Texto exacto que se enviará a Google para extraer periodo, horas, tarifas y totales:</label><textarea id="payroll-text" style="width:100%;min-height:180px;margin:8px 0;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit;font-size:16px" oninput="state.nomina.text=this.value">${esc(n.text)}</textarea><p class="privacy-note">No se envía el PDF original ni tus registros. Después, la comparación se calcula en este dispositivo. Según las condiciones de Google, los servicios gratuitos pueden usar entradas/respuestas para mejorar productos y revisión humana; hay condiciones distintas para servicios de pago y EEE, Suiza y Reino Unido. Google exige Paid Services para clientes en EEE, Suiza y Reino Unido. No se ha verificado el régimen de este proyecto ni se promete confidencialidad. Revisa las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a> y <a href="https://firebase.google.com/docs/ai-logic/data-governance" target="_blank" rel="noopener" style="color:var(--accent)">Firebase AI Logic</a>. La suscripción personal de Gemini no equivale a uso de API.</p>${n.error?`<p role="alert">${esc(n.error)}</p>`:''}<button class="big-btn" style="margin-bottom:8px;color:var(--success)" onclick="authorizePayroll()">Autorizar envío de este texto a Google</button><button class="big-btn" onclick="cancelPayroll()">Cancelar y descartar texto</button></div>`;
+      if(n.status==='review')return `<div style="margin-top:12px"><p class="privacy-note">Texto extraído localmente de ${n.pages} páginas. Aún no se ha enviado. Se intentan retirar identificadores; la eliminación automática puede ser incompleta. Revisa y elimina nombres, direcciones e identificadores restantes.</p><label for="payroll-text">Texto exacto que se enviará a Google para extraer periodo, horas, tarifas y totales:</label><textarea id="payroll-text" style="width:100%;min-height:180px;margin:8px 0;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit;font-size:16px" oninput="state.nomina.text=this.value">${esc(n.text)}</textarea><p class="privacy-note">No se envía el PDF original ni tus registros. Después, la comparación se calcula en este dispositivo. Según las condiciones de Google, los servicios gratuitos pueden usar entradas/respuestas para mejorar productos y revisión humana; hay condiciones distintas para servicios de pago y EEE, Suiza y Reino Unido. Google exige Paid Services para clientes en EEE, Suiza y Reino Unido. No se ha verificado el régimen de este proyecto ni se promete confidencialidad. Revisa las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a> y <a href="https://firebase.google.com/docs/ai-logic/data-governance" target="_blank" rel="noopener" style="color:var(--accent)">Firebase AI Logic</a>. La suscripción personal de Gemini no equivale a uso de API.</p>${n.error?`<p role="alert">${esc(n.error)}</p>`:''}${!canUseAI()?`<p class="privacy-note" role="status">${AI_UNAVAILABLE}</p>`:''}<button class="big-btn" style="margin-bottom:8px;color:var(--success)" ${!canUseAI()?'disabled':''} onclick="authorizePayroll()">Autorizar envío de este texto a Google</button><button class="big-btn" onclick="cancelPayroll()">Cancelar y descartar texto</button></div>`;
       return `${n.status==='reading'?'<p role="status" class="privacy-note">Extrayendo texto localmente; aún no se ha enviado a Google…</p>':n.status==='loading'?'<p role="status" class="privacy-note">Consultando Gemini con el texto autorizado…</p>':''}${r?`<div style="margin-top:12px" role="status"><strong>${esc(r.label)}</strong><p class="privacy-note">Periodo extraído: ${esc(n.facts.period||'desconocido')}. Revisa los datos: la IA puede equivocarse.</p>${n.facts.period?`<label class="privacy-note" style="display:flex;align-items:center;gap:8px"><input type="checkbox" ${n.confirmed?'checked':''} onchange="confirmPayrollPeriod(this.checked)">Confirmo que los registros están completos y que las tarifas y retenciones guardadas para este periodo corresponden a la nómina.</label>`:''}${r.checked.map(d=>`<p class="privacy-note">${esc(d.label)}: nómina ${esc(d.actual)} ${esc(d.unit)} · estimación ${esc(Math.round(d.expected*10000)/10000)} ${esc(d.unit)}${r.differences.some(x=>x.label===d.label)?' · diferencia':''}</p>`).join('')}${r.limits.map(x=>`<p class="privacy-note">${esc(x)}</p>`).join('')}<p class="privacy-note">Estimación por porcentajes, no nómina exacta ni verificación del convenio. No se modifica ni guarda ningún registro o ajuste.</p><button class="big-btn" onclick="cancelPayroll()">Descartar análisis</button></div>`:''}${n.error?`<p role="alert" style="color:var(--danger);font-size:12px">${esc(n.error)}</p>`:''}`;
     }
 
@@ -600,7 +605,7 @@
                   style="border-color:${borderColor}; ${t ? `background:${t.bg}` : ''}" 
                   aria-label="${d} de ${MESES[state.month]}, ${t?t.label:'sin registro'}${e&&e.type!=='descanso'?', '+fmtH(e.hours)+' horas':''}" aria-pressed="${isSel}" onclick="selectDay(${d})">
             <span style="color:${t?t.color:'#AFB8CC'}">${d}</span>
-            ${e && e.type !== 'descanso' ? `<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>` : ''}
+            ${e && e.type !== 'descanso' ? `<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>` : e?.type==='descanso'?`<span class="rest-marker" aria-hidden="true" style="color:${TYPES.descanso.color}">Z</span>`:''}
           </button>`;
       }
       grid.innerHTML = DIAS_SEMANA.map(d=>`<div style="text-align:center;color:var(--muted);font-size:11px;font-weight:600">${d}</div>`).join('') + gridHtml;
@@ -678,9 +683,9 @@
       const active=document.activeElement,focusId=active?.id;
       const app = getEl("app");
       const renderTabs = `
-        <nav class="tabs-bar">
-          ${[["mes", "Mes"], ["anual", "Año"], ["ia", "💬 IA"], ["ajustes", "Ajustes"]].map(([k, l]) => `
-            <button class="tab-btn ${state.tab === k ? 'active' : ''}" onclick="switchTab('${k}')">${l}</button>
+        <nav class="tabs-bar" aria-label="Secciones de Mis Horas">
+          ${[["mes", "Mes"], ["anual", "Año"], ["ia", "IA"], ["ajustes", "Ajustes"]].map(([k, l]) => `
+            <button id="nav-${k}" aria-controls="tab-panel" class="tab-btn ${state.tab === k ? 'active' : ''}" onclick="switchTab('${k}')">${l}</button>
           `).join('')}
           <button class="eye-btn ${state.config.hideMoney ? 'active' : ''}" aria-label="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" aria-pressed="${state.config.hideMoney}" onclick="toggleMoney()">
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>${state.config.hideMoney ? '<line x1="4.2" y1="20" x2="19.8" y2="4"/>' : ''}</svg>
@@ -709,7 +714,8 @@
                 <div style="color:var(--muted); font-size:12px; font-weight:600; letter-spacing:1px">Neto estimado · registros del mes</div>
                 <div class="neto-value">${fmt(c.neto)}</div>
                 <div class="money-detail">Bruto ${fmt(c.bruto)} · Retenciones −${fmt(c.totalDed)}</div>
-                <div class="hours-total">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes · ${fmtH(c.hNormal)} normales · ${fmtH(c.hFestivo)} festivas</div>
+                <div id="monthly-hours" class="hours-total">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes</div>
+                ${c.hFestivo>0?`<div id="monthly-hours-breakdown" class="hours-breakdown">${fmtH(c.hNormal)} horas normales · ${fmtH(c.hFestivo)} horas festivas</div>`:''}
               </div>
               
               <p class="privacy-note">Toca un día para registrar tus horas</p><div class="calendar-legend"><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.festivo.bg}"></i>Festivo</span><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.descanso.bg}"></i>Descanso</span></div><div id="calendar-grid" class="grid"></div>
@@ -795,10 +801,10 @@
       }
 
       else if (state.tab === "ia") {
-        content = `
+        content = !canUseAI()?`<div class="tab-content"><div class="ia-wrap"><div class="card"><div class="card-title">Asistente · Mis Horas</div><p class="privacy-note" role="status">${AI_UNAVAILABLE}</p></div></div></div>`:`
           <div class="tab-content"><div class="ia-wrap">
             <div class="card" style="display:flex; flex-direction:column; flex:1; max-height: 70vh; min-height: 50vh;">
-              <div class="card-title">Asistente Gemini · Mis Horas</div><p id="ai-diagnostic" class="privacy-note" role="status">${esc(diagnosticText())}</p><details><summary class="privacy-note">Comprobar conexión con datos ficticios</summary><p class="privacy-note">Solo se envían a Google 4 + 4,25 = 8,25 horas ficticias y la petición de explicarlas. No se leen ni envían registros o nóminas. Usa tu sesión Google y App Check reales. La respuesta no se guarda. Se aplican las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a>.</p><button class="big-btn" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="verifyGemini()">Autorizar consulta ficticia a Google</button></details>
+              <div class="card-title">Asistente Gemini · Mis Horas</div><details><summary class="privacy-note">Diagnóstico de conexión</summary><p id="ai-diagnostic" class="privacy-note">${esc(diagnosticText())}</p></details><details><summary class="privacy-note">Comprobar conexión con datos ficticios</summary><p class="privacy-note">Solo se envían a Google 4 + 4,25 = 8,25 horas ficticias y la petición de explicarlas. No se leen ni envían registros o nóminas. Usa tu sesión Google y App Check reales. La respuesta no se guarda. Se aplican las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a>.</p><button class="big-btn" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="verifyGemini()">Autorizar consulta ficticia a Google</button></details>
               
               <label class="privacy-note" for="ai-period">Periodo de la consulta</label><input id="ai-period" type="month" class="config-input" style="width:100%;text-align:left;margin-bottom:8px" value="${esc(selectedAIPeriod())}" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onchange="if(/^\\d{4}-(0[1-9]|1[0-2])$/.test(this.value)){state.aiPeriod=this.value;discardAI();render();}"><p class="privacy-note">Se envían a Google solo la consulta y los datos necesarios del periodo seleccionado, sin conversaciones anteriores. Las consultas de una semana incluyen sus totales si cruza un mes o año. Evita datos personales.</p><div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
                 ${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: conversaciones y resultados de IA ocultos.</p>':''}${!state.config.hideMoney && state.chatMsgs.length === 0 ? `<p style="color:var(--muted); font-size:13px">Gemini explica los cálculos de la app y ayuda a consultar horas, tarifas y retenciones. No cambia tus registros. Necesita conexión y sesión Google.</p>` : ''}
@@ -890,7 +896,7 @@
           &copy; ${new Date().getFullYear()} Propiedad de FranOlea. Todos los derechos reservados.
         </div>
       `;
-      const pane=app.querySelector('.tab-content');if(pane&&state.tab!==lastRenderedTab)pane.classList.add('tab-enter');lastRenderedTab=state.tab;
+      const pane=app.querySelector('.tab-content');if(pane){pane.id='tab-panel';pane.setAttribute('aria-labelledby','nav-'+state.tab);}if(pane&&state.tab!==lastRenderedTab)pane.classList.add('tab-enter');lastRenderedTab=state.tab;
       app.querySelectorAll('input,select').forEach((el,i)=>{if(!el.id)el.id='field-'+i;if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label',el.closest('.row')?.querySelector('span')?.textContent||el.placeholder||'Ajuste');});
       app.querySelectorAll('.tab-btn').forEach(el=>el.setAttribute('aria-current',el.classList.contains('active')?'page':'false'));
       if(focusId)document.getElementById(focusId)?.focus({preventScroll:true});
@@ -1057,6 +1063,7 @@
     try{sync.load();}catch(e){alert(e.message);}
     sync.setOnline(navigator.onLine!==false);
     render();initCloud();
+    import('./ai-config.js').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
     document.addEventListener('DOMContentLoaded',()=>{if(!cloud.ready)initCloud();if(state.tab==='anual')render();});
 
     // ============================================================
@@ -1068,3 +1075,4 @@
   </script>
 </body>
 </html>
+

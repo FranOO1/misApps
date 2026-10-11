@@ -27,11 +27,11 @@
 </main>
 <script type="module">
 const button=document.getElementById('send'),status=document.getElementById('status'),result=document.getElementById('result');
-let generation=0,busy=false,auth=null,service=null;
+let generation=0,busy=false,blocked=false,auth=null,service=null;
 const session=()=>`${generation}:${auth?.currentUser?.uid||''}`;
 function available(){
-  button.disabled=busy||!auth?.currentUser||!navigator.onLine;
-  if(busy)return;
+  button.disabled=blocked||busy||!auth?.currentUser||!navigator.onLine;
+  if(busy||blocked)return;
   status.textContent=!navigator.onLine?'Sin conexión. La prueba necesita conexión.':!auth?.currentUser?'No hay sesión disponible. Abre esta página en el navegador donde ya tengas iniciada la sesión de Mis Horas. No se ha enviado ninguna consulta.':'Sesión disponible. Pulsa el botón para autorizar la consulta ficticia.';
 }
 try{
@@ -45,32 +45,34 @@ try{
   const [apps,auths,ai]=await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js'),
     import('https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js'),
-    import('./ai-service.js?diagnostico=3')
+    import('./ai-service.js?diagnostico=4')
   ]);
   service=ai;auth=auths.getAuth(apps.initializeApp(options));
-  auths.onAuthStateChanged(auth,()=>{generation++;service.invalidate();busy=false;result.textContent='';available();},()=>{button.disabled=true;status.textContent='No se pudo comprobar la sesión existente. No se ha enviado ninguna consulta.';});
+  auths.onAuthStateChanged(auth,()=>{generation++;service.invalidate();busy=false;blocked=false;result.textContent='';available();},()=>{button.disabled=true;status.textContent='No se pudo comprobar la sesión existente. No se ha enviado ninguna consulta.';});
   window.addEventListener('online',available);
   window.addEventListener('offline',()=>{available();if(busy)status.textContent='Sin conexión durante la consulta. Esperando el resultado o el límite de tiempo…';});
   window.addEventListener('pagehide',()=>{generation++;service.invalidate();busy=false;result.textContent='';available();});
   window.addEventListener('pageshow',e=>{if(e.persisted)available();});
   button.addEventListener('click',async()=>{
-    if(busy||!auth.currentUser||!navigator.onLine)return;
+    if(blocked||busy||!auth.currentUser||!navigator.onLine)return;
     busy=true;button.disabled=true;const token=session();result.textContent='';status.textContent='Preparando la consulta ficticia…';
     const hours=[4,4.25].reduce((sum,value)=>sum+value,0);
     try{
-      const answer=await service.query({mode:'chat',question:document.getElementById('preview').textContent,context:{fictitious:true,calculated:{recordedHours:hours}},options,user:auth.currentUser,currentSession:session,session:token,onStage:stage=>{if(token!==session())return;status.textContent={appcheck:'Comprobando App Check con la configuración existente…',auth:'Comprobando la sesión existente para la consulta…',model:'Consultando Gemini con 8,25 horas ficticias…'}[stage]||'Preparando la consulta ficticia…';}});
+      const answer=await service.query({mode:'chat',question:service.diagnosticQuestion,context:{fictitious:true,calculated:{recordedHours:hours}},options,user:auth.currentUser,currentSession:session,session:token,onStage:stage=>{if(token!==session())return;status.textContent={appcheck:'Comprobando App Check con la configuración existente…',auth:'Comprobando la sesión existente para la consulta…',model:'Consultando Gemini con 8,25 horas ficticias…'}[stage]||'Preparando la consulta ficticia…';}});
       if(token!==session())return;
       result.textContent=answer;status.textContent='Respuesta recibida de Gemini con datos ficticios. No se han modificado datos de Mis Horas.';
     }catch(e){
       if(token!==session())return;
-      status.textContent=e.stage==='appcheck'?'No se pudo obtener una atestación válida de App Check. La consulta ficticia no se ha enviado a Gemini.':e.kind==='permission'?'Gemini o App Check rechazó la consulta tras obtener un token de App Check. No se ha cambiado la configuración.':service.errorMessage(e);
+      if(e.stage==='appcheck'||e.original)blocked=true;
+      status.textContent=e.stage==='appcheck'?'No se pudo obtener una atestación válida de App Check. La consulta ficticia no se ha enviado a Gemini.':e.kind==='permission'?'Gemini o App Check rechazó la consulta tras obtener un token de App Check. No se ha cambiado la configuración.':e.kind==='quota'?'Se ha alcanzado la cuota de Gemini.':service.errorMessage(e);
       const stage={initialization:'Carga del SDK',appcheck:'App Check',auth:'Sesión Firebase',model:'Gemini'}[e.stage]||'Preparación';
-      result.textContent='Etapa: '+stage+'\nReferencia: '+String(e.kind||'unavailable')+(e.code?' · '+e.code:'')+(e.status?' · HTTP '+e.status:'');
+      result.textContent='Etapa: '+stage+'\nReferencia: '+String(e.kind||'unavailable')+(e.code?' · '+e.code:'')+(e.status?' · HTTP '+e.status:'')+'\n'+(e.message||'')+(e.original?'\nPrimer rechazo: HTTP '+e.original.status+' · '+(e.original.backendStatus||'')+' · '+e.original.message:'');
     }finally{
-      if(token===session()){busy=false;button.disabled=!auth.currentUser||!navigator.onLine;}
+      if(token===session()){busy=false;button.disabled=blocked||!auth.currentUser||!navigator.onLine;}
     }
   });
 }catch(e){button.disabled=true;status.textContent=e.message?.startsWith('No se')?e.message:'No se pudo cargar la prueba. Comprueba la conexión y recarga. No se ha enviado ninguna consulta.';}
 </script>
 </body>
 </html>
+

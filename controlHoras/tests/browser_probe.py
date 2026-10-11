@@ -27,6 +27,8 @@ def route_external(route):
  elif 'recaptcha/enterprise.js' in url:
   route.fulfill(body="let fixtureCaptchaSuccess=()=>{};window.grecaptcha={enterprise:{ready:f=>f(),render:(e,o)=>{fixtureCaptchaSuccess=o.callback;return 'fixture-widget';},execute:async()=>{fixtureCaptchaSuccess();return 'fixture-recaptcha';}}};",content_type='application/javascript',headers=headers)
  elif 'firebaseappcheck.googleapis.com' in url:
+  if mode=='first400':
+   route.fulfill(status=400,json={'error':{'code':400,'status':'INVALID_ARGUMENT','message':'App not registered. PRIVATE_FIXTURE token not for display','details':[{'metadata':{'token':'PRIVATE_FIXTURE'}}]}},headers=headers);return
   payload=json.loads(route.request.post_data or '{}');limited=payload.get('limited_use') is True
   token='fixture-limited-'+str(len(limited_tokens)+1) if limited else 'fixture-app-check'
   if limited:limited_tokens.add(token)
@@ -79,9 +81,20 @@ try:
    page.locator('#send').click();expect(page.locator('#result')).to_contain_text('8,25 horas ficticias.',timeout=45000)
    page.evaluate('''async()=>{const {getAuth,signOut}=await import('https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js');await signOut(getAuth());}''')
    expect(page.locator('#status')).to_contain_text('No hay sesión');expect(page.locator('#send')).to_be_disabled();expect(page.locator('#result')).to_have_text('')
+   # Fresh client: first exchange rejection is transformed by the official SDK.
+   # It must retain its original safe cause and block all further UI sends.
+   page.evaluate('''async options=>{const {getAuth,signInWithCustomToken}=await import('https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js');await signInWithCustomToken(getAuth(),'fixture-custom-token');}''',options)
+   mode='first400';before=len(requests);page.reload();expect(page.locator('#send')).to_be_enabled(timeout=60000);page.locator('#send').click()
+   expect(page.locator('#result')).to_contain_text('appCheck/initial-throttle',timeout=45000)
+   expect(page.locator('#result')).to_contain_text('Primer rechazo: HTTP 400 · INVALID_ARGUMENT · La aplicación no está registrada en App Check.')
+   expect(page.locator('#send')).to_be_disabled();assert len(requests)==before
+   assert 'PRIVATE_FIXTURE' not in page.locator('body').inner_text()
+   page.evaluate('window.dispatchEvent(new Event("online"))');expect(page.locator('#send')).to_be_disabled()
+   mode='ok'
    assert not page.evaluate('window.realDataAccess') and not errors,errors
    assert not blocked,blocked
    print(f'PASS isolated Chromium {width}: persisted SDK 10→12 session; consent; no real-data access/Firestore/SW; fictitious payload; safe text; 401/quota/offline/sign-out. AUTH, ATTESTATION AND MODEL SIMULATED.',flush=True)
    ctx.close()
   browser.close()
 finally:server.shutdown()
+

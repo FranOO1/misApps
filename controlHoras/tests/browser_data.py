@@ -5,7 +5,8 @@ from playwright.sync_api import sync_playwright,expect
 ROOT=Path(__file__).resolve().parents[2]
 previous_release=False
 PREVIOUS_HTML=b'''<!doctype html><meta charset="utf-8"><title>Previous PWA fixture</title><p>Previous installed shell</p><script>navigator.serviceWorker.register('./sw.js')</script>'''
-PREVIOUS_SW=b'''const CACHE='horas-v3-previous';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./index.html'])).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{if(e.request.mode==='navigate')e.respondWith(caches.open(CACHE).then(c=>c.match('./index.html')));});'''
+PREVIOUS_SW=(ROOT/'controlHoras/tests/fixtures/sw-v5.js').read_bytes()
+CURRENT_CACHE=__import__('re').search(r"const CACHE='([^']+)'",(ROOT/'controlHoras/sw.js').read_text()).group(1)
 class Handler(http.server.SimpleHTTPRequestHandler):
  def log_message(self,*args):pass
  def do_GET(self):
@@ -46,9 +47,10 @@ try:
   # Install an actual older worker fixture before serving the actual new worker.
   # Calling update() on the same bytes is not evidence of a version transition.
   previous_release=True
-  ctx=browser.new_context(viewport={'width':768,'height':1024});ctx.route('https://**/*',lambda r:r.abort());ctx.add_init_script('if(!localStorage.getItem("horas-app-v2")){localStorage.setItem("horas-app-v2",'+json.dumps(original)+');localStorage.setItem("horas-hide-money","1");}');page=ctx.new_page();update_errors=[];page.on('pageerror',lambda e:update_errors.append(str(e)));page.goto(URL);page.evaluate('navigator.serviceWorker.ready');page.wait_for_function('!!navigator.serviceWorker.controller');assert page.title()=='Previous PWA fixture';page.evaluate('caches.open("unrelated-cache")');assert 'horas-v3-previous' in page.evaluate('caches.keys()')
+  ctx=browser.new_context(viewport={'width':768,'height':1024});ctx.route('https://**/*',lambda r:r.abort());ctx.add_init_script('if(!localStorage.getItem("horas-app-v2")){localStorage.setItem("horas-app-v2",'+json.dumps(original)+');localStorage.setItem("horas-hide-money","1");}');page=ctx.new_page();update_errors=[];page.on('pageerror',lambda e:update_errors.append(str(e)));page.goto(URL);page.evaluate('navigator.serviceWorker.ready');page.wait_for_function('!!navigator.serviceWorker.controller');assert page.title()=='Previous PWA fixture';page.evaluate('caches.open("unrelated-cache")');assert 'horas-v5-completa-20261011' in page.evaluate('caches.keys()')
   previous_release=False
-  page.evaluate('window.newWorkerReady=new Promise(resolve=>navigator.serviceWorker.addEventListener("controllerchange",resolve,{once:true}));navigator.serviceWorker.getRegistration().then(r=>r.update())');page.evaluate('newWorkerReady');page.wait_for_function('caches.keys().then(keys=>!keys.includes("horas-v3-previous")&&keys.some(k=>k.startsWith("horas-v4-completa-")))');page.reload();expect(page.get_by_role('button',name='Mostrar importes')).to_be_visible();assert page.evaluate('localStorage.getItem("horas-original-v2")')==original;assert page.evaluate('monthly(2026,0).bruto')==150
+  page.evaluate('window.newWorkerReady=new Promise(resolve=>navigator.serviceWorker.addEventListener("controllerchange",resolve,{once:true}));navigator.serviceWorker.getRegistration().then(r=>r.update())');page.evaluate('newWorkerReady');page.wait_for_function('current=>caches.keys().then(keys=>!keys.includes("horas-v5-completa-20261011")&&keys.includes(current))',arg=CURRENT_CACHE);page.reload();expect(page.get_by_role('button',name='Mostrar importes')).to_be_visible();assert page.evaluate('localStorage.getItem("horas-original-v2")')==original;assert page.evaluate('monthly(2026,0).bruto')==150
   page.evaluate('state.year=2026;state.month=9;render();selectDay(7);saveDay()');ctx.set_offline(True);page.reload();expect(page.get_by_role('button',name='Mostrar importes')).to_be_visible();assert page.evaluate('state.allData["2026-10"].days[7].hours')==8;assert 'unrelated-cache' in page.evaluate('caches.keys()');assert not update_errors,update_errors;ctx.close();browser.close()
   print('PASS actual old-worker fixture → new application worker → offline reload: original records, migration and device privacy survive; unrelated cache retained. No production Firebase.',flush=True)
 finally:server.shutdown()
+

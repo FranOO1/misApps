@@ -18,7 +18,7 @@ function worker(){
 }
 test('install includes existing complete local shell, forces fresh resources and preserves unrelated caches',async()=>{
  const w=worker();w.stores.set('plantometro-v19',new Map());w.stores.set('horas-v3-previous',new Map());await w.lifecycle('install');
- assert(w.requests.some(r=>r.url.endsWith('/core.js')));assert(w.requests.some(r=>r.url.endsWith('/sync.js')));assert(w.requests.some(r=>r.url.endsWith('/ai-service.js')));assert(w.requests.every(r=>r.cache==='reload'));assert.equal(w.skips,1);
+ assert(w.requests.some(r=>r.url.endsWith('/core.js')));assert(w.requests.some(r=>r.url.endsWith('/sync.js')));assert(w.requests.some(r=>r.url.endsWith('/ai-service.js')));assert(w.requests.some(r=>r.url.endsWith('/app-check-diagnostic.js')));assert(w.requests.every(r=>r.cache==='reload'));assert.equal(w.skips,1);
  await w.lifecycle('activate');assert.equal(w.claims,1);assert(w.stores.has('plantometro-v19'));assert(w.stores.has(w.name));assert(!w.stores.has('horas-v3-previous'));
 });
 test('offline uses cached scripts, navigation alone can fall back to the HTML shell, and missing resources fail',async()=>{
@@ -45,3 +45,4 @@ test('a CDN outage still installs the local shell and preserves compatible SDKs 
  w.stores.set('horas-v3-previous',new Map([[sdk,new Response('Previous compatible SDK',{headers:{'content-type':'application/javascript'}})],[scope+'index.html',new Response('OLD shell')],['https://firestore.googleapis.com/private',new Response('PRIVATE response')]]));
  await w.lifecycle('install');assert.equal(w.skips,1);await w.lifecycle('activate');assert.equal(await (await w.cache().match(sdk)).text(),'Previous compatible SDK');assert.notEqual(await (await w.cache().match(scope+'index.html')).text(),'OLD shell');assert.equal(await w.cache().match('https://firestore.googleapis.com/private'),undefined);assert(!w.stores.has('horas-v3-previous'));
 });
+
