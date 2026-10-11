@@ -49,8 +49,8 @@ try:
     page.keyboard.press('Tab');expect(page.locator('#nav-'+key)).to_be_focused();page.keyboard.press(press)
     expect(page.locator('#nav-'+key)).to_have_attribute('aria-current','page');expect(page.locator('#nav-'+key)).to_be_focused()
    page.locator('#nav-mes').tap();expect(page.locator('#day-btn-4')).to_have_attribute('aria-label','4 de Octubre, Descanso')
-   expect(page.locator('#day-btn-4 .rest-marker')).to_have_text('Z')
-   assert page.locator('#day-btn-4').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(67, 47, 56)'
+   expect(page.locator('#day-btn-4 .rest-marker')).to_have_text('Z');assert page.locator('#day-btn-4 .rest-marker').evaluate('e=>getComputedStyle(e).fontSize')=='13px'
+   assert page.locator('#day-btn-4').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(86, 51, 61)'
    page.screenshot(path=str(OUT/f'visible-{width}.png'),full_page=True,animations='disabled')
    page.locator('#day-btn-1').click();expect(page.locator('#day-earn-box')).to_be_visible();page.get_by_role('button',name='Ocultar importes').click();assert '10.00 €/h' not in page.locator('#app').inner_text();assert '•••• €/h' in page.locator('#app').inner_text();assert '48,5 h' in page.locator('#app').inner_text();no_overflow(page)
    page.screenshot(path=str(OUT/f'hidden-{width}.png'),full_page=True,animations='disabled')
