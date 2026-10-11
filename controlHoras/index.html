@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#11151F">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,22 +12,21 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
 
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="./core.js"></script>
+  <script src="./sync.js"></script>
+  <script src="./ai-data.js"></script>
   
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
     
     :root {
-      --bg: #11151F; --card: #171C2A; --text: #E8EDF7; --muted: #8B93A7;
+      --bg: #11151F; --card: #171C2A; --text: #E8EDF7; --muted: #AFB8CC;
       --border: #2A3247; --border-light: #1E2434;
       --accent: #4FA3FF; --success: #7BE8A8; --warning: #FFB04F; --danger: #FF8B8B;
     }
@@ -37,7 +36,7 @@
     button { cursor: pointer; border: none; background: none; color: inherit; font-family: inherit; }
     input, select { font-family: inherit; outline: none; }
     
-    .app-root { max-width: 480px; margin: 0 auto; padding: 12px 14px 12px; display: flex; flex-direction: column; flex: 1; width: 100%; }
+    .app-root { max-width: 640px; margin: 0 auto; padding: 12px 14px 12px; display: flex; flex-direction: column; flex: 1; width: 100%; }
     
     .tabs-bar { display: flex; gap: 6px; background: rgba(255,255,255,0.04); border-radius: 14px; padding: 4px; margin-bottom: 14px; flex: 0 0 auto;}
     .tab-btn { flex: 1; padding: 9px 0; border-radius: 11px; color: var(--muted); font-size: 14px; font-weight: 600; transition: all 0.15s; }
@@ -45,7 +44,7 @@
     .eye-btn { width: 42px; border-radius: 11px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
     .eye-btn.active { background: rgba(255,176,79,0.12); color: var(--warning); }
     
-    .tab-content { flex: 1; display: flex; flex-direction: column; animation: fadeIn 0.2s ease-out; }
+    .tab-content { flex: 1; display: flex; flex-direction: column;  }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     .two-col, .ajustes-grid { display: block; }
     
@@ -58,10 +57,10 @@
     .neto-block { text-align: center; padding: 18px 12px; border-radius: 16px; background: linear-gradient(160deg, rgba(79,163,255,0.1), rgba(123,232,168,0.07)); border: 1px solid var(--border); margin-bottom: 14px;}
     .neto-value { font-family: 'Space Grotesk', system-ui; font-weight: 700; font-size: 38px; color: var(--success); margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
     .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 12px; }
-    .day-cell { aspect-ratio: 1; border-radius: 10px; border: 1.5px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); padding:0; transition: border-color 0.15s; }
+    .day-cell { min-height: 46px; aspect-ratio: 1; border-radius: 10px; border: 1.5px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); padding:0; transition: border-color 0.15s; }
     .day-cell.today { border-color: var(--accent); }
     .day-cell span:first-child { font-size: 13px; font-weight: 600; }
-    .day-cell span:last-child { font-size: 10px; }
+    .day-cell span + span { font-size: 11px; }
     
     .editor { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
     .type-btn { flex: 1; padding: 10px 0; border-radius: 12px; border: 1.5px solid var(--border); font-size: 13px; font-weight: 600; background: transparent; color: var(--muted); }
@@ -70,7 +69,7 @@
     .add-btn { width: 100%; padding: 13px 0; border-radius: 14px; background: linear-gradient(100deg, #3FD68C, #7BE8A8); color: #0E1420; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', system-ui; }
     .day-earn-box { text-align: center; padding: 14px 12px; border-radius: 14px; background: linear-gradient(160deg, rgba(123,232,168,0.08), rgba(63,214,140,0.03)); border: 1px solid rgba(123,232,168,0.2); }
 
-    .week-banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: linear-gradient(160deg, rgba(79,163,255,0.10), rgba(79,163,255,0.03)); border: 1px solid var(--border); animation: fadeIn 0.2s ease-out; }
+    .week-banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: linear-gradient(160deg, rgba(79,163,255,0.10), rgba(79,163,255,0.03)); border: 1px solid var(--border);  }
     
     .bubble { max-width: 85%; border-radius: 14px; border: 1px solid; padding: 9px 13px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
     .bubble.user { background: rgba(79,163,255,0.18); border-color: rgba(79,163,255,0.35); margin-left: auto; color: var(--text); }
@@ -79,7 +78,7 @@
     .modal-overlay { position: fixed; inset: 0; background: rgba(8,10,16,0.72); z-index: 50; display: none; align-items: center; justify-content: center; padding: 20px; }
     .modal { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 20px; width: 100%; max-width: 380px; box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
     
-    .watermark { text-align: center; padding: 20px 0 10px; color: #5C6477; font-size: 11px; letter-spacing: 0.5px; opacity: 0.8; font-family: 'Space Grotesk', system-ui; text-transform: uppercase; font-weight: 600; margin-top: auto; }
+    .watermark { text-align: center; padding: 20px 0 10px; color: #AFB8CC; font-size: 11px; letter-spacing: 0.5px; opacity: 1; font-family: 'Space Grotesk', system-ui; text-transform: uppercase; font-weight: 600; margin-top: auto; }
 
     @media (min-width: 840px) and (min-height: 540px) {
       .app-root { max-width: 1240px; height: 100vh; overflow: hidden; padding-bottom: 0; }
@@ -92,13 +91,41 @@
       .ia-wrap { height: 100%; max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; min-height: 0; width: 100%; }
       .watermark { padding: 10px 0; }
     }
+    button, input, select { min-height: 44px; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    input, select, textarea { font-size: 16px; }
+    .big-btn { min-width: 44px; }
+    .eye-btn { min-width: 44px; }
+    .row { gap: 8px; flex-wrap: wrap; }
+    .row > span, .col-scroll, .card, .neto-block { min-width: 0; }
+    .card, .neto-block { overflow-wrap: anywhere; }
+    .config-input { min-width: 0; max-width: 100%; }
+    .day-cell span { line-height: 1.4; }
+    .calendar-legend { display: flex; gap: 18px; margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+    .calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 4px; }
+    .tab-enter { animation: fadeIn 180ms ease-out; }
+    .money-detail { font-size: 14px; color: var(--text); line-height: 1.6; }
+    .hours-total { font-size: 19px; font-weight: 700; margin-top: 8px; }
+    .privacy-note { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    button:disabled { opacity: .65; cursor: default; }
+    .modal { max-height: 90dvh; overflow-y: auto; }
+    @media (max-width: 360px) {
+      .app-root { padding: 10px 6px; }
+      .grid { gap: 0; }
+      .day-cell { aspect-ratio: auto; min-height: 46px; }
+      .neto-value { font-size: 34px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
   </style>
 </head>
 <body>
 
   <div id="app" class="app-root"></div>
   
-  <div id="modal-export" class="modal-overlay" onclick="closeExport()">
+  <div id="modal-export" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Exportar PDF" onclick="closeExport()">
     <div class="modal" onclick="event.stopPropagation()" id="modal-export-content"></div>
   </div>
 
@@ -136,7 +163,7 @@
     const TYPES = {
       normal:   { label: "Normal",   color: "#4FA3FF", bg: "rgba(79,163,255,0.18)" },
       festivo:  { label: "Festivo",  color: "#FFB04F", bg: "rgba(255,176,79,0.20)" },
-      descanso: { label: "Descanso", color: "#FF6B6B", bg: "rgba(255,107,107,0.18)" },
+      descanso: { label: "Descanso", color: "#C1CADB", bg: "rgba(193,202,219,0.20)" },
     };
 
     const state = {
@@ -149,12 +176,37 @@
       pdfReady: null
     };
 
+    // Privacy is a preference of this device, never an incoming cloud choice.
+    const MONEY_KEY = 'horas-hide-money';
+    let privateGeneration=0;
+    const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const cloudConfig = () => { const c={...state.config}; delete c.hideMoney; return c; };
+    window.toggleMoney = () => {
+      state.config.hideMoney=!state.config.hideMoney;
+      // Discard in-flight or previously displayed AI results when privacy changes.
+      discardAI();render();
+      try{localStorage.setItem(MONEY_KEY,state.config.hideMoney?'1':'0');}catch{alert('Se aplicó tu elección, pero no se pudo guardar la preferencia para la próxima apertura.');}
+    };
     const eur = (n) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n || 0);
     const fmt = (n) => state.config.hideMoney ? "•••• €" : eur(n);
     const fmtH = (n) => String(Math.round((Number(n) || 0) * 100) / 100).replace(".", ",");
     const monthKey = (y, m) => `${y}-${String(m + 1).padStart(2, "0")}`;
     const extraActive = (cfg) => cfg.profile === "sintax" && cfg.sintaxUnlocked;
-    const saveState = () => { localStorage.setItem("horas-app-v2", JSON.stringify({ config: state.config, data: state.allData })); cloudSave(); };
+    const C = HorasCore;
+    const periodConfig = (y=state.year,m=state.month) => C.cfgFor(state.allData,state.config,y,m);
+    const monthly = (y=state.year,m=state.month) => C.calculate(state.allData,state.config,y,m);
+    const payload = () => ({schemaVersion:3,config:{...state.config,hideMoney:false},data:state.allData});
+    let privacy = localStorage.getItem('horas-hide-money');
+    const legacy = localStorage.getItem('horas-app-v2');
+    if(privacy===null && legacy) {try {privacy=JSON.parse(legacy).config?.hideMoney?'1':'0';} catch {}}
+    state.config.hideMoney=privacy==='1';
+    const saveState = () => {try {C.freezeDerivedPeriods(state.allData,state.config);sync.save();return true;} catch(e) {alert(e.message);return false;}};
+    function ensurePeriod() {
+      const mk=monthKey(state.year,state.month);
+      if(!state.allData[mk])state.allData[mk]={days:{},rateConfig:C.financial(state.config),historicalStatus:'confirmed'};
+      return state.allData[mk];
+    }
+
 
     // ============================================================
     // NUBE: FIREBASE (LOGIN GOOGLE + FIRESTORE)
@@ -168,137 +220,57 @@
       appId: "1:282064047722:web:24a04aabeecb4a67394413"
     };
 
-    const cloud = { ready: false, user: null, status: "off", unsub: null, applyingRemote: false, saveTimer: null, synced: false, errorMsg: "" };
-
-    try {
-      firebase.initializeApp(firebaseConfig);
-      cloud.db = firebase.firestore();
-      cloud.ready = true;
-    } catch (e) { console.error("Firebase no disponible:", e); }
-
-    function userDocRef() { return cloud.db.collection("users").doc(cloud.user.uid); }
-
-    // Fusiona datos locales y remotos (unión de meses y días; en conflicto gana lo local)
-    function mergeData(remoteData, localData) {
-      const out = JSON.parse(JSON.stringify(remoteData || {}));
-      for (const mk of Object.keys(localData || {})) {
-        if (!out[mk]) { out[mk] = JSON.parse(JSON.stringify(localData[mk])); continue; }
-        out[mk].days = { ...(out[mk].days || {}), ...(localData[mk].days || {}) };
-      }
-      return out;
-    }
-
-    function applyRemote(p) {
-      cloud.applyingRemote = true;
-      state.config = { ...DEFAULT_CONFIG, ...(p.config || {}) };
-      state.allData = p.data || {};
-      localStorage.setItem("horas-app-v2", JSON.stringify({ config: state.config, data: state.allData }));
-      cloud.applyingRemote = false;
-      render();
-    }
-
-    function cloudSave() {
-      if (!cloud.ready || !cloud.user || cloud.applyingRemote || !cloud.synced) return;
-      cloud.status = "syncing";
-      clearTimeout(cloud.saveTimer);
-      cloud.saveTimer = setTimeout(() => {
-        userDocRef().set({ config: state.config, data: state.allData, updatedAt: Date.now() })
-          .then(() => { cloud.status = "ok"; const el = document.getElementById("cloud-status"); if (el) el.textContent = "☁️ Sincronizado"; })
-          .catch((e) => { console.error(e); cloud.status = "error"; cloud.errorMsg = e.message || String(e); const el = document.getElementById("cloud-status"); if (el) el.textContent = "⚠️ Error al sincronizar"; });
-      }, 800);
-    }
-
-    async function startSync(user) {
-      cloud.user = user;
-      cloud.status = "syncing";
-      cloud.errorMsg = "";
-      render();
+    const cloud = {ready:false,user:null,status:'local',errorMsg:''};
+    const sync=HorasSync.create({defaults:DEFAULT_CONFIG,getState:payload,
+      apply:p=>{const hidden=state.config.hideMoney;state.config={...p.config,hideMoney:hidden};state.allData=p.data;if(state.selectedDay && state.dayConfirmed){const e=state.allData[monthKey(state.year,state.month)]?.days[state.selectedDay];if(e)state.draft={...e};else state.selectedDay=null;}},
+      onStatus:(kind,message)=>{cloud.status=kind;cloud.errorMsg=message;for(const id of ['cloud-status','local-status']){const el=document.getElementById(id);if(el){el.textContent=message;el.style.color=kind==='error'?'var(--danger)':'var(--muted)';}}},onRemote:()=>{if(!document.activeElement?.matches('input,textarea,select'))render();else state.remoteRefresh=true;},
+      db:{collection:(...args)=>cloud.db.collection(...args),runTransaction:(...args)=>cloud.db.runTransaction(...args)},FieldPath:class {constructor(...parts){return new firebase.firestore.FieldPath(...parts);}}
+    });
+    function initCloud() {
       try {
-        const snap = await userDocRef().get();
-        if (snap.exists) {
-          const remote = snap.data();
-          const merged = mergeData(remote.data, state.allData);
-          state.config = { ...DEFAULT_CONFIG, ...(remote.config || {}), ...( // conserva config local si el remoto está vacío
-            Object.keys(remote.config || {}).length ? {} : state.config) };
-          state.allData = merged;
-          localStorage.setItem("horas-app-v2", JSON.stringify({ config: state.config, data: state.allData }));
-          await userDocRef().set({ config: state.config, data: state.allData, updatedAt: Date.now() });
-        } else {
-          await userDocRef().set({ config: state.config, data: state.allData, updatedAt: Date.now() });
-        }
-        cloud.status = "ok";
-        cloud.synced = true;
-        // Escucha cambios en tiempo real desde otros dispositivos
-        cloud.unsub = userDocRef().onSnapshot((doc) => {
-          if (!doc.exists || doc.metadata.hasPendingWrites) return;
-          applyRemote(doc.data());
+        if(typeof firebase==='undefined')throw Error('SDK no disponible');
+        firebase.initializeApp(firebaseConfig);cloud.db=firebase.firestore();cloud.ready=true;
+        firebase.auth().getRedirectResult().catch(()=>{});
+        firebase.auth().onAuthStateChanged(user=>{
+          if(cloud.user?.uid!==user?.uid){discardAI();state.selectedDay=null;state.draft=null;state.pdfReady=null;}
+          cloud.user=user;
+          try{sync.switchAccount(user);}catch{cloud.status='error';cloud.errorMsg='No se pudo abrir la copia de esta cuenta. Se conserva la original.';}
+          render();
         });
-      } catch (e) {
-        console.error(e);
-        cloud.status = "error";
-        cloud.errorMsg = e.message || String(e);
-      }
-      render();
+      }catch{cloud.status='local';cloud.errorMsg='Nube no disponible. Puedes registrar horas aquí.';const el=getEl('local-status');if(el)el.textContent=cloud.errorMsg;}
     }
-
-    // Descarga forzada: trae lo que hay en la nube y sobrescribe lo local
-    window.forceCloudPull = async () => {
-      vibrate(20);
-      if (!cloud.ready || !cloud.user) { alert("Inicia sesión primero."); return; }
-      if (!confirm("Se descargarán los datos de la nube y sustituirán a los de este dispositivo. ¿Continuar?")) return;
-      cloud.status = "syncing";
-      render();
-      try {
-        const snap = await userDocRef().get();
-        if (!snap.exists) { alert("No hay datos guardados en la nube todavía."); cloud.status = "ok"; render(); return; }
-        applyRemote(snap.data());
-        cloud.status = "ok";
-        cloud.synced = true;
-        alert("✓ Datos descargados de la nube.");
-      } catch (e) {
-        cloud.status = "error";
-        cloud.errorMsg = e.message || String(e);
-        alert("Error al descargar: " + cloud.errorMsg);
-      }
-      render();
+    window.loginGoogle=async()=>{
+      if(!cloud.ready){alert('Nube no disponible. Revisa la conexión y vuelve a abrir la app.');return;}
+      try{await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());}
+      catch(e){if(e.code==='auth/popup-blocked')await firebase.auth().signInWithRedirect(new firebase.auth.GoogleAuthProvider());else alert('No se pudo iniciar sesión. Puedes seguir usando la copia local.');}
     };
-
-    window.loginGoogle = async () => {
-      vibrate(20);
-      if (!cloud.ready) { alert("Firebase no está disponible. Revisa tu conexión."); return; }
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try {
-        await firebase.auth().signInWithPopup(provider);
-      } catch (e) {
-        // Fallback para navegadores que bloquean el popup
-        if (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") {
-          try { await firebase.auth().signInWithRedirect(provider); } catch (e2) { alert("No se pudo iniciar sesión: " + e2.message); }
-        } else {
-          alert("No se pudo iniciar sesión: " + e.message);
-        }
-      }
+    window.logoutGoogle=async()=>{
+      try{await firebase.auth().signOut();}catch{alert('No se pudo cerrar sesión. Inténtalo de nuevo.');}
     };
-
-    window.logoutGoogle = async () => {
-      vibrate(20);
-      if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; }
-      cloud.user = null; cloud.status = "off"; cloud.synced = false;
-      try { await firebase.auth().signOut(); } catch (e) {}
-      render();
+    window.forceCloudPull=async()=>{
+      if(!confirm('Se sustituirá la copia local de esta cuenta con la nube. Se guardará una recuperación antes. Las ediciones pendientes deben sincronizarse primero.'))return;
+      try{await sync.pull();render();alert('Datos descargados. Copia previa disponible en Ajustes.');}catch(e){alert(e.message);}
     };
+    window.retrySync=()=>sync.retry();
+    window.exportRecovery=()=>{
+      const list=JSON.parse(sync.recovery()||'[]');const raw=sync.isBlocked()?sync.original():list.length?JSON.stringify(list.at(-1).payload):sync.account()==='guest'&&localStorage.getItem('horas-original-v2')||JSON.stringify(payload());
+      if(!raw){alert('No hay copias de recuperación.');return;}
+      processDownload(new Blob([raw],{type:'application/json'}),'Recuperacion_Horas.json');
+    };
+    window.copyGuest=()=>{
+      if(!cloud.user)return;
+      const raw=localStorage.getItem('horas-app-v3:guest');if(!raw){alert('No hay datos sin cuenta.');return;}
+      try{const p=C.validateBackup(JSON.parse(raw).payload,DEFAULT_CONFIG),merged=C.mergeLegacy(payload(),p);if(!merged.added){alert('No hay jornadas nuevas para añadir. Las existentes y los borrados de esta cuenta se han conservado.');return;}replaceFromBackup(merged.payload,'Confirma que los datos locales anteriores son tuyos. Añadir '+merged.added+' jornadas nuevas; conservar '+merged.conflicts+' diferencias y borrados según esta cuenta');}catch(e){alert(e.message);}
+    };
+    window.addEventListener('offline',()=>sync.setOnline(false));
+    window.addEventListener('online',()=>sync.setOnline(true));
 
-    if (cloud.ready) {
-      firebase.auth().getRedirectResult().catch(() => {});
-      firebase.auth().onAuthStateChanged((user) => {
-        if (user) { startSync(user); }
-        else { if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; } cloud.user = null; cloud.status = "off"; cloud.synced = false; render(); }
-      });
-    }
-
+    document.addEventListener('focusout',()=>{if(state.remoteRefresh)setTimeout(()=>{state.remoteRefresh=false;render();},0);});
+    function applyRemote(p){sync.receive(p);}
     function hoursColor(h) {
-      if (h < 9.5) return "#C9D2E3";
+      if (h < 9.5) return "#E8EDF7";
       const t = Math.min(1, (h - 9.5) / 2.5);
-      const a = [255, 176, 79], b = [255, 56, 56];
+      const a = [255, 176, 79], b = [255, 128, 128];
       const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
       return `rgb(${c[0]},${c[1]},${c[2]})`;
     }
@@ -331,73 +303,16 @@
 
     const fmtDia = (d) => `${d.getDate()} ${MESES_CORTO[d.getMonth()].toLowerCase()}`;
 
-    function calcExtraMap(allData, year, month, daysInMonth) {
-      const extraMap = {};
-      const first = new Date(year, month, 1);
-      let monday = new Date(year, month, 1 - ((first.getDay() + 6) % 7));
-      const monthEnd = new Date(year, month, daysInMonth);
-      while (monday <= monthEnd) {
-        const week = []; let totalH = 0;
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
-          const e = getEntry(allData, date);
-          const h = e && e.type !== "descanso" ? Number(e.hours) || 0 : 0;
-          totalH += h; week.push({ date, e, h });
-        }
-        let extra = Math.max(0, totalH - 40);
-        if (extra > 0) {
-          for (let i = 6; i >= 0 && extra > 0; i--) {
-            const { date, e, h } = week[i];
-            if (!e || e.type !== "normal" || h <= 0) continue;
-            const take = Math.min(h, extra); extra -= take;
-            if (date.getFullYear() === year && date.getMonth() === month) {
-              extraMap[date.getDate()] = (extraMap[date.getDate()] || 0) + take;
-            }
-          }
-        }
-        monday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7);
-      }
-      return extraMap;
-    }
-
-    function calcExtraInfo(allData, year, month, daysInMonth) {
-      const genMap = calcExtraMap(allData, year, month, daysInMonth);
-      const prevDate = new Date(year, month - 1, 1);
-      const prevDim = new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 0).getDate();
-      const prevMap = calcExtraMap(allData, prevDate.getFullYear(), prevDate.getMonth(), prevDim);
-      const sum = (m) => Object.values(m).reduce((s, h) => s + h, 0);
-      return { hGen: sum(genMap), hPrev: sum(prevMap) };
-    }
-
-    function calcMonth(days, config, daysInMonth, extraInfo = null) {
-      let hNormal = 0, hFestivo = 0, diasTrab = 0, diasDesc = 0;
-      for (let d = 1; d <= daysInMonth; d++) {
-        const e = days?.[d];
-        if (!e) continue;
-        if (e.type === "descanso") { diasDesc++; continue; }
-        const h = Number(e.hours) || 0;
-        if (h > 0) diasTrab++;
-        if (e.type === "festivo") hFestivo += h; else hNormal += h;
-      }
-      const useExtra = extraInfo && extraActive(config);
-      const hExtraGen = useExtra ? extraInfo.hGen : 0;
-      const hExtra = useExtra ? extraInfo.hPrev : 0;
-      const hNormalPaid = hNormal - hExtraGen;
-      const brutoNormal = hNormalPaid * config.rateNormal;
-      const brutoExtra = hExtra * config.rateExtra;
-      const brutoFestivo = hFestivo * (config.rateNormal + config.plusFestivo);
-      const bruto = brutoNormal + brutoFestivo + brutoExtra;
-      const dets = config.deductions.map((d) => ({ ...d, amount: (bruto * d.pct) / 100 }));
-      const totalDed = dets.reduce((s, d) => s + d.amount, 0);
-      return { hNormal, hNormalPaid, hFestivo, hExtra, hExtraGen, diasTrab, diasDesc, bruto, brutoNormal, brutoFestivo, brutoExtra, dets, totalDed, neto: bruto - totalDed };
-    }
+    const calcExtraMap=(data,y,m)=>C.extraMap(data,y,m);
+    const calcExtraInfo=(data,y,m)=>C.extraInfo(data,state.config,y,m);
+    const calcMonth=C.calcMonth;
 
     function calcProjection(monthData, calcResult, config, year, month, daysInMonth) {
       const today = new Date();
       if (month !== today.getMonth() || year !== today.getFullYear()) return null;
       
       const elapsed = today.getDate();
-      const remaining = daysInMonth - elapsed;
+      const remaining = Array.from({length:daysInMonth-elapsed},(_,i)=>elapsed+i+1).filter(d=>!monthData[d]).length;
       if (remaining <= 0) return null;
 
       let workedH = 0, workedDays = 0;
@@ -425,8 +340,8 @@
         const k = monthKey(state.year, m);
         const rec = state.allData[k];
         const dim = new Date(state.year, m + 1, 0).getDate();
-        const c = rec ? calcMonth(rec.days, state.config, dim, extraActive(state.config) ? calcExtraInfo(state.allData, state.year, m, dim) : null) : null;
-        rows.push({ m, name: MESES_CORTO[m], neto: c ? c.neto : 0, bruto: c?.bruto||0, horas: c ? c.hNormal + c.hFestivo : 0, dias: c?.diasTrab||0, diasDesc: c?.diasDesc||0, hasData: !!(rec && Object.keys(rec.days||{}).length) });
+        const c = monthly(state.year,m);
+        rows.push({ m, name: MESES_CORTO[m], neto: c ? c.neto : 0, bruto: c?.bruto||0, horas: c ? c.hNormal + c.hFestivo : 0, dias: c?.diasTrab||0, diasDesc: c?.diasDesc||0, hasData: !!(c.hExtra||(rec && Object.values(rec.days||{}).some(Boolean))) });
       }
       return rows;
     }
@@ -485,8 +400,8 @@
     function buildMonthReport(doc, yy, mm) {
       const k = monthKey(yy, mm); const rec = state.allData[k] || { days: {} };
       const dim = new Date(yy, mm + 1, 0).getDate();
-      const ei = extraActive(state.config) ? calcExtraInfo(state.allData, yy, mm, dim) : null;
-      const c = calcMonth(rec.days || {}, state.config, dim, ei);
+      const cfg=periodConfig(yy,mm);
+      const c=monthly(yy,mm);
       
       doc.need(60); 
       doc.txt(40, `Resumen de horas - ${MESES[mm]} ${yy}`, { size: 16, bold: true }); doc.down(16);
@@ -495,20 +410,21 @@
         doc.txt(40, `Trabajador: ${state.config.userName}`, { size: 10, gray: false, bold: true }); doc.down(16);
       }
 
-      doc.txt(40, `Tarifa normal ${state.config.rateNormal.toFixed(4)} EUR/h  ·  Festivo ${(state.config.rateNormal + state.config.plusFestivo).toFixed(4)} EUR/h`, { size: 9, gray: true }); doc.down(22);
+      doc.txt(40, `Tarifa normal ${cfg.rateNormal.toFixed(4)} EUR/h  ·  Festivo ${(cfg.rateNormal + cfg.plusFestivo).toFixed(4)} EUR/h`, { size: 9, gray: true }); doc.down(22);
       doc.need(20); doc.txt(40, "DIA", { size: 8.5, bold: true, gray: true }); doc.txt(170, "TIPO", { size: 8.5, bold: true, gray: true }); doc.txt(390, "HORAS", { size: 8.5, bold: true, gray: true, right: true }); doc.txt(555, "IMPORTE", { size: 8.5, bold: true, gray: true, right: true }); doc.down(5); doc.hr(); doc.down(13);
 
       for (let d = 1; d <= dim; d++) {
         const e = (rec.days||{})[d]; if (!e) continue;
-        const h = Number(e.hours) || 0; const imp = e.type === "descanso" ? 0 : h * (state.config.rateNormal + (e.type === "festivo" ? state.config.plusFestivo : 0));
-        doc.need(13); doc.txt(40, `${d} ${MESES_CORTO[mm]}`, { size: 9.5 }); doc.txt(170, TYPES[e.type].label, { size: 9.5, gray: e.type === "descanso" }); doc.txt(390, e.type === "descanso" ? "-" : String(h), { size: 9.5, right: true }); doc.txt(555, e.type === "descanso" ? "-" : eurPdf(imp), { size: 9.5, right: true }); doc.down(13);
+        const h=e.hours;const info=C.daily(state.allData,state.config,yy,mm,d,e),imp=info.bruto;
+        doc.need(13); doc.txt(40, `${d} ${MESES_CORTO[mm]}`, { size: 9.5 }); doc.txt(170, TYPES[e.type].label+(info.extra?' / '+info.extra+' extra pendiente':''), { size: 9.5, gray: e.type === "descanso" }); doc.txt(390, e.type === "descanso" ? "-" : String(h), { size: 9.5, right: true }); doc.txt(555, e.type === "descanso" ? "-" : eurPdf(imp), { size: 9.5, right: true }); doc.down(13);
       }
       doc.down(2); doc.hr(); doc.down(16); doc.need(15);
       doc.txt(40, `Dias: ${c.diasTrab} trab. / ${c.diasDesc} desc.   ·   H: ${c.hNormalPaid} norm. / ${c.hFestivo} fest.`, { size: 9.5 }); doc.down(14);
+      if(extraActive(cfg)){doc.need(30);doc.txt(40,`Extras generadas pendientes del mes siguiente: ${fmtH(c.hExtraGen)} h`,{size:9});doc.down(13);doc.txt(40,`Extras del mes anterior estimadas en este mes: ${fmtH(c.hExtra)} h / ${eurPdf(c.brutoExtra)}`,{size:9});doc.down(15);}
       doc.need(15); doc.txt(40, "Total bruto", { size: 10.5, bold: true }); doc.txt(555, eurPdf(c.bruto), { size: 10.5, bold: true, right: true }); doc.down(15);
       c.dets.forEach((dd) => { doc.need(12); doc.txt(40, `${dd.name} (${dd.pct}%)`, { size: 9, gray: true }); doc.txt(555, "-" + eurPdf(dd.amount), { size: 9, gray: true, right: true }); doc.down(12); });
       doc.down(2); doc.hr(); doc.down(17); doc.need(18);
-      doc.txt(40, "NETO ESTIMADO", { size: 11, bold: true }); doc.txt(555, eurPdf(c.neto), { size: 13, bold: true, right: true }); doc.down(20);
+      doc.txt(40, "NETO ESTIMADO (no es nomina real)", { size: 11, bold: true }); doc.txt(555, eurPdf(c.neto), { size: 13, bold: true, right: true }); doc.down(20);doc.need(24);doc.txt(40,rec.historicalStatus==='confirmed'?'Tarifas del periodo confirmadas. Retenciones aproximadas sobre bruto.':'Tarifas historicas desconocidas: copia de la configuracion de migracion.',{size:8,gray:true});doc.down(15);
     }
 
     function blobToBase64(blob) {
@@ -552,7 +468,7 @@
     window.doExportYear = (yy) => {
       const doc = createPdfDoc(); doc.txt(40, `Resumen anual - ${yy}`, { size: 16, bold: true }); doc.down(30);
       if(state.config.userName) { doc.txt(40, `Trabajador: ${state.config.userName}`, { size: 10, bold: true }); doc.down(16); }
-      for(let m=0;m<12;m++) if(state.allData[monthKey(yy,m)]) buildMonthReport(doc, yy, m);
+      for(let m=0;m<12;m++) if(state.allData[monthKey(yy,m)]||monthly(yy,m).hExtra>0) buildMonthReport(doc, yy, m);
       const blob = new Blob([new Uint8Array([...assemblePdf(doc.pages)].map(c=>c.charCodeAt(0)))], { type: "application/pdf" });
       const fname = `Horas_${yy}_completo.pdf`;
       state.pdfReady = { blob, filename: fname };
@@ -560,104 +476,100 @@
     };
 
     // ============================================================
-    // SISTEMA DE IA -> POLLINATIONS (PÚBLICO Y SIN API KEY)
-    // ============================================================
-    
-    async function extractTextFromPDF(file) {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-      let fullText = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        fullText += content.items.map(item => item.str).join(" ") + "\n";
-      }
-      return fullText;
+    // GEMINI: optional assistant, one selected period, no automatic data edits.
+    let aiService;
+    const ai=()=>aiService ||= import('./ai-service.js').catch(e=>{aiService=null;throw e;});
+    const aiSession=()=>`${privateGeneration}:${cloud.user?.uid||''}`;
+    const knownIdentifiers=()=>[state.config.userName,cloud.user?.displayName,cloud.user?.email].filter(Boolean);
+    function discardAI(){privateGeneration++;state.chatMsgs=[];state.chatInput='';state.chatLoading=false;state.aiDiagnostic=null;state.nomina={status:'idle',result:null,error:null};if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});}
+    function selectedAIPeriod(){return state.aiPeriod||monthKey(state.year,state.month);}
+    function expectedForPeriod(period){
+      if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(period||''))return null;
+      const [y,m]=period.split('-').map(Number),rec=state.allData[period],cfg=periodConfig(y,m-1),c=monthly(y,m-1);
+      if(!c.hExtra&&(!rec||!Object.values(rec.days||{}).some(Boolean)))return null;
+      return {period,gross:c.bruto,deductions:c.totalDed,net:c.neto,normalHours:c.hNormalPaid,holidayHours:c.hFestivo,extraHours:c.hExtra,normalRate:cfg.rateNormal,holidayRate:cfg.rateNormal+cfg.plusFestivo,extraRate:extraActive(cfg)?cfg.rateExtra:0,recordedHours:c.hNormal+c.hFestivo,workDays:c.diasTrab,restDays:c.diasDesc,generatedExtraHours:c.hExtraGen};
     }
-
-    async function apiCallPublic(messagesArray, isChat = true) {
-      const nmb = state.config.userName || "el trabajador";
-      
-      let sysCtx = `Eres un experto laboral. Responde de forma natural y breve. Te diriges a ${nmb}. Datos: Tarifa normal ${state.config.rateNormal}€, Festiva ${state.config.rateNormal+state.config.plusFestivo}€. Retenciones: ${state.config.deductions.reduce((s,d)=>s+d.pct,0)}%. IMPORTANTE: ESTRICTAMENTE PROHIBIDO devolver JSON o razonamientos internos. Responde solo con el texto final para el usuario.`;
-
-      if(isChat) {
-        const compact = {};
-        for (const [k, rec] of Object.entries(state.allData)) {
-          const days = {};
-          for (const [d, e] of Object.entries(rec.days || {})) {
-            days[d] = e.type === "descanso" ? "D" : (e.type === "festivo" ? "F" : "N") + (Number(e.hours) || 0);
-          }
-          if (Object.keys(days).length) compact[k] = { cerrado: !!rec.closed, dias: days };
-        }
-        sysCtx += `\n\nREGISTROS DE HORAS (N=Normal, F=Festivo, D=Descanso):\n${JSON.stringify(compact)}\nUsa estos datos exactos para contestar sus preguntas de horas y días.`;
+    function minimalContext(question){
+      const period=selectedAIPeriod(),[py,pm]=period.split('-').map(Number),cfg=periodConfig(py,pm-1),ctx={period,limits:'Solo periodo seleccionado. '+(state.allData[period]?.historicalStatus==='confirmed'?'Tarifas del periodo confirmadas.':'Tarifas históricas desconocidas: se conservó la configuración disponible al migrar, pendiente de revisión.')+' Estimaciones porcentuales, no nómina exacta.'};
+      const calc=expectedForPeriod(period),financial=/tarifa|retenci|deducci|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question),amounts=/bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question),hours=/hora|jornada|d[ií]a|registr|semana|mes|resumen/i.test(question),day=/\bd[ií]a\s+(\d{1,2})\b/i.exec(question)?.[1],weekly=/semana/i.test(question);
+      if(calc&&amounts&&!day)ctx.calculated=calc;
+      else if(calc&&hours&&!day&&!weekly)ctx.calculated={recordedHours:calc.recordedHours,normalHours:calc.normalHours,holidayHours:calc.holidayHours,extraHours:calc.extraHours,workDays:calc.workDays,restDays:calc.restDays};
+      if(!calc&&(hours||amounts))ctx.missing='No hay registros del periodo.';
+      if(financial){
+        if(/tarifa|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question))ctx.rates={normal:cfg.rateNormal,holiday:cfg.rateNormal+cfg.plusFestivo,extra:extraActive(cfg)?cfg.rateExtra:0};
+        if(/retenci|deducci|neto|calcul|n[oó]mina|compar|salario/i.test(question))ctx.retentionPercentages=cfg.deductions.map((d,i)=>({label:'Retención '+(i+1),pct:d.pct}));
+        if(/extra|sintax|calcul|n[oó]mina|compar/i.test(question))ctx.extraAssumptions=extraActive(cfg)?'Sintax actual: semana lunes-domingo, umbral 40 h normales+festivas; exceso desde último día normal; festivos conservan tarifa; extras se estiman al mes siguiente.':'Sin extras Sintax activas.';
       }
-
-      const payload = [
-        { role: 'system', content: sysCtx },
-        ...messagesArray
-      ];
-
-      let lastErr;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const res = await fetch('https://text.pollinations.ai/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: payload, model: 'openai' })
-          });
-          if (!res.ok) throw new Error("Servidor saturado");
-          return await res.text();
-        } catch(e) {
-          lastErr = e;
-          await new Promise(r => setTimeout(r, 1500)); 
-        }
+      if(day&&(+day<1||+day>new Date(py,pm,0).getDate())){ctx.missing='El día solicitado no existe en este periodo.';return ctx;}
+      if(weekly){ctx.limits+=' La semana solicitada puede cruzar el mes o año; se incluyen únicamente sus totales.';const [y,m]=period.split('-').map(Number),d=day?+day:period===monthKey(new Date().getFullYear(),new Date().getMonth())?new Date().getDate():1,w=calcWeekInfo(new Date(y,m-1,d));ctx.week={from:w.monday.toLocaleDateString('sv-SE'),to:w.sunday.toLocaleDateString('sv-SE'),normalHours:w.hNormal,holidayHours:w.hFestivo,recordedHours:w.total,workDays:w.dias};}
+      if(/jornada|d[ií]a|registr/i.test(question)&&!weekly){ctx.days=Object.entries(state.allData[period]?.days||{}).filter(([d,e])=>e&&(!day||+d===+day)).map(([d,e])=>({day:+d,type:e.type,hours:Number(e.hours)||0}));
+        if(day&&amounts){const e=state.allData[period]?.days?.[+day];if(e)ctx.dailyEstimate={day:+day,gross:C.daily(state.allData,state.config,py,pm-1,+day,e).bruto,generatedExtraHours:C.daily(state.allData,state.config,py,pm-1,+day,e).extra,limit:'Importe diario estimado del periodo; extras generadas se excluyen y se estiman al mes siguiente.'};}
       }
-      throw lastErr;
+      return ctx;
     }
-
-    window.sendChat = async (forceText) => {
-      const q = forceText || state.chatInput; if(!q) return;
-      state.chatInput = ""; state.chatMsgs.push({role:'user', text: q}); state.chatLoading = true; render();
-      try {
-        const contextMessages = state.chatMsgs.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
-        let reply = await apiCallPublic(contextMessages, true);
-        
-        try {
-          const parsed = JSON.parse(reply);
-          if (parsed.content) reply = parsed.content;
-          else if (parsed.response) reply = parsed.response;
-        } catch(e) {}
-        
-        reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-        reply = reply.split("```json").join("").split("```").join("").trim();
-        
-        if(reply.includes('"reasoning"')) {
-           reply = "El motor interno se ha saturado intentando procesar datos complejos. Por favor, formúlame la pregunta de una forma más sencilla.";
-        }
-        
-        state.chatMsgs.push({role:'bot', text: reply});
-      } catch (e) { state.chatMsgs.push({role:'bot', text: "⚠ Error de red tras varios intentos: " + e.message }); }
-      state.chatLoading = false; render();
+    async function callAI(mode,question,text='',context=null){
+      const session=aiSession(),mod=await ai();if(session!==aiSession())throw {kind:'cancelled'};
+      state.aiDiagnostic={stage:'session',state:'running'};
+      return mod.query({mode,question,text,context,options:firebaseConfig,user:cloud.user,currentSession:aiSession,session,onStage:(stage,phase)=>{if(session!==aiSession()||state.config.hideMoney)return;state.aiDiagnostic={stage,state:phase};const el=getEl('ai-diagnostic');if(el)el.textContent=diagnosticText();}});
+    }
+    const AI_STAGES={session:'Sesión Firebase',initialization:'Carga de SDK',instances:'Instancias Firebase',appcheck:'Atestación App Check',auth:'Sesión del cliente AI Logic',model:'Firebase AI Logic / Gemini'};
+    function diagnosticText(){const d=state.aiDiagnostic;if(!d||state.config.hideMoney)return '';return [AI_STAGES[d.stage]||'Gemini',d.state==='ok'?'correcto':d.state==='error'?'error':'en curso',d.code,d.status?'HTTP '+d.status:'',d.message,...(d.reasons||[])].filter(Boolean).join(' · ');}
+    async function aiError(e){try{const mod=await ai();state.aiDiagnostic={...mod.classify(e),stage:Object.hasOwn(AI_STAGES,e?.stage)?e.stage:state.aiDiagnostic?.stage,state:'error'};return mod.errorMessage(e)+'\n'+diagnosticText();}catch{return 'No se pudo cargar Gemini. Revisa la conexión; puedes seguir usando la app localmente.';}}
+    window.verifyGemini=async()=>{
+      if(state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status))return;
+      const session=aiSession();state.chatMsgs=[];state.chatLoading=true;render();
+      try{const result=await callAI('chat','Explica únicamente las 8,25 horas ficticias aportadas, sin calcular importes.','',{fictional:true,recordedHours:[4,4.25].reduce((sum,h)=>sum+h,0)});if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs=[{role:'bot',text:'Respuesta real recibida de Gemini para la consulta ficticia:\n'+result}];}
+      catch(e){if(session!==aiSession())return;const message=await aiError(e);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs=[{role:'bot',text:message}];}
+      finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
-
-    window.handleNominaUpload = async (e) => {
-      const file = e.target.files[0]; if(!file) return;
-      e.target.value = ""; 
-      state.nomina.status = "loading"; render();
-      try {
-        const rawText = await extractTextFromPDF(file);
-        const safeText = rawText.substring(0, 3000); 
-        
-        const prompt = `Revisa este texto extraído de una nómina: "${safeText}". Analiza si cuadra el salario sabiendo que la tarifa normal es ${state.config.rateNormal}€/h. Devuelve SOLO un objeto JSON válido con este formato exacto: {"estado":"cuadra"|"no_cuadra", "resumen":"Explicación corta"}. No añadas ni markdown ni comillas fuera del JSON.`;
-        
-        const rawReply = await apiCallPublic([{ role: 'user', content: prompt }], false);
-        
-        const cleanJson = rawReply.split("```json").join("").split("```").join("").trim();
-        state.nomina.result = JSON.parse(cleanJson);
-        state.nomina.status = "done";
-      } catch(err) { state.nomina.status = "error"; state.nomina.error = "Error al analizar nómina: " + err.message; }
-      render();
+    window.sendChat=async(forceText)=>{
+      const q=String(forceText||state.chatInput).trim();if(!q||state.chatLoading||['reading','loading'].includes(state.nomina.status)||state.config.hideMoney)return;
+      if(q.length>2000){alert('Consulta demasiado larga: máximo 2.000 caracteres.');return;}
+      if(!window.HorasAIData){state.chatMsgs.push({role:'bot',text:'No se pudo cargar Gemini. Reabre la app con conexión; tus registros siguen disponibles.'});render();return;}
+      const period=selectedAIPeriod(),mentioned=q.match(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g)||[],otherMonth=MESES.some((name,i)=>new RegExp('\\b'+name+'\\b','i').test(q)&&i+1!==+period.slice(5));
+      if(mentioned.some(m=>m!==period)||otherMonth){state.chatMsgs.push({role:'bot',text:'Selecciona el periodo de la consulta antes de enviarla. Solo se envían datos del periodo seleccionado.'});render();return;}
+      const session=aiSession(),clean=HorasAIData.redact(q,knownIdentifiers()),context=minimalContext(clean);
+      state.chatInput='';state.chatMsgs.push({role:'user',text:q});state.chatLoading=true;render();
+      try{const reply=await callAI('chat',clean,'',context);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:reply});}
+      catch(e){if(session!==aiSession())return;const message=await aiError(e);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:message});}
+      finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
+    async function extractTextFromPDF(file){
+      let library;try{library=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');}catch{throw Error('No se pudo cargar el lector PDF. Requiere conexión la primera vez. No se ha enviado.');}
+      library.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+      return HorasAIData.extractPDF(file,library);
+    }
+    window.handleNominaUpload=async(e)=>{
+      const file=e.target.files[0];e.target.value='';if(!file||state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status))return;
+      const session=aiSession();state.nomina={status:'reading',result:null,error:null};render();
+      try{if(file.size>10*1024*1024)throw Error('PDF demasiado grande: máximo 10 MB. No se ha enviado.');const extracted=await extractTextFromPDF(file);if(session===aiSession())state.nomina={status:'review',text:HorasAIData.redact(extracted.text,knownIdentifiers()),pages:extracted.pages,result:null,error:null};}
+      catch(e){if(session===aiSession())state.nomina={status:'error',result:null,error:e.message||'No se pudo preparar el PDF. No se ha enviado.'};}
+      if(session===aiSession())render();
+    };
+    window.cancelPayroll=()=>{discardAI();render();};
+    window.authorizePayroll=async()=>{
+      if(state.config.hideMoney||state.chatLoading||state.nomina.status!=='review')return;
+      const text=HorasAIData.redact(getEl('payroll-text').value,knownIdentifiers());if(text.trim().length<30||text.length>120000){state.nomina.error='Texto insuficiente o demasiado grande. No se ha enviado.';render();return;}
+      // If redaction changes user edits, show the exact final text and require approval again.
+      if(text!==getEl('payroll-text').value){state.nomina.text=text;state.nomina.error='Se han retirado identificadores detectados. Revisa de nuevo el texto antes de autorizar.';render();return;}
+      const session=aiSession();state.nomina={...state.nomina,status:'loading',error:null};render();
+      try{const facts=await callAI('payroll','Extrae solo datos explícitos.',text);if(session!==aiSession())return;const expected=expectedForPeriod(facts.period),result=HorasAIData.comparePayroll(facts,expected,false);state.nomina={status:'done',facts,result,fingerprint:JSON.stringify(expected),confirmed:false,error:null};}
+      catch(e){if(session!==aiSession())return;const message=await aiError(e);if(session===aiSession())state.nomina={status:'error',result:null,error:message};}
+      if(session===aiSession())render();
+    };
+    window.confirmPayrollPeriod=checked=>{if(state.config.hideMoney||!state.nomina.facts)return;const expected=expectedForPeriod(state.nomina.facts.period);state.nomina.fingerprint=JSON.stringify(expected);state.nomina.confirmed=!!checked;state.nomina.result=HorasAIData.comparePayroll(state.nomina.facts,expected,!!checked);render();};
+    function refreshPayrollComparison() {
+      const n=state.nomina;if(state.config.hideMoney||n.status!=='done'||!n.facts)return;
+      const expected=expectedForPeriod(n.facts.period),fingerprint=JSON.stringify(expected);
+      if(n.fingerprint!==fingerprint){n.confirmed=false;n.fingerprint=fingerprint;}
+      n.result=HorasAIData.comparePayroll(n.facts,expected,!!n.confirmed);
+    }
+    function payrollMarkup(){
+      if(state.config.hideMoney)return '';
+      const n=state.nomina,r=n.result;
+      if(n.status==='review')return `<div style="margin-top:12px"><p class="privacy-note">Texto extraído localmente de ${n.pages} páginas. Aún no se ha enviado. Se intentan retirar identificadores; la eliminación automática puede ser incompleta. Revisa y elimina nombres, direcciones e identificadores restantes.</p><label for="payroll-text">Texto exacto que se enviará a Google para extraer periodo, horas, tarifas y totales:</label><textarea id="payroll-text" style="width:100%;min-height:180px;margin:8px 0;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit;font-size:16px" oninput="state.nomina.text=this.value">${esc(n.text)}</textarea><p class="privacy-note">No se envía el PDF original ni tus registros. Después, la comparación se calcula en este dispositivo. Según las condiciones de Google, los servicios gratuitos pueden usar entradas/respuestas para mejorar productos y revisión humana; hay condiciones distintas para servicios de pago y EEE, Suiza y Reino Unido. Google exige Paid Services para clientes en EEE, Suiza y Reino Unido. No se ha verificado el régimen de este proyecto ni se promete confidencialidad. Revisa las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a> y <a href="https://firebase.google.com/docs/ai-logic/data-governance" target="_blank" rel="noopener" style="color:var(--accent)">Firebase AI Logic</a>. La suscripción personal de Gemini no equivale a uso de API.</p>${n.error?`<p role="alert">${esc(n.error)}</p>`:''}<button class="big-btn" style="margin-bottom:8px;color:var(--success)" onclick="authorizePayroll()">Autorizar envío de este texto a Google</button><button class="big-btn" onclick="cancelPayroll()">Cancelar y descartar texto</button></div>`;
+      return `${n.status==='reading'?'<p role="status" class="privacy-note">Extrayendo texto localmente; aún no se ha enviado a Google…</p>':n.status==='loading'?'<p role="status" class="privacy-note">Consultando Gemini con el texto autorizado…</p>':''}${r?`<div style="margin-top:12px" role="status"><strong>${esc(r.label)}</strong><p class="privacy-note">Periodo extraído: ${esc(n.facts.period||'desconocido')}. Revisa los datos: la IA puede equivocarse.</p>${n.facts.period?`<label class="privacy-note" style="display:flex;align-items:center;gap:8px"><input type="checkbox" ${n.confirmed?'checked':''} onchange="confirmPayrollPeriod(this.checked)">Confirmo que los registros están completos y que las tarifas y retenciones guardadas para este periodo corresponden a la nómina.</label>`:''}${r.checked.map(d=>`<p class="privacy-note">${esc(d.label)}: nómina ${esc(d.actual)} ${esc(d.unit)} · estimación ${esc(Math.round(d.expected*10000)/10000)} ${esc(d.unit)}${r.differences.some(x=>x.label===d.label)?' · diferencia':''}</p>`).join('')}${r.limits.map(x=>`<p class="privacy-note">${esc(x)}</p>`).join('')}<p class="privacy-note">Estimación por porcentajes, no nómina exacta ni verificación del convenio. No se modifica ni guarda ningún registro o ajuste.</p><button class="big-btn" onclick="cancelPayroll()">Descartar análisis</button></div>`:''}${n.error?`<p role="alert" style="color:var(--danger);font-size:12px">${esc(n.error)}</p>`:''}`;
+    }
 
     // ============================================================
     // AISLAMIENTO DOM (CERO PARPADEOS)
@@ -686,9 +598,9 @@
         gridHtml += `
           <button id="day-btn-${d}" class="day-cell" 
                   style="border-color:${borderColor}; ${t ? `background:${t.bg}` : ''}" 
-                  onclick="selectDay(${d})">
-            <span style="color:${t?t.color:'#5C6477'}">${d}</span>
-            ${e && e.type !== 'descanso' ? `<span style="color:${hoursColor(Number(e.hours))}">${e.hours}h</span>` : e && e.type==='descanso' ? `<span style="color:#FF6B6B">zZ</span>` : ''}
+                  aria-label="${d} de ${MESES[state.month]}, ${t?t.label:'sin registro'}${e&&e.type!=='descanso'?', '+fmtH(e.hours)+' horas':''}" aria-pressed="${isSel}" onclick="selectDay(${d})">
+            <span style="color:${t?t.color:'#AFB8CC'}">${d}</span>
+            ${e && e.type !== 'descanso' ? `<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>` : ''}
           </button>`;
       }
       grid.innerHTML = DIAS_SEMANA.map(d=>`<div style="text-align:center;color:var(--muted);font-size:11px;font-weight:600">${d}</div>`).join('') + gridHtml;
@@ -703,7 +615,7 @@
       const mk = monthKey(state.year, state.month);
       const monthRec = state.allData[mk] || { days: {} };
       const s = state.draft || { type: "normal", hours: 8 };
-      const imp = s.type === "descanso" ? 0 : (Number(s.hours)||0) * (state.config.rateNormal + (s.type === "festivo" ? state.config.plusFestivo : 0));
+      const cfg=periodConfig(),dayInfo=C.daily(state.allData,state.config,state.year,state.month,state.selectedDay,s),imp=dayInfo.bruto;
 
       // Banner con las horas de la semana del día seleccionado (en curso o cerrada)
       const w = calcWeekInfo(new Date(state.year, state.month, state.selectedDay));
@@ -725,23 +637,23 @@
         <div class="editor">
           <div style="font-weight:700; font-size:16px; margin-bottom:12px">${state.selectedDay} de ${MESES[state.month].toLowerCase()}</div>
           <div style="display:flex; gap:8px; margin-bottom:12px">
-            ${Object.entries(TYPES).map(([k, t]) => `<button class="type-btn" style="${s.type === k ? `background:${t.bg}; border-color:${t.color}; color:${t.color}` : ''}" onclick="updateDraftType('${k}')">${t.label}</button>`).join('')}
+            ${Object.entries(TYPES).map(([k, t]) => `<button class="type-btn" style="${s.type === k ? `background:${t.bg}; border-color:${t.color}; color:${t.color}` : ''}" aria-pressed="${s.type===k}" onclick="updateDraftType('${k}')">${t.label}</button>`).join('')}
           </div>
           ${s.type !== 'descanso' ? `
           <div style="display:flex; align-items:center; gap:10px; justify-content:center">
-            <button class="step-btn" onclick="stepHours(-0.5)">−</button>
-            <input type="number" id="draft-hours" class="hours-input" value="${s.hours}" style="color:${hoursColor(Number(s.hours))}" oninput="stepHours(0, this.value)">
+            <button class="step-btn" aria-label="Restar media hora" onclick="stepHours(-0.5)">−</button>
+            <input type="number" id="draft-hours" aria-label="Horas de la jornada" inputmode="decimal" min="0" max="24" step="0.01" class="hours-input" value="${esc(s.hours)}" style="color:${hoursColor(Number(s.hours))}" oninput="stepHours(0, this.value)">
             <span style="color:var(--muted); font-size:14px">h</span>
-            <button class="step-btn" onclick="stepHours(0.5)">+</button>
+            <button class="step-btn" aria-label="Sumar media hora" onclick="stepHours(0.5)">+</button>
           </div>` : ''}
           
           <button id="btn-add-day" class="add-btn" style="display:${!state.dayConfirmed ? 'block' : 'none'}; margin-top:14px" onclick="saveDay()">✓ Añadir</button>
           
           <div id="day-earn-box" class="day-earn-box" style="display:${state.dayConfirmed ? 'block' : 'none'}; margin-top:14px">
             ${s.type !== 'descanso' ? `
-              <div style="color:var(--muted); font-size:11px; text-transform:uppercase; font-weight:600; letter-spacing:1px">💶 Facturado este día</div>
+              <div style="color:var(--muted); font-size:11px; text-transform:uppercase; font-weight:600; letter-spacing:1px">💶 Bruto estimado de este día</div>
               <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:36px; color:var(--success); margin:4px 0">${fmt(imp)}</div>
-              <div style="color:var(--muted); font-size:12px">${s.hours} h × ${(state.config.rateNormal + (s.type==='festivo'?state.config.plusFestivo:0)).toFixed(2)} €/h</div>
+              <div style="color:var(--muted); font-size:12px">${dayInfo.extra?fmtH(dayInfo.extra)+" h extra para el mes siguiente · ":""}${fmtH(s.hours-dayInfo.extra)} h × ${state.config.hideMoney?'•••• €/h':dayInfo.rate.toFixed(2)+' €/h'}</div>
             ` : `
               <div style="font-size:26px; margin-bottom:2px">😌</div>
               <div style="color:var(--muted); font-size:13px">Día de descanso, bien merecido</div>
@@ -760,14 +672,17 @@
       state.tab = t; render();
     };
     
+    let lastRenderedTab=null;
     function render() {
+      refreshPayrollComparison();
+      const active=document.activeElement,focusId=active?.id;
       const app = getEl("app");
       const renderTabs = `
         <nav class="tabs-bar">
           ${[["mes", "Mes"], ["anual", "Año"], ["ia", "💬 IA"], ["ajustes", "Ajustes"]].map(([k, l]) => `
             <button class="tab-btn ${state.tab === k ? 'active' : ''}" onclick="switchTab('${k}')">${l}</button>
           `).join('')}
-          <button class="eye-btn ${state.config.hideMoney ? 'active' : ''}" onclick="vibrate(20); state.config.hideMoney = !state.config.hideMoney; saveState(); render()">
+          <button class="eye-btn ${state.config.hideMoney ? 'active' : ''}" aria-label="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" aria-pressed="${state.config.hideMoney}" onclick="toggleMoney()">
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>${state.config.hideMoney ? '<line x1="4.2" y1="20" x2="19.8" y2="4"/>' : ''}</svg>
           </button>
         </nav>`;
@@ -778,26 +693,26 @@
         const mk = monthKey(state.year, state.month);
         const monthRec = state.allData[mk] || { days: {} };
         const dim = new Date(state.year, state.month + 1, 0).getDate();
-        const ei = extraActive(state.config) ? calcExtraInfo(state.allData, state.year, state.month, dim) : null;
-        const c = calcMonth(monthRec.days, state.config, dim, ei);
-        const proj = calcProjection(monthRec.days, c, state.config, state.year, state.month, dim);
+        const cfg=periodConfig(),ei=extraActive(cfg)?calcExtraInfo(state.allData,state.year,state.month):null;
+        const c=monthly();
+        const proj = calcProjection(monthRec.days, c, cfg, state.year, state.month, dim);
 
         content = `
           <div class="tab-content"><div class="two-col">
             <div class="col-scroll">
               <div class="row" style="margin-bottom:14px">
-                <button class="big-btn" style="width:42px" onclick="navMonth(-1)">‹</button>
+                <button class="big-btn" style="width:42px" aria-label="Mes anterior" onclick="navMonth(-1)">‹</button>
                 <div style="text-align:center"><div style="font-size:22px; font-weight:700; font-family:'Space Grotesk', system-ui">${MESES[state.month]}</div><div style="font-size:12px; color:var(--muted)">${state.year}</div></div>
-                <button class="big-btn" style="width:42px" onclick="navMonth(1)">›</button>
+                <button class="big-btn" style="width:42px" aria-label="Mes siguiente" onclick="navMonth(1)">›</button>
               </div>
               <div class="neto-block">
-                <div style="color:var(--muted); font-size:12px; font-weight:600; letter-spacing:1px">Neto estimado a recibir</div>
+                <div style="color:var(--muted); font-size:12px; font-weight:600; letter-spacing:1px">Neto estimado · registros del mes</div>
                 <div class="neto-value">${fmt(c.neto)}</div>
-                <div style="color:var(--muted); font-size:12px">Bruto ${eur(c.bruto)} · Retenciones −${eur(c.totalDed)}</div>
-                <div style="color:var(--muted); font-size:11px; margin-top:4px; opacity:0.85">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes · ${fmtH(c.hNormal)} normales · ${fmtH(c.hFestivo)} festivas</div>
+                <div class="money-detail">Bruto ${fmt(c.bruto)} · Retenciones −${fmt(c.totalDed)}</div>
+                <div class="hours-total">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes · ${fmtH(c.hNormal)} normales · ${fmtH(c.hFestivo)} festivas</div>
               </div>
               
-              <div id="calendar-grid" class="grid"></div>
+              <p class="privacy-note">Toca un día para registrar tus horas</p><div class="calendar-legend"><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.festivo.bg}"></i>Festivo</span><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.descanso.bg}"></i>Descanso</span></div><div id="calendar-grid" class="grid"></div>
               <div id="editor-container"></div>
             </div>
             
@@ -805,33 +720,32 @@
               ${proj ? `
                 <div class="card" style="border-color: rgba(123,232,168,0.25);">
                   <div class="card-title">Proyección a fin de mes</div>
-                  <div style="display:flex; align-items:baseline; gap:10px">
+                  <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:10px">
                     <span style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:26px; color:#7BE8A8;">≈ ${fmt(proj.projNeto)}</span>
-                    <span style="color:#8B93A7; font-size:12px">neto · bruto ≈ ${eur(proj.projBruto)}</span>
+                    <span style="color:var(--muted); font-size:12px">neto · bruto ≈ ${fmt(proj.projBruto)}</span>
                   </div>
-                  <div style="color:#8B93A7; font-size:12px; margin-top:6px; line-height:1.5;">A tu ritmo (${proj.avgH.toFixed(1)} h/día trab.): en los ${proj.remaining} días que quedan, esta es tu estimación.</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:6px; line-height:1.5;">A tu ritmo (${proj.avgH.toFixed(1)} h/día trab.): en los ${proj.remaining} días que quedan, esta es una proyección orientativa, distinta de los registros y de una nómina real.</div>
                 </div>
               ` : ''}
 
               <div class="card">
-                <div class="card-title">Desglose del Mes</div>
+                <div class="card-title">Cálculo según registros del mes</div><p class="privacy-note">${monthRec.historicalStatus==='confirmed'?'Tarifas del periodo confirmadas.':'Tarifas históricas sin confirmar: se conservó la configuración disponible al migrar.'} Retenciones aproximadas sobre bruto; una nómina real puede contener otros conceptos y bases.</p>${ei?`<p class="privacy-note">Hipótesis Sintax conservada: semana lunes–domingo, umbral de 40 h normales + festivas, extras desde el último día normal. Festivos mantienen tarifa. ${fmtH(c.hExtraGen)} h generadas para el mes siguiente; ${fmtH(c.hExtra)} h del mes anterior estimadas aquí. El abono real no está confirmado.</p>`:''}<p class="privacy-note">Importes estimados con las tarifas y porcentajes configurados. Una nómina real puede incluir otros conceptos y bases.</p>
                 <div class="row"><span>H. normales (${c.hNormalPaid}h)</span> <span>${fmt(c.brutoNormal)}</span></div>
                 <div class="row"><span>H. festivas (${c.hFestivo}h)</span> <span>${fmt(c.brutoFestivo)}</span></div>
                 ${ei && c.hExtra > 0 ? `<div class="row"><span>H. extra (${c.hExtra}h)</span> <span style="color:var(--success)">${fmt(c.brutoExtra)}</span></div>` : ''}
                 <div style="height:1px; background:var(--border-light); margin:8px 0"></div>
                 <div class="row" style="font-weight:600"><span>Total bruto</span> <span>${fmt(c.bruto)}</span></div>
-                ${c.dets.map(d => `<div class="row" style="color:var(--muted); font-size:13px"><span>${d.name}</span> <span>-${fmt(d.amount)}</span></div>`).join('')}
+                ${c.dets.map(d => `<div class="row" style="color:var(--muted); font-size:13px"><span>${esc(d.name)}</span> <span>-${fmt(d.amount)}</span></div>`).join('')}
                 <div style="height:1px; background:var(--border-light); margin:8px 0"></div>
                 <div class="row" style="font-weight:700; color:var(--success); font-size:15px"><span>Neto estimado</span> <span>${fmt(c.neto)}</span></div>
               </div>
 
               <div class="card">
-                <div class="card-title">Comprobar Nómina (IA)</div>
-                <button class="big-btn" style="border-color:var(--success); color:var(--success)" onclick="vibrate(20); getEl('nomina-upload').click()">
-                  ${state.nomina.status==='loading' ? '⏳ Analizando PDF internamente...' : '📑 Subir nómina (PDF)'}
+                <div class="card-title">Comprobar Nómina (IA)</div>${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: análisis y resultados de IA ocultos.</p>':''}
+                <button class="big-btn" style="border-color:var(--success); color:var(--success)" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="vibrate(20); getEl('nomina-upload').click()">
+                  ${state.nomina.status==='reading'?'⏳ Extrayendo texto localmente…':state.nomina.status==='loading'?'⏳ Consultando Gemini…':'📑 Subir nómina (PDF)'}
                 </button>
-                ${state.nomina.result ? `<div style="margin-top:10px; font-size:13px; color:var(--text); background:rgba(255,255,255,0.05); padding:10px; border-radius:8px">${state.nomina.result.resumen}</div>` : ''}
-                ${state.nomina.error ? `<div style="color:var(--danger); font-size:12px; margin-top:8px">${state.nomina.error}</div>` : ''}
+                ${payrollMarkup()}
               </div>
 
               <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:10px" onclick="openExportModal()">📄 Exportar PDF</button>
@@ -862,7 +776,7 @@
               </div>
 
               <div class="card">
-                <div class="card-title">Neto por Mes</div>
+                <div class="card-title">${state.config.hideMoney?'Horas por mes · importes ocultos':'Neto estimado por mes'}</div>
                 <div style="position: relative; height: 220px; width: 100%;">
                   <canvas id="chart-anual"></canvas>
                 </div>
@@ -871,7 +785,7 @@
             <div class="col-scroll">
               <div class="card"><div class="card-title">Meses de ${state.year}</div>
                 ${rows.map(r => `
-                  <div class="row" style="border-bottom:1px solid var(--border-light); padding:10px 0; opacity:${r.hasData?1:0.4}">
+                  <div class="row" style="border-bottom:1px solid var(--border-light); padding:10px 0; opacity:1">
                     <span>${MESES[r.m]}</span><span style="font-weight:600; font-variant-numeric:tabular-nums; color:${r.hasData?'var(--success)':'var(--muted)'}">${fmt(r.neto)}</span>
                   </div>`).join('')}
               </div>
@@ -884,17 +798,17 @@
         content = `
           <div class="tab-content"><div class="ia-wrap">
             <div class="card" style="display:flex; flex-direction:column; flex:1; max-height: 70vh; min-height: 50vh;">
-              <div class="card-title">Asistente IA (Público)</div>
+              <div class="card-title">Asistente Gemini · Mis Horas</div><p id="ai-diagnostic" class="privacy-note" role="status">${esc(diagnosticText())}</p><details><summary class="privacy-note">Comprobar conexión con datos ficticios</summary><p class="privacy-note">Solo se envían a Google 4 + 4,25 = 8,25 horas ficticias y la petición de explicarlas. No se leen ni envían registros o nóminas. Usa tu sesión Google y App Check reales. La respuesta no se guarda. Se aplican las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a>.</p><button class="big-btn" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="verifyGemini()">Autorizar consulta ficticia a Google</button></details>
               
-              <div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
-                ${state.chatMsgs.length === 0 ? `<p style="color:var(--muted); font-size:13px">Conectado. Sabe tus tarifas, horas y nóminas. Pregunta lo que quieras.</p>` : ''}
-                ${state.chatMsgs.map(m => `<div class="bubble ${m.role === 'user' ? 'user' : 'bot'}">${m.text}</div>`).join('')}
-                ${state.chatLoading ? `<div class="bubble bot">Escribiendo...</div>` : ''}
+              <label class="privacy-note" for="ai-period">Periodo de la consulta</label><input id="ai-period" type="month" class="config-input" style="width:100%;text-align:left;margin-bottom:8px" value="${esc(selectedAIPeriod())}" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onchange="if(/^\\d{4}-(0[1-9]|1[0-2])$/.test(this.value)){state.aiPeriod=this.value;discardAI();render();}"><p class="privacy-note">Se envían a Google solo la consulta y los datos necesarios del periodo seleccionado, sin conversaciones anteriores. Las consultas de una semana incluyen sus totales si cruza un mes o año. Evita datos personales.</p><div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
+                ${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: conversaciones y resultados de IA ocultos.</p>':''}${!state.config.hideMoney && state.chatMsgs.length === 0 ? `<p style="color:var(--muted); font-size:13px">Gemini explica los cálculos de la app y ayuda a consultar horas, tarifas y retenciones. No cambia tus registros. Necesita conexión y sesión Google.</p>` : ''}
+                ${(state.config.hideMoney?[]:state.chatMsgs).map(m => `<div class="bubble ${m.role === 'user' ? 'user' : 'bot'}">${esc(m.text)}</div>`).join('')}
+                ${!state.config.hideMoney && state.chatLoading ? `<div class="bubble bot">Consultando Gemini…</div>` : ''}
               </div>
               
               <div style="display:flex; gap:8px">
-                <input class="config-input" style="flex:1; text-align:left" placeholder="Pregunta algo..." value="${state.chatInput}" oninput="state.chatInput=this.value" onkeydown="if(event.key==='Enter') sendChat()">
-                <button class="big-btn" style="flex:0 0 auto; width:auto; border-color:var(--accent); color:var(--accent)" onclick="sendChat()">Enviar</button>
+                <input class="config-input" style="flex:1; text-align:left" id="chat-input" aria-label="Consulta al asistente" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} placeholder="Pregunta algo..." value="${esc(state.config.hideMoney?'':state.chatInput)}" oninput="state.chatInput=this.value" onkeydown="if(event.key==='Enter') sendChat()">
+                <button class="big-btn" style="flex:0 0 auto; width:auto; border-color:var(--accent); color:var(--accent)" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="sendChat()">Enviar</button>
               </div>
             </div>
           </div></div>`;
@@ -908,15 +822,15 @@
                 <div class="card-title">☁️ Cuenta y Nube</div>
                 ${cloud.user ? `
                   <div class="row">
-                    <span style="color:var(--text); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%">${cloud.user.email}</span>
-                    <span id="cloud-status" style="color:${cloud.status === 'error' ? 'var(--danger)' : 'var(--success)'}; font-size:12px; font-weight:600">${cloud.status === 'ok' ? '☁️ Sincronizado' : cloud.status === 'syncing' ? '⏳ Sincronizando...' : '⚠️ Error'}</span>
+                    <span style="color:var(--text); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%">${esc(cloud.user.email)}</span>
+                    <span id="cloud-status" style="color:${cloud.status === 'error' ? 'var(--danger)' : 'var(--success)'}; font-size:12px; font-weight:600">${esc(cloud.errorMsg||'Guardado en este dispositivo')}</span>
                   </div>
-                  ${cloud.status === 'error' && cloud.errorMsg ? `<div style="color:var(--danger); font-size:11px; margin:6px 0; word-break:break-word; background:rgba(255,139,139,0.08); padding:8px; border-radius:8px">${cloud.errorMsg}</div>` : ''}
-                  <p style="color:var(--muted); font-size:11px; margin:6px 0 10px">Tus horas se guardan en la nube y se comparten entre tus dispositivos.</p>
-                  <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:8px" onclick="forceCloudPull()">⬇️ Forzar descarga de la nube</button>
-                  <button class="big-btn" style="border-color:var(--danger); color:var(--danger)" onclick="logoutGoogle()">Cerrar sesión</button>
+                  ${cloud.status === 'error' && cloud.errorMsg ? `<div style="color:var(--danger); font-size:11px; margin:6px 0; word-break:break-word; background:rgba(255,139,139,0.08); padding:8px; border-radius:8px">${esc(cloud.errorMsg)}</div>` : ''}
+                  <p style="color:var(--muted); font-size:11px; margin:6px 0 10px">Los cambios se guardan primero aquí. En conflicto del mismo campo gana el último guardado confirmado en el servidor; los campos independientes se conservan.</p>
+                  <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:8px" onclick="forceCloudPull()">⬇️ Descargar nube con copia previa</button>
+                  <button class="big-btn" style="border-color:var(--danger); color:var(--danger)" onclick="logoutGoogle()">Cerrar sesión</button><button class="big-btn" onclick="retrySync()">Reintentar sincronización</button>
                 ` : `
-                  <p style="color:var(--muted); font-size:12px; margin:0 0 10px">Inicia sesión para sincronizar tus datos entre el móvil y la tablet y no perderlos nunca.</p>
+                  <p style="color:var(--muted); font-size:12px; margin:0 0 10px">Inicia sesión para sincronizar tus datos entre el móvil y la tablet. Las copias locales se mantienen separadas por cuenta.</p>
                   <button class="big-btn" style="border-color:var(--accent); color:var(--accent)" onclick="loginGoogle()">🔐 Iniciar sesión con Google</button>
                 `}
               </div>
@@ -925,25 +839,25 @@
                 <div class="card-title">Tu Perfil</div>
                 <div class="row">
                   <span style="color:var(--muted); font-size:13px">Nombre completo</span> 
-                  <input type="text" class="config-input" style="width:140px; text-align:left;" placeholder="Ej. Fran" value="${state.config.userName || ''}" onchange="updateConfig('userName', this.value)">
+                  <input type="text" class="config-input" style="width:140px; text-align:left;" placeholder="Ej. Fran" value="${esc(state.config.userName)}" onchange="updateConfig('userName', this.value)">
                 </div>
                 <p style="color:var(--muted); font-size:11px; margin-top:6px;">Saldrá impreso en los PDFs generados.</p>
               </div>
 
               <div class="card">
-                <div class="card-title">Tarifas</div>
-                <div class="row"><span>Hora normal (€)</span> <input type="number" step="0.01" class="config-input" value="${state.config.rateNormal}" onchange="updateConfig('rateNormal', this.value)"></div>
-                <div class="row"><span>Plus festivo (€)</span> <input type="number" step="0.01" class="config-input" value="${state.config.plusFestivo}" onchange="updateConfig('plusFestivo', this.value)"></div>
-                ${state.config.profile==='sintax' && state.config.sintaxUnlocked ? `<div class="row"><span>Hora Extra (€)</span> <input type="number" step="0.01" class="config-input" value="${state.config.rateExtra}" onchange="updateConfig('rateExtra', this.value)"></div>` : ''}
+                <div class="card-title">Tarifas</div><p class="privacy-note">Tarifas para nuevos periodos. Los meses ya registrados conservan su configuración; corrígela explícitamente en el apartado del periodo.</p>
+                <div class="row"><span>Hora normal (€)</span> <input type="number" step="0.01" class="config-input" value="${esc(state.config.rateNormal)}" onchange="updateConfig('rateNormal', this.value)"></div>
+                <div class="row"><span>Plus festivo (€)</span> <input type="number" step="0.01" class="config-input" value="${esc(state.config.plusFestivo)}" onchange="updateConfig('plusFestivo', this.value)"></div>
+                ${state.config.profile==='sintax' && state.config.sintaxUnlocked ? `<div class="row"><span>Hora Extra (€)</span> <input type="number" step="0.01" class="config-input" value="${esc(state.config.rateExtra)}" onchange="updateConfig('rateExtra', this.value)"></div>` : ''}
               </div>
               
               <div class="card">
                 <div class="card-title">Retenciones</div>
                 ${state.config.deductions.map((d,i) => `
                   <div style="display:flex; gap:8px; margin-bottom:8px">
-                    <input class="config-input" style="flex:1; text-align:left" value="${d.name}" onchange="updateDed(${i},'name',this.value)">
-                    <input type="number" step="0.1" class="config-input" style="width:70px" value="${d.pct}" onchange="updateDed(${i},'pct',this.value)">
-                    <button style="color:var(--danger)" onclick="delDed(${i})">✕</button>
+                    <input class="config-input" style="flex:1; text-align:left" aria-label="Nombre de retención ${i+1}" value="${esc(d.name)}" onchange="updateDed(${i},'name',this.value)">
+                    <input type="number" step="0.1" class="config-input" style="width:70px" aria-label="Porcentaje de retención ${i+1}" value="${esc(d.pct)}" onchange="updateDed(${i},'pct',this.value)">
+                    <button aria-label="Eliminar retención ${i+1}" style="color:var(--danger);min-width:44px" onclick="delDed(${i})">✕</button>
                   </div>`).join('')}
                 <button class="big-btn" onclick="vibrate(20); addDed()" style="margin-top:4px">+ Añadir</button>
               </div>
@@ -959,21 +873,27 @@
               </div>
               
               <div class="card">
-                <div class="card-title">Copias de Seguridad</div>
+                <div class="card-title">Copias de Seguridad</div><p class="privacy-note">PDF y copias contienen datos económicos aunque los importes estén ocultos en pantalla. El ojo solo afecta a la consulta visual.</p>
                 <div style="display:flex; gap:8px">
                   <button class="big-btn" style="border-color:var(--success); color:var(--success)" onclick="vibrate(20); exportBackup()">⬇ Exportar</button>
                   <button class="big-btn" style="border-color:var(--accent); color:var(--accent)" onclick="vibrate(20); getEl('backup-upload').click()">⬆ Importar</button>
                 </div>
               </div>
+              <div class="card"><div class="card-title">Configuración de ${MESES[state.month]} ${state.year}</div><p class="privacy-note">${state.allData[monthKey(state.year,state.month)]?.historicalStatus==='confirmed'?'Configuración del periodo confirmada.':'Tarifas históricas desconocidas. La migración conservó las tarifas disponibles, sin inventar las anteriores.'} Revisa tarifas y retenciones actuales antes de aplicarlas a este periodo. Esta acción cambia sus cálculos de forma explícita.</p><button class="big-btn" onclick="confirmPeriodRates()">Aplicar tarifas y retenciones actuales a este periodo</button><button class="big-btn" onclick="toggleClosed()">${state.allData[monthKey(state.year,state.month)]?.closed?'Marcar registros como incompletos':'Confirmar que los registros del periodo están completos'}</button></div>
+              <div class="card"><div class="card-title">Recuperación local</div><p class="privacy-note">Copias previas por cuenta antes de migrar, importar o descargar. Contienen datos económicos.</p><button class="big-btn" onclick="exportRecovery()">Exportar copia previa</button><button class="big-btn" onclick="restoreRecovery()">Restaurar última copia previa</button>${cloud.user?'<button class="big-btn" onclick="copyGuest()">Revisar e importar datos locales anteriores</button>':''}</div>
             </div>
           </div></div>`;
       }
 
       app.innerHTML = renderTabs + content + `
-        <div class="watermark">
+        <p id="local-status" class="privacy-note" role="status" style="text-align:center;color:${cloud.status==='error'?'var(--danger)':'var(--muted)'}">${esc(cloud.errorMsg||'Guardado en este dispositivo')}</p><div class="watermark">
           &copy; ${new Date().getFullYear()} Propiedad de FranOlea. Todos los derechos reservados.
         </div>
       `;
+      const pane=app.querySelector('.tab-content');if(pane&&state.tab!==lastRenderedTab)pane.classList.add('tab-enter');lastRenderedTab=state.tab;
+      app.querySelectorAll('input,select').forEach((el,i)=>{if(!el.id)el.id='field-'+i;if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label',el.closest('.row')?.querySelector('span')?.textContent||el.placeholder||'Ajuste');});
+      app.querySelectorAll('.tab-btn').forEach(el=>el.setAttribute('aria-current',el.classList.contains('active')?'page':'false'));
+      if(focusId)document.getElementById(focusId)?.focus({preventScroll:true});
       renderModalExport();
       
       if (state.tab === "mes") {
@@ -1043,49 +963,67 @@
     window.saveDay = () => {
       vibrate(100);
       const mk = monthKey(state.year, state.month);
-      if(!state.allData[mk]) state.allData[mk] = { days: {} };
+      if(!state.selectedDay||!state.draft||!Number.isFinite(state.draft.hours)||state.draft.hours<0||state.draft.hours>24){alert('Horas no válidas.');return;}
+      ensurePeriod();
       state.allData[mk].days[state.selectedDay] = { type: state.draft.type, hours: state.draft.type === "descanso" ? 0 : Number(state.draft.hours) };
-      state.dayConfirmed = true; 
-      saveState(); 
+      if(!saveState())return;
+      state.dayConfirmed = true;
       render(); 
     };
     
     window.clearDay = () => {
       vibrate(20);
       const mk = monthKey(state.year, state.month);
-      if(state.allData[mk] && state.allData[mk].days) delete state.allData[mk].days[state.selectedDay];
-      state.selectedDay = null; saveState(); render();
+      if(state.allData[mk] && state.allData[mk].days) state.allData[mk].days[state.selectedDay]=null;
+      if(!saveState())return;
+      state.selectedDay = null; render();
     }
 
-    window.updateConfig = (k, v) => { 
-      vibrate(100);
-      state.config[k] = (k==='profile' || k==='userName') ? v : Number(v); 
-      if (k === 'profile' && v !== 'sintax') state.config.sintaxUnlocked = false; 
-      saveState(); render(); 
+    function setConfig(next) {
+      try{const validated=C.config(next,DEFAULT_CONFIG);C.freezeDerivedPeriods(state.allData,state.config);state.config=validated;saveState();render();}catch(e){alert(e.message);render();}
+    }
+    window.updateConfig=(k,v)=>{
+      if(!['rateNormal','plusFestivo','rateExtra','profile','userName'].includes(k))return;
+      const next=C.copy(state.config);next[k]=['profile','userName'].includes(k)?v:(String(v).trim()===''?NaN:Number(v));
+      if(k==='profile'&&v!=='sintax')next.sintaxUnlocked=false;setConfig(next);
     };
-    window.updateDed = (i, k, v) => { state.config.deductions[i][k] = k==='pct'?Number(v):v; saveState(); render(); };
-    window.delDed = (i) => { vibrate(20); state.config.deductions.splice(i,1); saveState(); render(); };
-    window.addDed = () => { vibrate(20); state.config.deductions.push({id:Date.now(), name:"Nueva", pct:0}); saveState(); render(); };
-    window.unlockSintax = () => { vibrate(100); if(getEl('pw-sintax').value === 'Sintax_Granada') { state.config.sintaxUnlocked = true; saveState(); render(); } else alert("Error"); };
-
-    window.exportBackup = () => {
-      const b = new Blob([JSON.stringify({ config: state.config, data: state.allData })], {type:"application/json"});
-      processDownload(b, `Backup_Horas_${new Date().toISOString().slice(0,10)}.json`);
+    window.updateDed=(i,k,v)=>{const next=C.copy(state.config);if(!next.deductions[i]||!['pct','name'].includes(k))return;next.deductions[i][k]=k==='pct'?(String(v).trim()===''?NaN:Number(v)):v;setConfig(next);};
+    window.delDed=i=>{const next=C.copy(state.config);next.deductions.splice(i,1);setConfig(next);};
+    window.addDed=()=>{const next=C.copy(state.config);next.deductions.push({id:crypto.randomUUID(),name:'Nueva',pct:0});setConfig(next);};
+    window.unlockSintax=()=>{if(getEl('pw-sintax').value==='Sintax_Granada')setConfig({...state.config,sintaxUnlocked:true});else alert('Contraseña incorrecta.');};
+    window.confirmPeriodRates=()=>{
+      if(!confirm('Se cambiarán los cálculos de '+MESES[state.month]+' '+state.year+' con las tarifas, perfil y retenciones actuales. Se guardará una copia recuperable.'))return;
+      try{sync.recover('Antes de corregir tarifas del periodo');const rec=ensurePeriod();rec.rateConfig=C.financial(state.config);rec.historicalStatus='confirmed';saveState();render();}catch(e){alert(e.message);}
     };
-    window.importBackup = (e) => {
-      const r = new FileReader(); r.onload = () => {
-        try { const p = JSON.parse(r.result); state.config = {...DEFAULT_CONFIG, ...p.config}; state.allData = p.data||{}; saveState(); render(); alert("Importado con éxito"); } catch(e){ alert("Error"); }
-      }; r.readAsText(e.target.files[0]);
+    window.toggleClosed=()=>{ensurePeriod().closed=!ensurePeriod().closed;saveState();render();};
+    window.exportBackup=()=>processDownload(new Blob([JSON.stringify({...payload(),config:{...state.config}})],{type:'application/json'}),`Backup_Horas_${new Date().toISOString().slice(0,10)}.json`);
+    function replaceFromBackup(p,reason='Importar copia') {
+      p=C.validateBackup(p,DEFAULT_CONFIG);
+      if(!confirm(`${reason}: se reemplazarán los registros y ajustes de esta copia local (${Object.keys(state.allData).length} meses) por ${Object.keys(p.data).length} meses. Los borrados se sincronizarán en esta cuenta. Se conservará una recuperación previa. La preferencia de ocultar importes no cambia.`))return;
+      sync.recover('Antes de importar');
+      for(const [mk,old] of Object.entries(state.allData)) {
+        if(!p.data[mk])p.data[mk]={...C.copy(old),days:{}};
+        for(const d of Object.keys(old.days))if(!(d in p.data[mk].days))p.data[mk].days[d]=null;
+      }
+      const hidden=state.config.hideMoney;state.config={...p.config,hideMoney:hidden};state.allData=p.data;if(!saveState()){render();return;}state.selectedDay=null;discardAI();render();
+    }
+    window.importBackup=async(e)=>{
+      const file=e.target.files[0],session=sync.session();e.target.value='';if(!file)return;
+      try{if(file.size>5*1024*1024)throw Error('Copia demasiado grande (máximo 5 MB).');const text=await file.text();if(session!==sync.session())return;const p=C.validateBackup(JSON.parse(text),DEFAULT_CONFIG);replaceFromBackup(p);}
+      catch(e){if(session===sync.session())alert('Copia rechazada. Los datos existentes no se han alterado. '+e.message);}
     };
-
+    window.restoreRecovery=()=>{
+      try{const raw=sync.recovery();if(!raw){alert('No hay recuperación para esta cuenta.');return;}const list=JSON.parse(raw);replaceFromBackup(list.at(-1).payload,'Restaurar la última copia previa ('+list.at(-1).at+')');}catch(e){alert(e.message);}
+    };
     window.renderChart = () => {
       const ctx = getEl('chart-anual'); if(!ctx) return;
       if(chartInst) chartInst.destroy();
+      if(typeof Chart==='undefined'){const note=document.createElement('p');note.className='privacy-note';note.textContent='Gráfico no disponible. Puedes consultar las cifras del resumen.';ctx.replaceWith(note);return;}
       const rows = getAnnualData();
       chartInst = new Chart(ctx, {
         type: 'bar',
-        data: { labels: rows.map(r=>r.name), datasets: [{ label: 'Neto', data: rows.map(r=>r.neto), backgroundColor: '#4FA3FF', borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: !state.config.hideMoney, grid: { color: '#1E2434' } }, x: { grid: { display: false } } } }
+        data: { labels: rows.map(r=>r.name), datasets: [{ label: state.config.hideMoney?'Horas':'Neto estimado', data: rows.map(r=>state.config.hideMoney?r.horas:r.neto), backgroundColor: '#4FA3FF', borderRadius: 4 }] },
+        options: { animation:matchMedia('(prefers-reduced-motion: reduce)').matches?false:{duration:180}, responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display:true,ticks:{color:'#AFB8CC'}, grid: { color: '#2A3247' } }, x: { ticks:{color:'#AFB8CC'},grid: { display: false } } } }
       });
     };
 
@@ -1095,7 +1033,7 @@
       const m = getEl('modal-export-content'); if(!m) return;
       if (!state.pdfReady) {
         m.innerHTML = `
-          <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:17px; margin-bottom:14px">Exportar PDF</div>
+          <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:17px; margin-bottom:14px">Exportar PDF</div><p class="privacy-note">El PDF contiene datos económicos aunque estén ocultos en pantalla. Es un resumen estimado, no una nómina real.</p>
           <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:16px" onclick="doExportMonth()">📄 Este mes · ${MESES[state.month]} ${state.year}</button>
           <div style="color:var(--muted); font-size:11px; font-weight:600; margin-bottom:8px">O AÑO COMPLETO</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap">
@@ -1106,15 +1044,20 @@
       } else {
         m.innerHTML = `
           <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:17px; margin-bottom:14px; color:var(--success)">✓ PDF Generado</div>
-          <p style="color:var(--text); font-size:13px; word-break:break-all; margin-bottom:16px">${state.pdfReady.filename}</p>
+          <p style="color:var(--text); font-size:13px; word-break:break-all; margin-bottom:16px">${esc(state.pdfReady.filename)}</p>
           <button class="big-btn" style="border-color:var(--success); color:var(--success); margin-bottom:8px" onclick="processDownload(state.pdfReady.blob, state.pdfReady.filename)">⬇ Descargar / Compartir</button>
           <button style="width:100%; text-align:center; color:var(--muted); margin-top:8px; font-size:13px" onclick="closeExport()">Cerrar</button>
         `;
       }
     };
 
-    try { const raw = localStorage.getItem("horas-app-v2"); if (raw) { const p = JSON.parse(raw); state.config = { ...DEFAULT_CONFIG, ...(p.config||{}) }; state.allData = p.data||{}; } } catch(e){}
-    render();
+    const moneyPreference=localStorage.getItem(MONEY_KEY);
+    if(moneyPreference!==null)state.config.hideMoney=moneyPreference==='1';
+    localStorage.setItem(MONEY_KEY,state.config.hideMoney?'1':'0');
+    try{sync.load();}catch(e){alert(e.message);}
+    sync.setOnline(navigator.onLine!==false);
+    render();initCloud();
+    document.addEventListener('DOMContentLoaded',()=>{if(!cloud.ready)initCloud();if(state.tab==='anual')render();});
 
     // ============================================================
     // PWA: REGISTRO DEL SERVICE WORKER

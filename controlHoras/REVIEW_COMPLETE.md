@@ -1,0 +1,72 @@
+# Mis Horas: integración completa conservada, pendiente de publicación
+
+Estado comprobado el 10 de octubre de 2026. Este informe sustituye los alcances anteriores de REVIEW_UI.md, REVIEW_GEMINI.md y PUBLICACION_PRUEBA.md. La autorización del propietario permite integrar, fusionar y publicar la app completa. No requiere otra aprobación de publicación. El commit d01e339 se conserva como antecesor de las correcciones posteriores.
+
+## Referencias y recuperación
+
+- Original: [backup/mis-horas-2026-10-08](https://github.com/FranOO1/misApps/tree/backup/mis-horas-2026-10-08/controlHoras), `a9c9382468e6b0bbdf15cad01a6ec2e8627288a2`.
+- Versión publicada protegida antes de editar: [backup/mis-horas-publicada-2026-10-09](https://github.com/FranOO1/misApps/tree/backup/mis-horas-publicada-2026-10-09), `ad9855f8ed03cd61fff0fde8cba60997881cf86e`.
+- [PR #5](https://github.com/FranOO1/misApps/pull/5): abierto, diseño aprobado. [PR #6](https://github.com/FranOO1/misApps/pull/6): abierto/borrador, Gemini anterior.
+- WIP remoto `wip/mis-horas-seguridad-gemini-2026-10-08` comprobado y revisado; se reutilizan cálculos y sincronización, con correcciones adicionales. No se incorpora su interfaz antigua.
+- Commit local `10c7dcb1411f5143c9e88f02564b082237018495` conservado. Sus diagnósticos de sesión/App Check/AI Logic se integran en la app.
+- Rama local `feat/mis-horas-completa`: commits de integración `0ea3147`, `ba34458`, `e024421`, `329590f`, `1b7fa40`, `d2c3057` y los posteriores de documentación.
+- La rama remota con ese nombre se creó, pero aún apunta a `ad9855f8...`: no contiene la integración local. No confundirla con una entrega subida.
+- URL habitual: https://franoo1.github.io/misApps/controlHoras/ . Sigue sirviendo la app anterior; no se ha publicado esta integración.
+
+## Cambios implementados localmente
+
+| Función | Implementación y comprobación disponible |
+| --- | --- |
+| Diseño | CSS, fondos de jornadas y función de color idénticos al diseño aprobado, comparados por contenido. Calendario sin N/F/D/símbolos, festivos ámbar y descansos gris azulado. Nuevos textos funcionales de histórico y estado; aún requieren revisión visual de esta integración. |
+| Privacidad | Ojo cubre consultas económicas, tarifa diaria, anual/gráfico, proyección y AI. Preferencia solo por dispositivo; nube/importación la conservan. PDF/copias mantienen datos económicos y avisan. Pruebas del controlador real con DOM adaptado. |
+| Histórico | Cada periodo guarda tarifas, perfil y retenciones. Antiguos periodos conservan la configuración disponible al migrar y se marcan desconocidos; nunca se afirma que eran las tarifas históricas reales. Corrección explícita, con copia previa. |
+| Cálculos | Motor común para mensual, anual, detalle, PDF y contexto AI; horas decimales/festivos/descansos, bruto, porcentajes y neto estimado. Meses que solo incluyen extras anteriores aparecen en anual/PDF/AI. |
+| Sintax | Hipótesis original: lunes-domingo, más de 40 h normales+festivas, exceso desde los últimos días normales, festivos conservan tarifa; extras generadas se estiman en el mes siguiente, con la configuración de ese periodo. No se certifica su abono ni el convenio. Semanas entre meses/años y edición/borrado comprobados con código determinista. |
+| Copias y seguridad | Valida estructura, fechas/días reales, tipos, horas 0–24, tarifas y porcentajes, identificadores de retenciones, configuración completa de periodo y propiedades peligrosas antes de aplicar. Compatible con las copias originales. Recuperación antes de sustitución; datos variables escapados/textContent. Una importación aún en lectura se descarta al cambiar la cuenta; las recuperaciones no seleccionan datos de otra cuenta. |
+| Migración | Original `horas-app-v2` protegido en `horas-original-v2`; copia previa por cuenta antes de transformar estado v3 o migrar nube. Recuperación/exportación por cuenta. Copia inválida protegida contra sobrescrituras. |
+| Sincronización | Diario local por cuenta; escrituras Firestore con mergeFields/FieldPath, sin enviar todo el documento. Campos independientes se conservan; conflictos del mismo campo: último commit de servidor. Borrados como null persistente. Pendientes se superponen a snapshots y sobreviven reinicio/reconexión. Un fallo al guardar en el dispositivo revierte el cambio y no lo añade al diario ni confirma la jornada. Reintento explícito de escucha/migración fallida, sin bucles automáticos; errores de lectura no se presentan como sincronización correcta. La lista de retenciones es un campo atómico: ediciones simultáneas de esa lista se resuelven con la misma regla. |
+| Cuentas y legado | Cada cuenta tiene datos y diario distintos; respuestas y confirmaciones tardías se descartan. El estado anterior sin cuenta no se sube automáticamente. Su recuperación explícita añade jornadas nuevas, conserva datos de la cuenta y tombstones, y exige confirmar pertenencia. |
+| Gemini | Pollinations eliminado, sin alternativa. Firebase AI Logic/App Check reutilizados; sesión, configuración e instancias verificadas antes de la atestación. getToken detiene la petición si falla App Check. Errores conservan etapa, código, HTTP y causas técnicas reconocidas; se omiten textos libres, tokens, credenciales e identificadores. |
+| Nóminas | PDF completo extraído localmente dentro de 10 MB/40 páginas/120.000 caracteres; rechaza extracción escaneada/parcial/ilegible sin inventar ni recortar silenciosamente. Redacción local tentativa, texto exacto revisable, términos y consentimiento antes de Google. Respuesta estructurada validada; comparación en JavaScript con tres resultados y límites. Si cambian los registros, se recalcula localmente y se pide confirmar de nuevo, sin otra petición a Gemini. |
+| PWA | Cache nueva incluye core/sync/AI; no toca datos/preferencias ni caches ajenas; ningún HTML como sustituto de código fallido. SDKs externos diferidos para que la interfaz local arranque aunque fallen. Precarga opcional de SDKs públicos limitada a 3 segundos; conserva dependencias compatibles de la caché anterior durante la actualización. Si falla el recurso en red usa una copia válida de código, sin sustituirla por HTML. Estado local/nube/offline visible. Handlers comprobados con adaptadores; instalación/actualización en Chromium pendientes. |
+
+## Pruebas ejecutadas: 83/83 locales
+
+Los scripts ejecutan el código de aplicación. Los adaptadores DOM/SDK/Firestore y las atestaciones/respuestas AI son simulados:
+
+- `tests/ui.test.cjs`: 24 PASS (privacidad, contraste, escala, seguridad DOM, histórico, importación, PDF/contexto, arranque local, almacenamiento fallido, recuperación aislada, cambio de cuenta y comparación actualizada).
+- `tests/core.test.cjs`: 14 PASS (migración/validación, configuración de periodo, cálculo, Sintax entre meses/años, borrados, recuperación de legado).
+- `tests/sync.test.cjs`: 16 PASS (dos dispositivos simulados, pendientes, reconexión/reinicio, conflicto/borrado, cuentas, almacenamiento fallido, caché vacía y reintento explícito de escucha/migración).
+- `tests/ai.test.cjs`: 9 PASS (extracción/validación, minimización, bloqueo de duplicados, timeout, cuenta/privacidad, cuota/errores).
+- `tests/diagnostic.test.cjs`: 14 PASS (etapas, instancias/config, App Check, 401 distinguible, mensajes sanitizados sin secretos ni identidades).
+- `tests/sw.test.cjs`: 6 PASS (handlers reales con CacheStorage/fetch/lifecycle simulados: shell local, límites de caché, fallos de recursos, bloqueo de HTML como código, exclusión de APIs privadas y traslado de SDKs compatibles).
+- Sintaxis JavaScript, compilación de scripts Python y `git diff --check`: PASS. CSS, TYPES y hoursColor comparados con el diseño aprobado: idénticos.
+
+## Preparadas y NO ejecutadas para esta integración
+
+GitHub Actions contiene Chromium 320/390/768/1280, PDF.js/SDKs oficiales, pruebas de nóminas y consentimiento, nuevas importación/histórico/actualización y dos contextos Chromium contra Firestore local. La actualización ahora instala un worker anterior ficticio, cambia al worker real nuevo y recarga sin conexión; no se limita a llamar update sobre los mismos bytes. El emulador usa reglas temporales de prueba, sin leer ni desplegar reglas de producción. Auth y Gemini de navegador siguen simulados. El servidor Chromium local falla con `Operation not permitted` por el sandbox.
+
+Las capturas existentes de `captures/` y las ejecuciones [PR #5](https://github.com/FranOO1/misApps/actions/runs/37842239778) y [PR #6](https://github.com/FranOO1/misApps/actions/runs/37853509861) verifican versiones anteriores. No prueban esta nueva integración. Nuevas capturas, emulador, actualización y despliegue siguen pendientes.
+
+El 10 de octubre se repitieron las 66 pruebas locales: PASS. La ejecución real de Chromium con Playwright y el binario instalado falla al lanzar: `TargetClosedError`, con `setsockopt: Operation not permitted (1)`. `browser_data.py` falla antes de cargar la app al crear el servidor: `PermissionError: [Errno 1] Operation not permitted`. `run_emulator.py` falla porque `/tmp/horas-emulator/node_modules/.bin/firebase` no está instalado: `FileNotFoundError: [Errno 2]`. Estos intentos fallidos no cuentan como pruebas aprobadas.
+
+## Bloqueos externos y pasos de continuación
+
+1. **GitHub escritura:** lecturas y creación de ramas funcionan; permisos comprobados (conexión habilitada, acciones permitidas y propietario administrador). Subir árbol/contenido o un archivo pequeño no devuelve resultado; los intentos terminaron interrumpidos, sin respuesta HTTP ni rechazo técnico que permita identificar la causa interna. Main y la rama remota de integración siguen en `ad9855f8...`. Falta un canal de escritura operativo; no se necesita ampliar permisos ni renovar la autorización de publicar.
+   - Verificación de referencias por el conector el 10 de octubre: ambas siguen en `ad9855f8ed03cd61fff0fde8cba60997881cf86e`; las subidas previas no se aplicaron.
+   - Alternativa CLI: `gh auth status` informa `Failed to log in to github.com using token (GH_TOKEN)` / `The token in GH_TOKEN is invalid.` No se imprime el token. `git ls-remote`, sin preguntas interactivas, falla con `Failed to connect to proxy port 8080 after 0 ms: Could not connect to server`. Como la conectividad falla, ese informe de gh no demuestra por sí solo que la credencial esté caducada.
+   - Un intento posterior con acceso de red solicitado para contrastar el error terminó interrumpido sin respuesta. No se repite ni se presupone aprobado o rechazado. No se ejecutó `git push`: no hay autenticación CLI operativa demostrada, no hay remoto local configurado y la historia local procede de snapshots; subirla directamente no debe sobrescribir la historia real de GitHub.
+   - Última comprobación CLI: `gh api repos/FranOO1/misApps` devuelve `proxyconnect tcp: dial tcp 172.31.0.173:8080: socket: operation not permitted`. Es un bloqueo del socket local antes de recibir una respuesta de GitHub; no hay evidencia para pedir cambiar el token o ampliar permisos del repositorio. Lecturas del conector siguen disponibles y ambas referencias permanecen en ad9855f8.
+2. **Gemini real:** no hay sesión del propietario ni atestación real accesible en este entorno. El intento real del propietario en tablet devolvió `permission · fetch-error · HTTP 401`, distinto del intento sin sesión del entorno. No se puede deducir la etapa exacta del mensaje anterior. La integración añade preflight y diagnóstico seguro, pero **el 401 no está resuelto ni Gemini verificado**. Una vez subido el código, el único paso de prueba necesario del propietario es abrir IA → Comprobar conexión con datos ficticios → Autorizar consulta ficticia a Google, desde su sesión en el dominio habitual. No pide nuevas claves/configuración, no lee ni envía nóminas/registros, y muestra la etapa concreta si falla. No afirmar éxito hasta recibir una respuesta real válida.
+3. **Reglas Firestore:** no hay acceso administrativo para leerlas; no verificadas. El cliente ni el emulador demuestran seguridad de las cuentas en producción. No se han cambiado reglas, App Check o facturación.
+
+Límites de la sincronización: la garantía cliente de campos independientes exige que los dispositivos ejecuten esta versión. Un cliente antiguo que aún escribe el documento completo puede sobrescribir cambios nuevos; no se modifican reglas para bloquearlo. Hay que actualizar y comprobar todos los dispositivos antes de probar concurrencia en producción. El uso de una cuenta sin conexión tras reabrir depende de que el SDK de Auth almacenado pueda recuperar la sesión; la precarga y traslado de caché mejoran esa disponibilidad, pero esa comprobación real sigue pendiente. Si el SDK no está disponible se conserva el uso local sin cuenta y se informa; no se presume la identidad de una cuenta para subirle datos.
+
+La configuración pública Firebase de Mis Horas se volvió a comparar con Plantometro/js/sync.js y su clave pública App Check con Plantometro/js/ai-config.js del PR #4: coinciden. El backend GoogleAIBackend y modelo también coinciden. No se ha modificado Plantómetro. Obtener una cadena de atestación del SDK no prueba por sí solo que AI Logic la acepte; la documentación oficial reserva la verificación a la firma/emisor/audiencia/caducidad en el servidor. No se ha realizado esa comprobación real ni se atribuye el 401 a una causa concreta sin el diagnóstico del intento.
+
+Reanudar: subir exclusivamente controlHoras y su workflow a una rama basada en main actual, conservando gemini-prueba y las demás apps; integrar la ascendencia de PR #5/#6; crear PR de conjunto; ejecutar/corregir CI, revisar nuevas capturas y solicitar solo el diagnóstico imprescindible real de Gemini si falta. Tras comprobaciones, fusionar y desplegar usando la autorización existente, verificar URL y PWA. No fusionar el borrador local sin sus pruebas pendientes.
+
+## Documentación oficial consultada
+
+- Modelo `gemini-3.1-flash-lite` continúa soportado, estable, sin necesidad de sustitución: [Firebase AI Logic](https://firebase.google.com/docs/ai-logic/models), consultado 2026-10-09. La documentación de disponibilidad no demuestra autorización ni inferencia en este proyecto.
+- [Condiciones Gemini API](https://ai.google.dev/gemini-api/terms) y [tratamiento de datos Firebase](https://firebase.google.com/docs/ai-logic/data-governance). La vista previa comunica diferencias por servicio/región; no se presupone confidencialidad ni que una suscripción personal incluya API. No se habilita facturación para resolver bloqueos.

@@ -1,0 +1,22 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prueba ficticia de Gemini · Mis Horas</title>
+<style>body{background:#11151F;color:#E8EDF7;font:16px/1.5 system-ui;max-width:640px;margin:24px auto;padding:16px}button{min-height:48px;background:#4FA3FF;color:#11151F;border:0;border-radius:10px;padding:12px;font:inherit}button:focus-visible{outline:3px solid #7BE8A8;outline-offset:4px}a{color:#4FA3FF}pre{white-space:pre-wrap;overflow-wrap:anywhere} @media(prefers-reduced-motion:reduce){*{animation:none;transition:none}}</style>
+<h1>Prueba ficticia de Gemini</h1><p>Envía a Google una consulta ficticia con un único dato calculado: 8,25 horas. No lee ni envía jornadas, nóminas o ajustes guardados; no conecta Firestore. Utiliza la sesión Google ya abierta en este navegador y App Check normal.</p><p>Debe servirse desde el dominio autorizado para App Check. No se ha publicado esta página. Revisa las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">condiciones de Google</a>; esta prueba no activa facturación.</p><button id="send" disabled>Autorizar consulta ficticia a Google</button><p id="status" role="status">Cargando configuración y comprobando sesión…</p><pre id="result"></pre><a href="../index.html">Volver a Mis Horas</a>
+<script src="../ai-data.js"></script><script type="module">
+import {query,invalidate,errorMessage} from '../ai-service.js';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js';
+import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js';
+const button=document.getElementById('send'),status=document.getElementById('status'),result=document.getElementById('result');let generation=0,busy=false;
+try{
+ const response=await fetch('../index.html');if(!response.ok)throw Error('No se pudo leer la configuración local.');
+ const source=await response.text(),block=source.match(/const firebaseConfig = \{([\s\S]*?)\n    \};/)?.[1];if(!block)throw Error('No se encontró la configuración pública existente.');
+ const options=Object.fromEntries([...block.matchAll(/(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId): "([^"]+)"/g)].map(m=>[m[1],m[2]]));
+ const auth=getAuth(initializeApp(options)),session=()=>`${generation}:${auth.currentUser?.uid||''}`;
+ onAuthStateChanged(auth,user=>{generation++;invalidate();busy=false;button.disabled=!user;result.textContent='';status.textContent=user?'Sesión disponible. La consulta aún no se ha enviado.':'No hay sesión en este navegador. Inicia sesión en Mis Horas y vuelve a esta página.';});
+ button.onclick=async()=>{
+  if(busy||!auth.currentUser)return;busy=true;button.disabled=true;const token=session();result.textContent='';status.textContent='Consultando Gemini con datos ficticios…';
+  try{const text=await query({mode:'chat',question:'Explica únicamente las 8,25 horas ficticias aportadas, sin calcular importes.',context:{period:'2026-10',calculated:{recordedHours:8.25},fictitious:true},options,user:auth.currentUser,currentSession:session,session:token});if(token!==session())return;result.textContent=text;status.textContent='Respuesta real recibida de Gemini con datos ficticios.';}
+  catch(e){if(token!==session())return;status.textContent=errorMessage(e);result.textContent='Referencia: '+String(e.kind||'unavailable')+(e.code?' · '+e.code:'')+(e.status?' · HTTP '+e.status:'');}
+  finally{if(token===session()){busy=false;button.disabled=!auth.currentUser;}}
+ };
+}catch(e){status.textContent=e.message||'No se pudo iniciar la prueba. Revisa la conexión.';}
+</script></html>
