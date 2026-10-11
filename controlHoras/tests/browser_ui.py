@@ -14,7 +14,8 @@ def external(route):
  if route.request.url=='https://cdn.jsdelivr.net/npm/chart.js':route.fulfill(body=chart,content_type='application/javascript')
  else:route.abort()
 def no_overflow(page):
- assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+ measurements=page.evaluate('({tab:state.tab,width:innerWidth,scroll:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll("#app *")].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,8).map(e=>({tag:e.tagName,id:e.id,class:e.className,right:e.getBoundingClientRect().right,width:e.getBoundingClientRect().width}))})')
+ assert measurements['scroll']<=measurements['width']+1,measurements
  assert page.locator('#app').evaluate('e=>e.scrollWidth<=e.clientWidth+1')
 try:
  with sync_playwright() as p:
@@ -39,7 +40,9 @@ try:
    for key,label in [('mes','Mes'),('anual','Año'),('ia','IA'),('ajustes','Ajustes')]:
     button=page.locator('#nav-'+key);box=button.bounding_box();assert box['height']>=44 and box['width']>=44
     assert button.evaluate('e=>e.scrollWidth<=e.clientWidth+1')
-    button.tap();expect(page.locator('#nav-'+key)).to_have_attribute('aria-current','page');no_overflow(page)
+    button.tap();expect(page.locator('#nav-'+key)).to_have_attribute('aria-current','page')
+    if key=='anual':page.wait_for_function('chartInst && chartInst.canvas.isConnected')
+    no_overflow(page)
    page.locator('#nav-mes').focus();page.keyboard.press('Enter')
    for key,press in [('anual','Enter'),('ia','Space'),('ajustes','Enter')]:
     page.keyboard.press('Tab');expect(page.locator('#nav-'+key)).to_be_focused();page.keyboard.press(press)
