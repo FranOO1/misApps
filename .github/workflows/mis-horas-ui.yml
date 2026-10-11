@@ -1,0 +1,46 @@
+name: Mis Horas UI review
+on:
+  pull_request:
+    paths:
+      - 'controlHoras/**'
+      - 'gemini-prueba/**'
+      - '.github/workflows/mis-horas-ui.yml'
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node controlHoras/tests/ui.test.cjs
+      - run: node controlHoras/tests/ai.test.cjs
+      - run: node controlHoras/tests/core.test.cjs
+      - run: node controlHoras/tests/sync.test.cjs
+      - run: node controlHoras/tests/diagnostic.test.cjs
+      - run: node controlHoras/tests/sw.test.cjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright==1.55.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python controlHoras/tests/browser_ui.py
+      - run: python controlHoras/tests/browser_gemini.py
+      - run: python controlHoras/tests/browser_probe.py
+      - run: python controlHoras/tests/browser_data.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm install --no-save --prefix /tmp/horas-emulator firebase-tools@14.16.0
+      - name: Dos navegadores contra Firestore local, sin datos de producción
+        run: python controlHoras/tests/run_emulator.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mis-horas-ui-captures
+          path: controlHoras/captures/*.png
+          if-no-files-found: warn
