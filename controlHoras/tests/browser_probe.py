@@ -10,7 +10,7 @@ server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Handler
 threading.Thread(target=server.serve_forever,daemon=True).start()
 URL=f'http://127.0.0.1:{server.server_port}/gemini-prueba/'
 options=dict(re.findall(r'(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId): "([^"]+)"',(ROOT/'controlHoras/index.html').read_text()))
-cache={};requests=[];blocked=[];mode='ok'
+cache={};requests=[];limited_tokens=set();consumed_tokens=set();blocked=[];mode='ok'
 def resource(url):
  if url not in cache:cache[url]=urllib.request.urlopen(url,timeout=30).read()
  return cache[url]
@@ -27,8 +27,12 @@ def route_external(route):
  elif 'recaptcha/enterprise.js' in url:
   route.fulfill(body="let fixtureCaptchaSuccess=()=>{};window.grecaptcha={enterprise:{ready:f=>f(),render:(e,o)=>{fixtureCaptchaSuccess=o.callback;return 'fixture-widget';},execute:async()=>{fixtureCaptchaSuccess();return 'fixture-recaptcha';}}};",content_type='application/javascript',headers=headers)
  elif 'firebaseappcheck.googleapis.com' in url:
-  route.fulfill(json={'token':'fixture-app-check','ttl':'3600s'},headers=headers)
+  payload=json.loads(route.request.post_data or '{}');limited=payload.get('limited_use') is True
+  token='fixture-limited-'+str(len(limited_tokens)+1) if limited else 'fixture-app-check'
+  if limited:limited_tokens.add(token)
+  route.fulfill(json={'token':token,'ttl':'3600s'},headers=headers)
  elif 'firebasevertexai.googleapis.com' in url:
+  token=route.request.headers.get('x-firebase-appcheck');assert token in limited_tokens and token not in consumed_tokens,'Every request requires a fresh limited-use attestation';consumed_tokens.add(token)
   requests.append({'payload':json.loads(route.request.post_data),'headers':route.request.headers})
   if mode=='quota':route.fulfill(status=429,json={'error':{'code':429,'message':'Synthetic quota','status':'RESOURCE_EXHAUSTED'}},headers=headers)
   elif mode=='attestation':route.fulfill(status=401,json={'error':{'code':401,'message':'Firebase App Check token is invalid.','status':'UNAUTHENTICATED'}},headers=headers)
@@ -59,7 +63,7 @@ try:
    assert '"recordedHours":8.25' in prompt and '"fictitious":true' in prompt
    assert 'CENTINELA' not in prompt and 'fixture-user' not in prompt
    assert request['headers']['authorization']=='Firebase '+jwt
-   assert request['headers']['x-firebase-appcheck']=='fixture-app-check'
+   assert request['headers']['x-firebase-appcheck'] in consumed_tokens
    assert page.locator('#result img').count()==0 and not page.evaluate('window.pwned||false')
    assert page.evaluate('navigator.serviceWorker.controller===null')
    assert page.evaluate('navigator.serviceWorker.getRegistrations().then(x=>x.length)')==0
@@ -73,7 +77,7 @@ try:
    expect(page.locator('#status')).to_contain_text('Sin conexión');expect(page.locator('#send')).to_be_disabled();assert len(requests)==before+1
    page.evaluate('navigator.__defineGetter__("onLine",()=>true);window.dispatchEvent(new Event("online"))');mode='ok'
    page.locator('#send').click();expect(page.locator('#result')).to_contain_text('8,25 horas ficticias.',timeout=45000)
-   page.evaluate('''async()=>{const {getAuth,signOut}=await import('https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js');await signOut(getAuth());}''')
+   page.evaluate('''async()=>{const {getAuth,signOut}=await import('https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js');await signOut(getAuth());}''')
    expect(page.locator('#status')).to_contain_text('No hay sesión');expect(page.locator('#send')).to_be_disabled();expect(page.locator('#result')).to_have_text('')
    assert not page.evaluate('window.realDataAccess') and not errors,errors
    assert not blocked,blocked

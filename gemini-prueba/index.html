@@ -43,9 +43,9 @@ try{
   const options=Object.fromEntries([...String(block||'').matchAll(/(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId)\s*:\s*"([^"]+)"/g)].map(m=>[m[1],m[2]]));
   if(keys.some(k=>!options[k])||options.projectId!=='mishoras-bb0cc'||options.authDomain!=='mishoras-bb0cc.firebaseapp.com')throw Error('No se reconoció la configuración pública de Mis Horas. No se ha enviado ninguna consulta.');
   const [apps,auths,ai]=await Promise.all([
-    import('https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js'),
-    import('https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js'),
-    import('./ai-service.js?diagnostico=2')
+    import('https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js'),
+    import('./ai-service.js?diagnostico=3')
   ]);
   service=ai;auth=auths.getAuth(apps.initializeApp(options));
   auths.onAuthStateChanged(auth,()=>{generation++;service.invalidate();busy=false;result.textContent='';available();},()=>{button.disabled=true;status.textContent='No se pudo comprobar la sesión existente. No se ha enviado ninguna consulta.';});

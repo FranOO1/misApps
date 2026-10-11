@@ -23,7 +23,12 @@ def external(route):
    uid=json.loads(base64.urlsafe_b64decode(payload['idToken'].split('.')[1]+'=='))['sub'];route.fulfill(json={'users':[{'localId':uid,'providerUserInfo':[]}]},headers=headers)
   else:route.fulfill(json={'idToken':jwt(uid),'refreshToken':'fixture-refresh','expiresIn':'3600','localId':uid},headers=headers)
  else:route.abort() # Production Firestore, App Check and Gemini are always blocked.
-def wait(page,condition):page.wait_for_function(condition,timeout=30000)
+def wait(page,condition):
+ try:page.wait_for_function(condition,timeout=30000)
+ except Exception:
+  # Only this emulator's fictional records; no Auth or App Check values.
+  print('LOCAL_SYNC_TIMEOUT '+json.dumps(page.evaluate("()=>({online:navigator.onLine,status:cloud.status,selectedDay:state.selectedDay,pendingPaths:sync.pending().map(o=>o.path),days:state.allData[monthKey(state.year,state.month)]?.days})")),flush=True)
+  raise
 try:
  with sync_playwright() as p:
   browser=p.chromium.launch();contexts=[];pages=[]
@@ -31,7 +36,7 @@ try:
    ctx=browser.new_context(viewport={'width':width,'height':height},service_workers='block');contexts.append(ctx);ctx.route('https://**/*',external);page=ctx.new_page();page.on('dialog',lambda d:d.accept());page.goto(URL);page.evaluate('cloud.db.useEmulator("127.0.0.1",8080)');page.evaluate('firebase.auth().signInWithCustomToken("one")');wait(page,'cloud.user?.uid==="one"&&cloud.status==="ok"');pages.append(page)
   a,b=pages;a.evaluate('selectDay(1);stepHours(0,8.25);saveDay()');b.evaluate('selectDay(2);stepHours(0,9.5);saveDay()');
   for page in pages:wait(page,'sync.pending().length===0&&state.allData[monthKey(state.year,state.month)]?.days[1]?.hours===8.25&&state.allData[monthKey(state.year,state.month)]?.days[2]?.hours===9.5')
-  contexts[1].set_offline(True);b.evaluate('selectDay(3);stepHours(0,7.5);saveDay()');a.evaluate('selectDay(1);clearDay()');wait(a,'sync.pending().length===0');contexts[1].set_offline(False)
+  contexts[1].set_offline(True);b.evaluate('selectDay(3);stepHours(0,7.5);saveDay()');a.evaluate('if(state.selectedDay!==1)selectDay(1);clearDay()');assert a.evaluate('state.allData[monthKey(state.year,state.month)].days[1]===null');wait(a,'sync.pending().length===0');contexts[1].set_offline(False)
   for page in pages:wait(page,'sync.pending().length===0&&state.allData[monthKey(state.year,state.month)]?.days[1]===null&&state.allData[monthKey(state.year,state.month)]?.days[3]?.hours===7.5')
   # Same-day conflict is explicitly last server commit; unrelated offline work never restores deletion.
   a.evaluate('selectDay(4);stepHours(0,6);saveDay()');wait(b,'state.allData[monthKey(state.year,state.month)]?.days[4]?.hours===6');b.evaluate('selectDay(4);clearDay()');wait(a,'state.allData[monthKey(state.year,state.month)]?.days[4]===null')

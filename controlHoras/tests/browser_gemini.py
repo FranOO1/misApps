@@ -14,7 +14,7 @@ def part(x):return base64.urlsafe_b64encode(json.dumps(x).encode()).decode().rst
 jwt=part({'alg':'none','typ':'JWT'})+'.'+part({'sub':'fixture-user','user_id':'fixture-user','aud':'mishoras-bb0cc','iss':'https://securetoken.google.com/mishoras-bb0cc','iat':int(time.time()),'exp':int(time.time())+3600,'firebase':{'sign_in_provider':'custom'}})+'.fixture'
 facts={'period':'2026-10','gross':100,'deductions':10,'net':90,'normalHours':10,'holidayHours':0,'extraHours':0,'normalRate':10,'holidayRate':15,'extraRate':0,'complete':True,'missing':[]}
 fixture={'config':{'rateNormal':10,'plusFestivo':5,'rateExtra':0,'userName':'Persona Ficticia','profile':'ett','sintaxUnlocked':False,'hideMoney':False,'deductions':[{'id':'d1','name':'IRPF','pct':10}]},'data':{'2026-10':{'days':{'1':{'type':'normal','hours':10}}},'2026-09':{'days':{'1':{'type':'normal','hours':20}}}}}
-requests=[];mode='ok'
+requests=[];limited_tokens=set();consumed_tokens=set();mode='ok'
 def route_external(route):
  global mode
  url=route.request.url;headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET, POST, OPTIONS'}
@@ -27,8 +27,12 @@ def route_external(route):
  elif 'recaptcha/enterprise.js' in url:
   route.fulfill(body="let fixtureCaptchaSuccess=()=>{};window.grecaptcha={enterprise:{ready:f=>f(),render:(e,o)=>{fixtureCaptchaSuccess=o.callback;return 'fixture-widget';},execute:async()=>{fixtureCaptchaSuccess();return 'fixture-recaptcha';}}};",content_type='application/javascript',headers=headers)
  elif 'firebaseappcheck.googleapis.com' in url:
-  route.fulfill(json={'token':'fixture-app-check','ttl':'3600s'},headers=headers)
+  payload=json.loads(route.request.post_data or '{}');limited=payload.get('limited_use') is True
+  token='fixture-limited-'+str(len(limited_tokens)+1) if limited else 'fixture-app-check'
+  if limited:limited_tokens.add(token)
+  route.fulfill(json={'token':token,'ttl':'3600s'},headers=headers)
  elif 'firebasevertexai.googleapis.com' in url:
+  token=route.request.headers.get('x-firebase-appcheck');assert token in limited_tokens and token not in consumed_tokens,'Every request requires a fresh limited-use attestation';consumed_tokens.add(token)
   payload=json.loads(route.request.post_data);requests.append({'payload':payload,'headers':route.request.headers});(OUT/'gemini-endpoint.json').write_text(json.dumps({'url':url.split('?')[0]}))
   if mode=='quota':route.fulfill(status=429,json={'error':{'code':429,'message':'Synthetic quota','status':'RESOURCE_EXHAUSTED'}},headers=headers)
   else:
@@ -44,7 +48,7 @@ try:
    # Real compat SDK constructs a User; fake HTTP auth response never contacts production Auth.
    page.evaluate('''async()=>{const a=firebase.initializeApp(firebaseConfig,'fixture-user');const c=await a.auth().signInWithCustomToken('fixture-custom-token');cloud.user=c.user;}''')
    page.get_by_role('button',name='💬 IA',exact=True).click();page.locator('#ai-period').fill('2026-10');page.locator('#ai-period').dispatch_event('change');page.locator('#chat-input').fill('¿Cuántas horas registré este mes?');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot')).to_contain_text('10 horas registradas.',timeout=60000)
-   req=requests[-1];assert req['headers'].get('authorization')=='Firebase '+jwt,'Official SDK Auth session header';assert req['headers'].get('x-firebase-appcheck')=='fixture-app-check','Official SDK attestation header';payload=json.dumps(req['payload']);assert '2026-09' not in payload;assert '2026-09' not in payload;assert 'Persona Ficticia' not in payload;assert 'gross' not in payload;assert page.locator('.bubble img').count()==0;assert not page.evaluate('window.pwned||false');assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1');page.screenshot(path=str(OUT/f'gemini-chat-{width}.png'),full_page=True)
+   req=requests[-1];assert req['headers'].get('authorization')=='Firebase '+jwt,'Official SDK Auth session header';assert req['headers'].get('x-firebase-appcheck') in consumed_tokens,'Official SDK limited-use attestation header';payload=json.dumps(req['payload']);assert '2026-09' not in payload;assert '2026-09' not in payload;assert 'Persona Ficticia' not in payload;assert 'gross' not in payload;assert page.locator('.bubble img').count()==0;assert not page.evaluate('window.pwned||false');assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1');page.screenshot(path=str(OUT/f'gemini-chat-{width}.png'),full_page=True)
    mode='quota';before=len(requests);page.locator('#chat-input').fill('Horas del mes');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('cuota',timeout=45000);assert len(requests)==before+1;mode='ok'
    page.evaluate('navigator.__defineGetter__("onLine",()=>false)');before=len(requests);page.locator('#chat-input').fill('Horas');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('Sin conexión');assert len(requests)==before;page.evaluate('navigator.__defineGetter__("onLine",()=>true)')
    page.get_by_role('button',name='Mes',exact=True).click()

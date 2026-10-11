@@ -37,11 +37,11 @@ test('production Auth, Firestore, App Check and AI requests and other apps never
  assert.equal(called,0);assert.equal(w.stores.size,0);
 });
 test('approved SDK dependencies are cached for offline reuse without HTML substitutes',async()=>{
- const w=worker(),req=w.request('https://www.gstatic.com/firebasejs/12.10.0/firebase-ai.js');w.network=async()=>new Response('SDK fixture',{headers:{'content-type':'application/javascript'}});assert.equal(await (await w.fetch(req)).text(),'SDK fixture');w.network=async()=>{throw Error('Offline');};assert.equal(await (await w.fetch(req)).text(),'SDK fixture');
- assert.equal((await w.fetch(w.request('https://www.gstatic.com/firebasejs/12.10.0/missing.js'))).type,'error');
+ const w=worker(),req=w.request('https://www.gstatic.com/firebasejs/12.14.0/firebase-ai.js');w.network=async()=>new Response('SDK fixture',{headers:{'content-type':'application/javascript'}});assert.equal(await (await w.fetch(req)).text(),'SDK fixture');w.network=async()=>{throw Error('Offline');};assert.equal(await (await w.fetch(req)).text(),'SDK fixture');
+ assert.equal((await w.fetch(w.request('https://www.gstatic.com/firebasejs/12.14.0/missing.js'))).type,'error');
 });
 test('a CDN outage still installs the local shell and preserves compatible SDKs from the previous cache only',async()=>{
- const w=worker(),sdk='https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js';w.network=async()=>{throw Error('CDN unavailable');};
+ const w=worker(),sdk='https://www.gstatic.com/firebasejs/12.14.0/firebase-auth-compat.js';w.network=async()=>{throw Error('CDN unavailable');};
  w.stores.set('horas-v3-previous',new Map([[sdk,new Response('Previous compatible SDK',{headers:{'content-type':'application/javascript'}})],[scope+'index.html',new Response('OLD shell')],['https://firestore.googleapis.com/private',new Response('PRIVATE response')]]));
  await w.lifecycle('install');assert.equal(w.skips,1);await w.lifecycle('activate');assert.equal(await (await w.cache().match(sdk)).text(),'Previous compatible SDK');assert.notEqual(await (await w.cache().match(scope+'index.html')).text(),'OLD shell');assert.equal(await w.cache().match('https://firestore.googleapis.com/private'),undefined);assert(!w.stores.has('horas-v3-previous'));
 });

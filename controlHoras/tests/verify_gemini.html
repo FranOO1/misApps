@@ -3,8 +3,8 @@
 <h1>Prueba ficticia de Gemini</h1><p>Envía a Google una consulta ficticia con un único dato calculado: 8,25 horas. No lee ni envía jornadas, nóminas o ajustes guardados; no conecta Firestore. Utiliza la sesión Google ya abierta en este navegador y App Check normal.</p><p>Debe servirse desde el dominio autorizado para App Check. No se ha publicado esta página. Revisa las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">condiciones de Google</a>; esta prueba no activa facturación.</p><button id="send" disabled>Autorizar consulta ficticia a Google</button><p id="status" role="status">Cargando configuración y comprobando sesión…</p><pre id="result"></pre><a href="../index.html">Volver a Mis Horas</a>
 <script src="../ai-data.js"></script><script type="module">
 import {query,invalidate,errorMessage} from '../ai-service.js';
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js';
-import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+import {getAuth,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
 const button=document.getElementById('send'),status=document.getElementById('status'),result=document.getElementById('result');let generation=0,busy=false;
 try{
  const response=await fetch('../index.html');if(!response.ok)throw Error('No se pudo leer la configuración local.');

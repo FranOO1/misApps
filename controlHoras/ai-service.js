@@ -62,10 +62,10 @@ export function createService(loadSDK=()=>Promise.all(['app','auth','app-check',
   let active=null,initializing=null,sdk=null,app=null,auth=null,appCheck=null,aiClient=null,clients=new Map(),serial=0;
   async function init(options){
     if(!initializing)initializing=(async()=>{sdk=await loadSDK();const [apps,auths,check]=sdk;
-      // Separate modular SDK registry; the existing compat 10.14 Auth/Firestore stay intact.
+      // Separate modular SDK registry; the existing compat Auth/Firestore stay intact.
       app ||= apps.initializeApp(options,'mis-horas-ai');auth ||= auths.initializeAuth(app,{persistence:auths.inMemoryPersistence});
       appCheck=check.initializeAppCheck(app,{provider:new check.ReCaptchaEnterpriseProvider(aiConfig.appCheckSiteKey),isTokenAutoRefreshEnabled:true});
-      aiClient=sdk[3].getAI(app,{backend:new sdk[3].GoogleAIBackend()});
+      aiClient=sdk[3].getAI(app,{backend:new sdk[3].GoogleAIBackend(),useLimitedUseAppCheckTokens:true});
       if(auth.app!==app||appCheck.app!==app||aiClient.app!==app)throw {kind:'configuration',code:'probe/instance-mismatch'};
       if(!matchingConfig(app.options,options))throw {kind:'configuration',code:'probe/config-mismatch'};
     })().catch(e=>{initializing=null;throw e;});await initializing;
