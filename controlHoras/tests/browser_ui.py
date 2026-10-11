@@ -37,9 +37,10 @@ try:
     if breakdown:expect(page.locator('#monthly-hours-breakdown')).to_have_text(breakdown)
     else:expect(page.locator('#monthly-hours-breakdown')).to_have_count(0)
    page.evaluate('state.allData["2026-10"].days=savedDays;render()')
+   page.screenshot(path=str(OUT/f'menu-{width}.png'),full_page=True,animations='disabled')
    for key,label in [('mes','Mes'),('anual','Año'),('ia','IA'),('ajustes','Ajustes')]:
     button=page.locator('#nav-'+key);box=button.bounding_box();assert box['height']>=44 and box['width']>=44
-    assert button.evaluate('e=>e.scrollWidth<=e.clientWidth+1')
+    assert button.evaluate('e=>e.scrollWidth<=e.clientWidth+1'),{'viewport':width,'button':key,'size':button.evaluate('e=>({width:e.clientWidth,scroll:e.scrollWidth})')}
     button.tap();expect(page.locator('#nav-'+key)).to_have_attribute('aria-current','page')
     if key=='anual':page.wait_for_function('chartInst && chartInst.canvas.isConnected')
     no_overflow(page)
