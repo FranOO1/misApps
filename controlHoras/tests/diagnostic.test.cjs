@@ -66,7 +66,7 @@ test('classifying an already sanitized UI error retains HTTP status and allowlis
 
 test('first rejected exchange survives SDK throttle without exposing body, key or token',async()=>{
  const {observeAppCheck}=await import(root+'app-check-diagnostic.js');let next=new Response(JSON.stringify({error:{message:'App not registered PRIVATE_FIXTURE',status:'INVALID_ARGUMENT',details:[{metadata:{token:'PRIVATE_FIXTURE'}}]},token:'PRIVATE_FIXTURE'}),{status:400});
- const transport={fetch:async()=>next},original=observeAppCheck(options,transport),url=`https://firebaseappcheck.googleapis.com/v1/projects/${options.projectId}/apps/${options.appId}:exchangeRecaptchaEnterpriseToken?key=PRIVATE_FIXTURE`;
+ const transport={fetch:async()=>next},original=observeAppCheck(options,transport),url=`https://content-firebaseappcheck.googleapis.com/v1/projects/${options.projectId}/apps/${options.appId}:exchangeRecaptchaEnterpriseToken?key=PRIVATE_FIXTURE`;
  const response=await transport.fetch(url,{body:'PRIVATE_FIXTURE',headers:{secret:'PRIVATE_FIXTURE'}});assert.equal(response.status,400);assert.equal(original().cause,'app-not-registered');assert.equal(original().backendStatus,'INVALID_ARGUMENT');
  next=new Response('later',{status:429});await transport.fetch(url);assert.equal(original().status,400);
  const {classify}=await import(root+'ai-service.js');const diagnostic=classify({code:'appCheck/initial-throttle',customData:{httpStatus:400},original:original()});assert.deepEqual(classify(diagnostic),diagnostic);assert(!JSON.stringify(diagnostic).includes('PRIVATE'));assert.equal(await response.text(),JSON.stringify({error:{message:'App not registered PRIVATE_FIXTURE',status:'INVALID_ARGUMENT',details:[{metadata:{token:'PRIVATE_FIXTURE'}}]},token:'PRIVATE_FIXTURE'}));
@@ -75,8 +75,8 @@ test('observer never reads success bodies or other applications and keeps one wr
  const {observeAppCheck}=await import(root+'app-check-diagnostic.js');let reads=0,status=200;
  const transport={fetch:async()=>({status,clone(){reads++;throw Error('not to read');}})},first=observeAppCheck(options,transport),wrapped=transport.fetch;
  const second=observeAppCheck(options,transport);assert.equal(transport.fetch,wrapped);
- const path=`https://firebaseappcheck.googleapis.com/v1/projects/${options.projectId}/apps/${options.appId}:exchangeRecaptchaEnterpriseToken`;
- await transport.fetch(path);status=400;await transport.fetch(path.replace(options.appId,'different-app'));await transport.fetch(path.replace('firebaseappcheck.googleapis.com','different.invalid'));
+ const path=`https://content-firebaseappcheck.googleapis.com/v1/projects/${options.projectId}/apps/${options.appId}:exchangeRecaptchaEnterpriseToken`;
+ await transport.fetch(path);status=400;await transport.fetch(path.replace(options.appId,'different-app'));await transport.fetch(path.replace('content-firebaseappcheck.googleapis.com','different.invalid'));
  assert.equal(reads,0);assert.equal(first(),null);assert.equal(second(),null);
 });
 test('unknown or oversized rejection keeps HTTP status but never echoes arbitrary data',async()=>{
@@ -84,7 +84,7 @@ test('unknown or oversized rejection keeps HTTP status but never echoes arbitrar
  for(const body of [null,{error:{message:'PRIVATE_FIXTURE',status:'PRIVATE_FIXTURE',details:[{reason:'PRIVATE_FIXTURE'}]}}]){const d=describeRejection(400,body);assert.equal(d.cause,'exchange-rejected');assert(!JSON.stringify(d).includes('PRIVATE'));}
  assert.equal(safeOriginal({status:200}),null);assert(!JSON.stringify(safeOriginal({status:400,cause:'PRIVATE_FIXTURE',message:'PRIVATE_FIXTURE',token:'PRIVATE_FIXTURE'})).includes('PRIVATE'));
  const transport={fetch:async()=>new Response(JSON.stringify({error:{message:'x'.repeat(17000)}}),{status:400})},first=observeAppCheck(options,transport);
- await transport.fetch(`https://firebaseappcheck.googleapis.com/v1/projects/${options.projectId}/apps/${options.appId}:exchangeRecaptchaEnterpriseToken`);assert.equal(first().status,400);assert.equal(first().cause,'exchange-rejected');
+ await transport.fetch(`https://content-firebaseappcheck.googleapis.com/v1/projects/${options.projectId}/apps/${options.appId}:exchangeRecaptchaEnterpriseToken`);assert.equal(first().status,400);assert.equal(first().cause,'exchange-rejected');
 });
 test('safe rejection categories distinguish registration, site key, domain and attestation',async()=>{
  const {describeRejection}=await import(root+'app-check-diagnostic.js');for(const [message,cause] of [['App not registered','app-not-registered'],['site key does not match','site-key-mismatch'],['domain not authorized','domain-rejected'],['invalid appId','invalid-app'],['App attestation failed','attestation-rejected'],['SERVICE_DISABLED','service-disabled']])assert.equal(describeRejection(400,{error:{message}}).cause,cause);

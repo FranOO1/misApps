@@ -10,6 +10,7 @@ server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Handler
 threading.Thread(target=server.serve_forever,daemon=True).start()
 URL=f'http://127.0.0.1:{server.server_port}/gemini-prueba/'
 options=dict(re.findall(r'(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId): "([^"]+)"',(ROOT/'controlHoras/index.html').read_text()))
+SENTINELS='''const fixtureValue='NO LEER: DATOS REALES CENTINELA';localStorage.setItem('horas-app-v2',fixtureValue);localStorage.setItem('horas-hide-money','1');window.realDataAccess=[];for(const name of ['getItem','setItem','removeItem']){const original=Storage.prototype[name];Storage.prototype[name]=function(key,...args){if(key==='horas-app-v2'||key==='horas-hide-money')realDataAccess.push(name+':'+key);return original.call(this,key,...args);};}'''
 cache={};requests=[];limited_tokens=set();consumed_tokens=set();blocked=[];mode='ok'
 def resource(url):
  if url not in cache:cache[url]=urllib.request.urlopen(url,timeout=30).read()
@@ -47,7 +48,7 @@ try:
   for width,height in [(320,740),(768,1024)]:
    ctx=browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce')
    ctx.route('https://**/*',route_external)
-   ctx.add_init_script('''const fixtureValue='NO LEER: DATOS REALES CENTINELA';localStorage.setItem('horas-app-v2',fixtureValue);localStorage.setItem('horas-hide-money','1');window.realDataAccess=[];for(const name of ['getItem','setItem','removeItem']){const original=Storage.prototype[name];Storage.prototype[name]=function(key,...args){if(key==='horas-app-v2'||key==='horas-hide-money')realDataAccess.push(name+':'+key);return original.call(this,key,...args);};}''')
+   ctx.add_init_script(SENTINELS)
    page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));before=len(requests)
    page.goto(URL);expect(page.locator('#status')).to_contain_text('No hay sesión',timeout=60000)
    expect(page.locator('#send')).to_be_disabled();assert len(requests)==before
@@ -81,9 +82,14 @@ try:
    page.locator('#send').click();expect(page.locator('#result')).to_contain_text('8,25 horas ficticias.',timeout=45000)
    page.evaluate('''async()=>{const {getAuth,signOut}=await import('https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js');await signOut(getAuth());}''')
    expect(page.locator('#status')).to_contain_text('No hay sesión');expect(page.locator('#send')).to_be_disabled();expect(page.locator('#result')).to_have_text('')
-   # Fresh client: first exchange rejection is transformed by the official SDK.
-   # It must retain its original safe cause and block all further UI sends.
-   page.evaluate('''async options=>{const {getAuth,signInWithCustomToken}=await import('https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js');await signInWithCustomToken(getAuth(),'fixture-custom-token');}''',options)
+   # Fresh context has no successful App Check token cached by the earlier cases.
+   assert not errors,errors;ctx.close()
+   ctx=browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce');ctx.route('https://**/*',route_external)
+   ctx.add_init_script(SENTINELS)
+   page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto(URL)
+   expect(page.locator('#status')).to_contain_text('No hay sesión',timeout=60000)
+   for name in ['app-compat','auth-compat']:page.add_script_tag(url=f'https://www.gstatic.com/firebasejs/10.14.1/firebase-{name}.js')
+   page.evaluate("async options=>{firebase.initializeApp(options);await firebase.auth().signInWithCustomToken('fixture-custom-token');}",options)
    mode='first400';before=len(requests);page.reload();expect(page.locator('#send')).to_be_enabled(timeout=60000);page.locator('#send').click()
    expect(page.locator('#result')).to_contain_text('appCheck/initial-throttle',timeout=45000)
    expect(page.locator('#result')).to_contain_text('Primer rechazo: HTTP 400 · INVALID_ARGUMENT · La aplicación no está registrada en App Check.')

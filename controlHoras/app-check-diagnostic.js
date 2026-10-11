@@ -1,6 +1,8 @@
 // Observe only failed exchanges for this exact Firebase app. Never inspect request
 // bodies/headers, successful attestation bodies, tokens, keys or free-form output.
 const transports=new WeakMap();
+// Firebase 12.14 uses the content-* endpoint; REST also exposes the canonical host.
+const exchangeOrigins=new Set(['https://content-firebaseappcheck.googleapis.com','https://firebaseappcheck.googleapis.com']);
 const statuses=new Set(['INVALID_ARGUMENT','FAILED_PRECONDITION','PERMISSION_DENIED','NOT_FOUND','RESOURCE_EXHAUSTED','UNAUTHENTICATED','UNAVAILABLE','INTERNAL']);
 const descriptions=Object.freeze({
   'app-not-registered':'La aplicación no está registrada en App Check.',
@@ -51,7 +53,7 @@ export function observeAppCheck(options,transport=globalThis){
     transport.fetch=async function(...args){
       const response=await state.fetch.apply(this,args);
       let url;try{url=new URL(typeof args[0]==='string'||args[0] instanceof URL?args[0]:args[0]?.url);}catch{return response;}
-      const entry=url.origin==='https://firebaseappcheck.googleapis.com'&&state.entries.get(url.pathname);
+      const entry=exchangeOrigins.has(url.origin)&&state.entries.get(url.pathname);
       if(entry&&!entry.original&&response.status>=400){
         // Reserve the first rejection before another request can overwrite it.
         entry.original=describeRejection(response.status,null);

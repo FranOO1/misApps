@@ -11,6 +11,7 @@ El código oficial de Firebase App Check 12.14.0 convierte el primer `fetch-stat
 Fuentes primarias:
 - https://github.com/firebase/firebase-js-sdk/blob/firebase%4012.14.0/packages/app-check/src/providers.ts
 - https://github.com/firebase/firebase-js-sdk/blob/firebase%4012.14.0/packages/app-check/src/client.ts
+- https://github.com/firebase/firebase-js-sdk/blob/firebase%4012.14.0/packages/app-check/src/constants.ts
 - https://firebase.google.com/docs/app-check/web/recaptcha-enterprise-provider
 - https://firebase.google.com/docs/app-check/recaptcha-keys
 - https://firebase.google.com/docs/ai-logic/app-check
@@ -41,7 +42,7 @@ Sin acceso administrativo no puede verificarse si ese appId está registrado con
 - El asistente respeta `aiConfig.enabled`, que antes no se comprobaba. Queda en false mientras la atestación real siga bloqueada. La pantalla IA muestra «La IA no está disponible ahora. Tus horas siguen guardándose con normalidad», sin entrada ni Enviar. El envío de nóminas queda deshabilitado; preparación local, registros, cálculos, PDF y comparación local se conservan.
 - Reactivación: después de verificar App Check y recibir una respuesta real desde la prueba ficticia, cambiar solo `enabled` a true en ai-config.js. Ante otro rechazo de App Check/configuración, el asistente vuelve a bloquear el envío durante esa sesión.
 - App Check se activa antes de Auth/AI. Se evita el refresco automático de fondo; cada consulta conserva el getToken existente y AI Logic obtiene un token de uso limitado. No se añade otro diagnóstico getToken ni se desactiva App Check.
-- El observador de rechazos se limita al endpoint del proyecto/appId exactos. No lee cuerpos ni cabeceras de peticiones, ni respuestas exitosas de atestación. De una copia del primer fallo retiene únicamente HTTP, estado backend permitido y una causa traducida de una lista cerrada. Lectura limitada a 16 KiB / 500 ms. No guarda ni registra el cuerpo original, claves, tokens ni metadatos. Los reintentos no sobrescriben ese primer rechazo.
+- El observador de rechazos se limita al endpoint del proyecto/appId exactos en el host oficial usado por el SDK (`content-firebaseappcheck.googleapis.com`) y su alias REST (`firebaseappcheck.googleapis.com`). No lee cuerpos ni cabeceras de peticiones, ni respuestas exitosas de atestación. De una copia del primer fallo retiene únicamente HTTP, estado backend permitido y una causa traducida de una lista cerrada. Lectura limitada a 16 KiB / 500 ms. No guarda ni registra el cuerpo original, claves, tokens ni metadatos. Los reintentos no sobrescriben ese primer rechazo.
 - La prueba aislada sigue disponible con autorización explícita y admite exclusivamente la pregunta fija y 8,25 horas ficticias. No acepta documentos, preguntas libres ni registros. Un rechazo de atestación deshabilita el botón hasta recargar o cambiar de sesión. Su diagnóstico muestra el primer rechazo seguro, separado del bloqueo temporal; causas no reconocidas se describen como desconocidas.
 - El resumen mensual muestra siempre las horas registradas totales. Solo hay desglose normal/festivo cuando hay horas festivas, incluyendo cero horas normales si todas son festivas. No cambia el cálculo salarial ni se confunden horas registradas con extras pagadas.
 - Descansos: símbolo Z, fondo rosa rojizo suave sobre el tema oscuro y fecha/indicador contrastados. Se conserva la etiqueta accesible Descanso y los estados seleccionado/hoy.
@@ -52,6 +53,6 @@ Sin acceso administrativo no puede verificarse si ese appId está registrado con
 
 Local: 91 pruebas Node de interfaz, cálculo, sincronización, AI/nóminas, diagnóstico y worker; compilación de pruebas Python y git diff --check, correctos.
 
-Navegador/CI: pendiente de completar en la rama del PR. Incluye 320/390/768/1280 px, toque y teclado, meses sin jornadas/sin festivos/todo festivo, Z/colores, guardar/borrar, privacidad, PDF/nóminas, SDK oficial con respuestas HTTP ficticias, primer 400 sin enviar al modelo, actualización v5→v6 y dos navegadores contra Firestore local.
+Navegador/CI: resultados y ejecución del commit comprobado en la descripción del PR #8. El workflow incluye 320/390/768/1280 px, toque y teclado, meses sin jornadas/sin festivos/todo festivo, Z/colores, guardar/borrar, privacidad, PDF/nóminas, SDK oficial con respuestas HTTP ficticias, primer 400 sin enviar al modelo, actualización v5→v6 y dos navegadores contra Firestore local.
 
 Consultas reales a Gemini: ninguna respuesta real recibida en esta sesión. Las pruebas de CI simulan Auth, reCAPTCHA, App Check y Gemini; no cuentan como validación del servicio publicado. La configuración administrativa y la primera causa real del 400 quedan pendientes. No se pide otra cuenta, otra clave ni repetir una prueba sin desplegar el diagnóstico cambiado.
