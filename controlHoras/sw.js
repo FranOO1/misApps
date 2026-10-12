@@ -1,5 +1,5 @@
 // UI release: keep all records/preferences in localStorage and other apps' caches.
-const CACHE='horas-v8-gemini-20261012';
+const CACHE='horas-v9-descansos-menu-20261012';
 const BASE_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./core.js','./reports.js','./sync.js','./ai-data.js','./ai-config.js','./ai-service.js','./app-check-diagnostic.js'];
 const SHELL=[...BASE_SHELL,...BASE_SHELL.filter(path=>path.endsWith('.js')).map(path=>path+'?v=8')];
 const WARM=['firebase-app-compat','firebase-auth-compat','firebase-firestore-compat'].map(name=>`https://www.gstatic.com/firebasejs/12.14.0/${name}.js`);
