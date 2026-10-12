@@ -32,7 +32,7 @@ try:
   assert page.evaluate('monthly(2026,1).brutoExtra')==200
   assert page.evaluate('getAnnualData()[1].neto')==180
   assert page.evaluate('expectedForPeriod("2026-01").gross')==150
-  pdf=page.evaluate('(()=>{const d=createPdfDoc();buildMonthReport(d,2026,0);return assemblePdf(d.pages);})()');assert '150,00' in pdf;assert 'extra pendiente' in pdf
+  pdf=page.evaluate('(()=>{const d=createPdfDoc();buildMonthReport(d,2026,0);return assemblePdf(d.pages);})()');assert '150,00' in pdf;assert 'Extras calculadas Sintax' in pdf;assert page.evaluate('R.month(state.allData,state.config,"2026-01").calc.hExtraGen')==10
   page.evaluate('processDownload=async()=>{};doExportYear(2026)');assert page.evaluate('state.pdfReady.blob.size')>1000
   saved=page.evaluate('JSON.stringify(payload())')
   for obj in [{'config':config,'data':{'2026-02':{'days':{'30':{'type':'normal','hours':8}}}}},{'config':config,'data':{'2026-01':{'days':{'1':{'type':'normal','hours':25}}}}},{'config':config,'data':{},'__proto__':{'polluted':True}}]:

@@ -21,7 +21,7 @@
   return {...p,incomes,deductions,subtotalIncome,subtotalDeductions,gross,totalDed,grossSource:num(p.gross)?'Total transcrito de nómina':incomeReady?'Suma de conceptos declarados completos':nr,deductionsSource:num(p.deductionsTotal)?'Total transcrito de nómina':deductionReady?'Suma de conceptos declarados completos':nr,exists:hasPayroll(p),conflicts};
  }
  function month(data,config,period,{generatedAt=new Date().toISOString()}={}){
-  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(period))throw Error('Periodo de informe no válido.');
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)||+period.slice(0,4)<1900||+period.slice(0,4)>2200)throw Error('Periodo de informe no válido.');
   const [year,mm]=period.split('-').map(Number),m=mm-1,r=data[period]||{days:{}},c=C.calculate(data,config,year,m),cfg=C.cfgFor(data,config,year,m);
   const entries=Object.entries(r.days||{}).filter(([,e])=>e),hasHours=entries.length>0,hasEstimate=hasHours||c.hExtra>0;
   const shifts={},types={normal:0,festivo:0,descanso:0};for(const [,e] of entries){types[e.type]++;const shift=e.shift?.trim()||nr;shifts[shift] ||= {days:0,hours:0};shifts[shift].days++;shifts[shift].hours+=e.hours;}
@@ -32,7 +32,7 @@
   return {period,year,month:m,title:months[m]+' '+year,generatedAt,currency:'EUR',hasHours,hasEstimate,closed:r.closed===true,historicalConfirmed:r.historicalStatus==='confirmed',config:cfg,calc:c,payroll:p,daily,types,shifts,normalHours:hasHours?c.hNormal:null,holidayHours:hasHours?c.hFestivo:null,totalHours:hasHours?c.hNormal+c.hFestivo:null,extraIdentified:sum(knownExtra.map(([,e])=>e.extraHours)),nightIdentified:sum(knownNight.map(([,e])=>e.nightHours)),extraCoverage:knownExtra.length,nightCoverage:knownNight.length,recordedDays:entries.length,comparison};
  }
  function available(data,config){
-  const set=new Set(Object.keys(data));for(const period of [...set]){const [y,m]=period.split('-').map(Number),next=new Date(y,m,1),key=C.monthKey(next.getFullYear(),next.getMonth());if(C.calculate(data,config,next.getFullYear(),next.getMonth()).hExtra>0)set.add(key);}
+  const set=new Set(Object.keys(data));for(const period of [...set]){const [y,m]=period.split('-').map(Number),next=new Date(y,m,1),key=C.monthKey(next.getFullYear(),next.getMonth());if(next.getFullYear()<=2200&&C.calculate(data,config,next.getFullYear(),next.getMonth()).hExtra>0)set.add(key);}
   return [...set].sort().reverse();
  }
  function year(data,config,y,options={}){
@@ -49,6 +49,7 @@
   'Bruto: ingresos antes de deducciones. Neto de nómina: importe que figura tras descontarlas. Importe recibido: pago efectivamente recibido, solo si se registra; no se presupone igual al neto.',
   'IRPF: retención como pago a cuenta del impuesto. No determina el resultado final de la declaración. Las cotizaciones a la Seguridad Social y otras deducciones son conceptos separados.',
   'Horas realizadas: normales más festivas según el tipo principal de jornada. Descanso no aporta horas trabajadas. Las horas extraordinarias y nocturnas identificadas son subconjuntos que pueden coincidir con normales o festivas; no se vuelven a sumar al total.',
+  'La clasificación manual de horas extra y nocturnas no modifica por sí sola el cálculo económico aprobado. No hay tarifa de nocturnidad configurada; los complementos reales se registran como conceptos de nómina.',
   'Tramos, pausas, turno y notas se muestran solo cuando están registrados. El total de horas introducido es el dato utilizado en el cálculo; no se reconstruyen horas ni nocturnidad a partir de horarios incompletos.',
   'Estimación: normales pagadas por tarifa normal, festivas por tarifa normal más plus y extras estimadas por tarifa extra. Deducción estimada = bruto estimado por porcentaje dividido entre 100. Neto estimado = bruto estimado menos deducciones estimadas.',
   'Sintax, cuando está activado: semana lunes-domingo y umbral de 40 horas normales más festivas. Se atribuye exceso desde el último día normal; festivos conservan tarifa. Las extras generadas se excluyen de normales pagadas y se estiman en el mes siguiente, sin afirmar que se han cobrado.',
@@ -125,6 +126,7 @@
   for(const text of legends)out.push(text);
   for(const m of list){const p={period:m.period,recordedHours:m.totalHours,normalHours:m.normalHours,holidayHours:m.holidayHours,identifiedExtraHours:m.extraIdentified,identifiedNightHours:m.nightIdentified,recordedDays:m.recordedDays,totalDays:m.daily.length,recordsConfirmedComplete:m.closed,types:m.types,shifts:m.shifts,daily:m.daily.map(e=>e.recorded?{date:e.date,hours:e.hours,type:e.type,segments:e.segments||null,breakMinutes:e.breakMinutes??null,shift:e.shift||null,extraHours:e.extraHours??null,nightHours:e.nightHours??null,...(includeEconomic?{notes:e.notes||null}:{})}:{date:e.date,recorded:false})};
    if(includeEconomic){p.realPayroll=m.payroll.exists?{incomes:m.payroll.incomes,deductions:m.payroll.deductions,gross:m.payroll.gross,deductionsTotal:m.payroll.totalDed,net:m.payroll.net,received:m.payroll.received,incomesComplete:m.payroll.incomesComplete,deductionsComplete:m.payroll.deductionsComplete,note:m.payroll.note,conflicts:m.payroll.conflicts}:null;p.estimate=m.hasEstimate?{...m.calc,parameters:C.financial(m.config),historicalRatesConfirmed:m.historicalConfirmed}:null;p.comparison=m.comparison;}out.push(JSON.stringify(p,null,2));}
+  if(annualReport){const summary={year:model.year,recordedHours:model.totalHours,hoursCoverage:model.hoursCoverage,...(includeEconomic?{realTotals:model.real,realCoverage:model.realCoverage,estimatedTotals:model.estimated,estimateCoverage:model.estimateCoverage,deductionsByConcept:model.concepts.map(c=>({name:c.name,kind:c.kind,amount:c.amount,monthsWithAmount:c.periods,monthsWithoutAmount:c.missing}))}:{})};out.push('Resumen anual calculado localmente:\n'+JSON.stringify(summary,null,2));}
   if(annualReport)out.push('Meses sin jornadas: '+model.missingData.join(', ')+'. Sin nómina: '+model.missingPayroll.join(', ')+'.');
   out.push(includeEconomic?'Incluye información económica registrada y estimada.':'Sin importes, tarifas, porcentajes ni notas libres.','Mi pregunta:\n'+(question||'[Escribe aquí tu pregunta]'));return out.join('\n\n');
  }
