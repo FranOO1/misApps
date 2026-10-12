@@ -38,9 +38,9 @@ La prueba aislada no lee jornadas ni nóminas. Conserva etapa, código, HTTP y c
 
 ## Verificación
 
-108 pruebas Node locales correctas: interfaz/privacidad, cálculos anteriores, nóminas reales parciales y negativas, categorías solapadas, informes/coverage, contexto, validación, sincronización y worker. Sintaxis Python y diff comprobados.
+109 pruebas Node locales correctas: interfaz/privacidad, cálculos anteriores, nóminas reales parciales y negativas, categorías solapadas, informes/coverage, contexto, validación, sincronización y worker. Sintaxis Python y diff comprobados.
 
-[CI de la implementación c8a6435](https://github.com/FranOO1/misApps/actions/runs/38226903232): completo y correcto. La ejecución del commit final se enlaza en la descripción del PR. Incluye Chromium 320/390/768/1280, toque y teclado, colores y ausencia de símbolos, guardar/borrar, descargas reales, lectura de PDFs con pypdf, encabezados/paginación, cobertura anual, clipboard local, nóminas parciales/ceros/privacidad, SDK oficial con respuestas ficticias, copia/migración/restauración, v5 publicado → worker v7, funcionamiento sin conexión y dos navegadores con Firestore local incluyendo nóminas y borrados por concepto.
+[CI de la implementación c8a6435](https://github.com/FranOO1/misApps/actions/runs/38226903232): completo y correcto. La ejecución del commit final se enlaza en la descripción del PR. Incluye Chromium 320/390/768/1280, toque y teclado, colores y ausencia de símbolos, guardar/borrar, descargas reales, lectura de PDFs con pypdf, encabezados/paginación, cobertura anual, clipboard local, nóminas parciales/ceros/privacidad, SDK oficial con respuestas ficticias, copia/migración/restauración, v5 publicado → worker v7 con módulos locales versionados para evitar mezcla con caché antigua, funcionamiento sin conexión y dos navegadores con Firestore local incluyendo nóminas y borrados por concepto.
 
 Capturas de móvil/tablet y PDF ficticio revisadas visualmente. Auth, reCAPTCHA, App Check y Gemini de CI son simulados; el servidor Firestore usado es local. Estas pruebas no verifican Gemini real ni las reglas de seguridad de producción. No se ha usado ningún registro personal en las pruebas.
 

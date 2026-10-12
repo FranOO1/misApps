@@ -1020,8 +1020,8 @@
       vibrate(100);
       const mk = monthKey(state.year, state.month);
       if(!state.selectedDay||!state.draft||!Number.isFinite(state.draft.hours)||state.draft.hours<0||state.draft.hours>24){alert('Horas no válidas.');return;}
-      ensurePeriod();
       try{C.validateDay(state.draft);}catch(e){alert(e.message);return;}
+      ensurePeriod();
       state.allData[mk].days[state.selectedDay] = C.copy(state.draft);
       if(!saveState())return;
       state.dayConfirmed = true;

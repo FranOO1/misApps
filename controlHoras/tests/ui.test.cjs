@@ -85,3 +85,5 @@ test('new PDF reports repeat headers, number pages and can omit economic data an
 });
 
 test('invalid real payroll input cannot be silently converted to an absent value or overwrite the saved month',()=>{const a=app();a.run('openHistory();editRealPayroll("gross","123");saveRealPayroll()');a.run('editRealPayroll("gross","not-a-number");saveRealPayroll()');assert.equal(a.run('state.allData["2026-10"].payroll.gross'),123);assert(a.run('state.reportNotice').includes('válid'));});
+
+test('invalid details on a new day cannot create a month or freeze its tariffs',()=>{const a=app();a.run('state.year=2024;state.month=0;render();selectDay(1);editDayDetail("nightHours","30");saveDay()');assert.equal(a.run('state.allData["2024-01"]'),undefined);});
