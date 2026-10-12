@@ -42,17 +42,60 @@
   // Explicit recovery of an unscoped legacy copy: existing account days, including
   // tombstones, win. Importing an old copy never silently restores deleted days.
   function mergeLegacy(target,legacy) {
-    const payload=copy(target);let added=0,conflicts=0;
+    const payload=copy(target);let added=0,conflicts=0,addedPayroll=0;
     for(const [mk,record] of Object.entries(legacy.data)) {
       for(const [day,entry] of Object.entries(record.days)) {
         if(!entry)continue;
         const existing=payload.data[mk]?.days||{};
         if(own(existing,day)){if(JSON.stringify(existing[day])!==JSON.stringify(entry))conflicts++;continue;}
-        if(!payload.data[mk])payload.data[mk]={...copy(record),days:{}};
+        if(!payload.data[mk]){payload.data[mk]={...copy(record),days:{}};if(record.payroll)addedPayroll++;}
         payload.data[mk].days[day]=copy(entry);added++;
       }
     }
-    return {payload,added,conflicts};
+    for(const [mk,record] of Object.entries(legacy.data))if(record.payroll){
+      if(!payload.data[mk]){payload.data[mk]={...copy(record),days:{}};addedPayroll++;continue;}
+      const targetRecord=payload.data[mk];
+      if(!targetRecord.payroll){targetRecord.payroll=copy(record.payroll);addedPayroll++;continue;}
+      for(const col of ['incomes','deductions'])for(const [id,line] of Object.entries(record.payroll[col]||{})){
+        targetRecord.payroll[col] ||= {};
+        if(!own(targetRecord.payroll[col],id)){targetRecord.payroll[col][id]=copy(line);if(line)addedPayroll++;}
+        else if(JSON.stringify(targetRecord.payroll[col][id])!==JSON.stringify(line))conflicts++;
+      }
+    }
+    return {payload,added,conflicts,addedPayroll};
+  }
+  const payrollFields=['gross','deductionsTotal','net','received','incomesComplete','deductionsComplete','note','recordedAt'];
+  const incomeKinds=['base','complement','extra','holiday','extraPay','arrears','other'];
+  const deductionKinds=['irpf','socialSecurity','other'];
+  function emptyPayroll() {return {gross:null,deductionsTotal:null,net:null,received:null,incomesComplete:false,deductionsComplete:false,note:'',recordedAt:null,incomes:{},deductions:{}};}
+  function realPayroll(input) {
+    if(input===null)return null;
+    if(!plain(input))fail('Nómina real no válida.');safeTree(input);
+    if(Object.keys(input).some(k=>![...payrollFields,'incomes','deductions'].includes(k)))fail('Campo de nómina desconocido.');
+    const out={...emptyPayroll(),...copy(input)};
+    for(const k of ['gross','deductionsTotal','net','received'])if(out[k]!==null&&!finite(out[k],-10000000,10000000))fail('Importe de nómina no válido: '+k);
+    for(const k of ['incomesComplete','deductionsComplete'])if(typeof out[k]!=='boolean')fail('Estado de desglose no válido.');
+    if(typeof out.note!=='string'||out.note.length>2000)fail('Nota de nómina no válida.');
+    if(out.recordedAt!==null&&(typeof out.recordedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T/.test(out.recordedAt)||!Number.isFinite(Date.parse(out.recordedAt))))fail('Fecha de registro de nómina no válida.');
+    for(const collection of ['incomes','deductions']) {
+      if(!plain(out[collection])||Object.keys(out[collection]).length>160)fail('Demasiados conceptos de nómina.');
+      for(const [id,line] of Object.entries(out[collection])) {
+        if(!/^[A-Za-z0-9_-]{1,100}$/.test(id))fail('Identificador de concepto no válido.');if(line===null)continue;
+        const fields=collection==='incomes'?['name','kind','amount']:['name','kind','base','pct','amount'];
+        if(!plain(line)||Object.keys(line).some(k=>!fields.includes(k))||typeof line.name!=='string'||line.name.length>150||!(collection==='incomes'?incomeKinds:deductionKinds).includes(line.kind))fail('Concepto de nómina no válido.');
+        for(const k of fields.filter(k=>!['name','kind'].includes(k)))if(line[k]!==null&&!finite(line[k],k==='pct'?0:-10000000,k==='pct'?100:10000000))fail('Dato de concepto no válido: '+k);
+      }
+    }
+    return out;
+  }
+  function validateDay(e) {
+    if(!plain(e)||!['normal','festivo','descanso'].includes(e.type)||!finite(e.hours,0,24)||(e.type==='descanso'&&e.hours!==0))fail('Jornada no válida.');
+    if(Object.keys(e).some(k=>!['hours','type','segments','breakMinutes','shift','notes','extraHours','nightHours'].includes(k)))fail('Campo de jornada desconocido.');
+    for(const k of ['extraHours','nightHours'])if(e[k]!==undefined&&e[k]!==null&&!finite(e[k],0,e.hours))fail('Las horas identificadas no pueden superar las horas de la jornada.');
+    if(e.breakMinutes!==undefined&&e.breakMinutes!==null&&!finite(e.breakMinutes,0,1440))fail('Pausas no válidas.');
+    for(const [k,max] of [['shift',100],['notes',2000]])if(e[k]!==undefined&&(typeof e[k]!=='string'||e[k].length>max))fail('Detalle de jornada no válido.');
+    if(e.segments!==undefined){if(!Array.isArray(e.segments)||e.segments.length>8)fail('Tramos no válidos.');for(const t of e.segments){if(!plain(t)||Object.keys(t).some(k=>!['start','end','breakMinutes'].includes(k)))fail('Tramo no válido.');for(const k of ['start','end'])if(t[k]!==null&&(typeof t[k]!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(t[k])))fail('Hora de tramo no válida.');if(t.breakMinutes!==null&&!finite(t.breakMinutes,0,1440))fail('Pausa de tramo no válida.');}}
+    return copy(e);
   }
   function validateBackup(p,defaults,{remote=false}={}) {
     safeTree(p);
@@ -64,13 +107,13 @@
     for(const [mk,r] of Object.entries(data)) {
       if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(mk) || +mk.slice(0,4)<1900 || +mk.slice(0,4)>2200 || !plain(r) || !plain(r.days)) fail('Mes no válido: '+mk);
       const [y,m]=mk.split('-').map(Number);
-      if(Object.keys(r).some(k=>!['days','closed','rateConfig','historicalStatus'].includes(k))) fail('Campo de mes desconocido.');
+      if(Object.keys(r).some(k=>!['days','closed','rateConfig','historicalStatus','payroll'].includes(k))) fail('Campo de mes desconocido.');
       for(const [d,e] of Object.entries(r.days)) {
         if(!/^[1-9]\d?$/.test(d) || +d>dim(y,m-1)) fail('Día no válido: '+mk+'-'+d);
         if(e===null) continue; // Durable deletion tombstone, never merged back from old copies.
-        if(!plain(e) || !['normal','festivo','descanso'].includes(e.type) || !finite(e.hours,0,24) || (e.type==='descanso' && e.hours!==0)) fail('Jornada no válida: '+mk+'-'+d);
-        if(Object.keys(e).some(k=>!['hours','type'].includes(k))) fail('Campo de jornada desconocido.');
+        validateDay(e);
       }
+      if(r.payroll!==undefined)r.payroll=realPayroll(r.payroll);
       if(r.closed!==undefined && typeof r.closed!=='boolean') fail('Cierre de mes no válido.');
       if(r.rateConfig!==undefined) {
         const fields=Object.keys(financial(c));
@@ -169,6 +212,7 @@
     const status=differences.length?'different':limits.length?'unknown':'match';
     return {status,label:{match:'Cuadra con los datos disponibles',different:'Hay diferencias',unknown:'No se puede comprobar con la información disponible'}[status],differences,limits,result:r};
   }
-  const api={copy,monthKey,dim,config,financial,mergeLegacy,validateBackup,cfgFor,extraActive,entry,extraMap,extraInfo,calcMonth,calculate,freezeDerivedPeriods,daily,hoursColor,escapeHTML,applyOps,redactPayroll,normalizePayroll,comparePayroll};
+  const api={payrollFields,incomeKinds,deductionKinds,emptyPayroll,realPayroll,validateDay,copy,monthKey,dim,config,financial,mergeLegacy,validateBackup,cfgFor,extraActive,entry,extraMap,extraInfo,calcMonth,calculate,freezeDerivedPeriods,daily,hoursColor,escapeHTML,applyOps,redactPayroll,normalizePayroll,comparePayroll};
   if(typeof module!=='undefined')module.exports=api;else root.HorasCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
+

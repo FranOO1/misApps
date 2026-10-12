@@ -22,7 +22,13 @@
         for(const op of pending){
           if(typeof op.id!=='string'||!op.id||!Array.isArray(op.path)||!(['config','data'].includes(op.path[0]))||op.path.some(k=>typeof k!=='string'))throw Error('Diario local no válido.');
           if(op.path[0]==='config'&&(op.path.length!==2||!Object.hasOwn(defaults,op.path[1])||op.path[1]==='hideMoney'))throw Error('Ajuste pendiente no válido.');
-          if(op.path[0]==='data'&&(!/^\d{4}-(0[1-9]|1[0-2])$/.test(op.path[1])||!['days','rateConfig','historicalStatus','closed'].includes(op.path[2])||(op.path[2]==='days'?op.path.length!==4:op.path.length!==3)))throw Error('Jornada pendiente no válida.');
+          if(op.path[0]==='data'){
+            const p=op.path,validMonth=/^\d{4}-(0[1-9]|1[0-2])$/.test(p[1]);
+            const validPayroll=p[2]==='payroll'&&(C.payrollFields.includes(p[3])&&p.length===4||['incomes','deductions'].includes(p[3])&&p.length===5&&/^[A-Za-z0-9_-]{1,100}$/.test(p[4]));
+            const validDay=p[2]==='days'&&p.length===4&&/^[1-9]\d?$/.test(p[3]);
+            const validMonthField=['rateConfig','historicalStatus','closed'].includes(p[2])&&p.length===3;
+            if(!validMonth||!(validPayroll||validDay||validMonthField))throw Error('Dato pendiente no válido.');
+          }
         }
         const valid=C.validateBackup(saved.payload,defaults);C.validateBackup(C.applyOps(valid,pending),defaults);
         if(JSON.stringify(valid)!==JSON.stringify(saved.payload))storage.setItem(`horas-before-migration:${account}`,raw);
@@ -45,7 +51,10 @@
       for(const mk of new Set([...Object.keys(before.data),...Object.keys(after.data)])) {
         const a=before.data[mk]||{days:{}},b=after.data[mk]||{days:{}};
         for(const d of new Set([...Object.keys(a.days),...Object.keys(b.days)]))add(['data',mk,'days',d],a.days[d],b.days[d]);
-        for(const k of new Set([...Object.keys(a),...Object.keys(b)]))if(k!=='days')add(['data',mk,k],a[k],b[k]);
+        for(const k of new Set([...Object.keys(a),...Object.keys(b)]))if(!['days','payroll'].includes(k))add(['data',mk,k],a[k],b[k]);
+        const ap=a.payroll||{},bp=b.payroll||{},blankPayroll=C.emptyPayroll();
+        for(const k of C.payrollFields)add(['data',mk,'payroll',k],ap[k]??blankPayroll[k],bp[k]??blankPayroll[k]);
+        for(const collection of ['incomes','deductions'])for(const id of new Set([...Object.keys(ap[collection]||{}),...Object.keys(bp[collection]||{})]))add(['data',mk,'payroll',collection,id],ap[collection]?.[id],bp[collection]?.[id]);
       }return ops;
     }
     function save() {
@@ -150,3 +159,4 @@
   root.HorasSync={create};
   if(typeof module!=='undefined')module.exports={create};
 })(typeof globalThis!=='undefined'?globalThis:this);
+

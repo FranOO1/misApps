@@ -1,1 +1,2 @@
-export {aiConfig} from '../controlHoras/ai-config.js';
+export {aiConfig} from '../controlHoras/ai-config.js?v=7';
+

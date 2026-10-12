@@ -1,1 +1,4 @@
-export {createService,query,invalidate,errorMessage,classify} from '../controlHoras/ai-service.js';
+// Explicit consent, one fixed fictional payload; normal assistant remains paused.
+import {createDiagnosticService} from '../controlHoras/ai-service.js?diagnostico=4';
+export {errorMessage,classify,diagnosticQuestion} from '../controlHoras/ai-service.js?diagnostico=4';
+export const {query,invalidate}=createDiagnosticService();
