@@ -1,5 +1,5 @@
-import {aiConfig} from './ai-config.js';
-import {observeAppCheck,safeOriginal} from './app-check-diagnostic.js';
+import {aiConfig} from './ai-config.js?v=7';
+import {observeAppCheck,safeOriginal} from './app-check-diagnostic.js?v=7';
 export const diagnosticQuestion='Explica únicamente las 8,25 horas ficticias aportadas, sin calcular importes.';
 const pausedMessage='La IA no está disponible ahora. Tus horas siguen guardándose con normalidad.';
 export const errorMessage=()=>pausedMessage;

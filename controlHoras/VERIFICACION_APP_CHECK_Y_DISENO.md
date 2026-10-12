@@ -1,3 +1,5 @@
+> Documento de la primera propuesta del PR #8 (2026-10-11). Las instrucciones del 2026-10-12 sustituyen su diseño de horas y descansos. La entrega vigente se describe en [VERIFICACION_HISTORICO_2026-10-12.md](VERIFICACION_HISTORICO_2026-10-12.md).
+
 # App Check y diseño de Mis Horas
 
 Base: `main` e17a1e1bed8f96bb275689c353de577664dd47d9, con PR #7 fusionado. Esta entrega se propone en un PR; no se fusiona ni se publica en Pages.

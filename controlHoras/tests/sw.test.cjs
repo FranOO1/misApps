@@ -18,7 +18,7 @@ function worker(){
 }
 test('install includes existing complete local shell, forces fresh resources and preserves unrelated caches',async()=>{
  const w=worker();w.stores.set('plantometro-v19',new Map());w.stores.set('horas-v3-previous',new Map());await w.lifecycle('install');
- assert(w.requests.some(r=>r.url.endsWith('/core.js')));assert(w.requests.some(r=>r.url.endsWith('/sync.js')));assert(w.requests.some(r=>r.url.endsWith('/ai-service.js')));assert(w.requests.some(r=>r.url.endsWith('/app-check-diagnostic.js')));assert(w.requests.every(r=>r.cache==='reload'));assert.equal(w.skips,1);
+ assert(w.requests.some(r=>r.url.endsWith('/core.js')));assert(w.requests.some(r=>r.url.endsWith('/reports.js')));assert(w.requests.some(r=>r.url.endsWith('/sync.js')));assert(w.requests.some(r=>r.url.endsWith('/ai-service.js')));assert(w.requests.some(r=>r.url.endsWith('/app-check-diagnostic.js')));assert(w.requests.every(r=>r.cache==='reload'));assert.equal(w.skips,1);
  await w.lifecycle('activate');assert.equal(w.claims,1);assert(w.stores.has('plantometro-v19'));assert(w.stores.has(w.name));assert(!w.stores.has('horas-v3-previous'));
 });
 test('offline uses cached scripts, navigation alone can fall back to the HTML shell, and missing resources fail',async()=>{
@@ -33,7 +33,7 @@ test('an HTML response cannot replace or poison a cached JavaScript resource',as
 });
 test('production Auth, Firestore, App Check and AI requests and other apps never enter this worker cache',async()=>{
  const w=worker();let called=0;w.network=async()=>{called++;return new Response('private');};
- for(const req of [w.request('https://firestore.googleapis.com/v1/projects/fixture'),w.request('https://firebaseappcheck.googleapis.com/v1/projects/fixture'),w.request('https://firebasevertexai.googleapis.com/v1beta/fixture'),w.request('https://identitytoolkit.googleapis.com/v1/accounts:lookup'),w.request('https://fixture.invalid/Plantometro/index.html'),w.request('./index.html',{method:'POST'})])assert.equal(await w.fetch(req),undefined);
+ for(const req of [w.request('https://firestore.googleapis.com/v1/projects/fixture'),w.request('https://firebaseappcheck.googleapis.com/v1/projects/fixture'),w.request('https://content-firebaseappcheck.googleapis.com/v1/projects/fixture'),w.request('https://firebasevertexai.googleapis.com/v1beta/fixture'),w.request('https://identitytoolkit.googleapis.com/v1/accounts:lookup'),w.request('https://fixture.invalid/Plantometro/index.html'),w.request('./index.html',{method:'POST'})])assert.equal(await w.fetch(req),undefined);
  assert.equal(called,0);assert.equal(w.stores.size,0);
 });
 test('approved SDK dependencies are cached for offline reuse without HTML substitutes',async()=>{

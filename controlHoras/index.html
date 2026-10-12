@@ -17,10 +17,10 @@
   <script defer src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
 
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="./core.js"></script>
-  <script src="./sync.js"></script>
-  <script src="./ai-data.js"></script>
-  <script src="./reports.js"></script>
+  <script src="./core.js?v=7"></script>
+  <script src="./sync.js?v=7"></script>
+  <script src="./ai-data.js?v=7"></script>
+  <script src="./reports.js?v=7"></script>
   
 
   <style>
@@ -503,7 +503,7 @@
       if(state.config.hideMoney)return '<p class="privacy-note">Importes ocultos. Muestra los importes para registrar o editar una nómina real.</p>';
       const draft=payrollDraft(),input=(id,label,value,change,type='number')=>`<label class="report-field" for="${id}">${label}<input id="${id}" type="${type}" ${type==='number'?'step="0.01" inputmode="decimal"':''} value="${esc(value??'')}" oninput="${change}"></label>`;
       const groups=['incomes','deductions'].map(collection=>`<h3 style="font-size:15px">${collection==='incomes'?'Ingresos por concepto':'Deducciones por concepto'}</h3>${Object.entries(draft[collection]).filter(([,l])=>l).map(([id,line])=>{
-        const arg=esc(JSON.stringify(id)),prefix='real-'+id,handler=key=>`editRealLine('${collection}',${arg},'${key}',this.value)`,categories=collection==='incomes'?[['base','Salario base'],['complement','Complemento'],['extra','Horas extra'],['holiday','Festivos'],['extraPay','Paga extraordinaria'],['arrears','Atrasos'],['other','Otro']]:[['irpf','IRPF'],['socialSecurity','Seguridad Social'],['other','Otra']];
+        const arg=esc(JSON.stringify(id)),prefix='real-'+collection+'-'+id,handler=key=>`editRealLine('${collection}',${arg},'${key}',this.value)`,categories=collection==='incomes'?[['base','Salario base'],['complement','Complemento'],['extra','Horas extra'],['holiday','Festivos'],['extraPay','Paga extraordinaria'],['arrears','Atrasos'],['other','Otro']]:[['irpf','IRPF'],['socialSecurity','Seguridad Social'],['other','Otra']];
         return `<div class="payroll-line">${input(prefix+'-name','Nombre del concepto',line.name,handler('name'),'text')}<label class="report-field" for="${prefix}-kind">Tipo de concepto<select id="${prefix}-kind" onchange="editRealLine('${collection}',${arg},'kind',this.value)">${categories.map(([k,l])=>`<option value="${k}" ${line.kind===k?'selected':''}>${l}</option>`).join('')}</select></label><div class="report-fields">${collection==='deductions'?input(prefix+'-base','Base (EUR)',line.base,handler('base'))+input(prefix+'-pct','Porcentaje (%)',line.pct,handler('pct')):''}${input(prefix+'-amount','Importe (EUR)',line.amount,handler('amount'))}</div><button class="big-btn" onclick="removeRealLine('${collection}',${arg})">Eliminar concepto</button></div>`;
       }).join('')}<button class="big-btn" onclick="addRealLine('${collection}')">${collection==='incomes'?'Añadir ingreso':'Añadir deducción'}</button><label class="report-choice"><input type="checkbox" ${draft[collection==='incomes'?'incomesComplete':'deductionsComplete']?'checked':''} onchange="editRealPayroll('${collection==='incomes'?'incomesComplete':'deductionsComplete'}',this.checked)">Confirmo que este desglose está completo</label>`).join('');
       return `<p class="privacy-note">Transcribe la nómina del mes seleccionado. Puedes guardar datos parciales: vacío significa «No registrado»; escribe 0 para un cero real. Se admiten ajustes negativos tal como figuren en la nómina. Los subtotales no sustituyen los totales hasta confirmar el desglose completo.</p>${groups}<h3 style="font-size:15px">Totales que figuran en la nómina</h3><div class="report-fields">${[['gross','Bruto real (EUR)'],['deductionsTotal','Total de deducciones real (EUR)'],['net','Neto de nómina (EUR)'],['received','Importe recibido (EUR)']].map(([key,label])=>input('real-'+key,label,draft[key],`editRealPayroll('${key}',this.value)`)).join('')}</div><label class="report-field" for="real-note">Notas de la nómina<textarea id="real-note" maxlength="2000" oninput="editRealPayroll('note',this.value)">${esc(draft.note)}</textarea></label><div class="report-actions"><button class="big-btn" style="color:var(--success)" onclick="saveRealPayroll()">Guardar nómina real</button><button class="big-btn" onclick="cancelRealEdits()">Descartar cambios pendientes</button></div>`;
@@ -519,7 +519,7 @@
     const AI_UNAVAILABLE='La IA no está disponible ahora. Tus horas siguen guardándose con normalidad.';
     const canUseAI=()=>state.aiEnabled&&!state.aiBlocked;
     let aiService;
-    const ai=()=>aiService ||= import('./ai-service.js').catch(e=>{aiService=null;throw e;});
+    const ai=()=>aiService ||= import('./ai-service.js?v=7').catch(e=>{aiService=null;throw e;});
     const aiSession=()=>`${privateGeneration}:${cloud.user?.uid||''}`;
     const knownIdentifiers=()=>[state.config.userName,cloud.user?.displayName,cloud.user?.email].filter(Boolean);
     function discardAI(){privateGeneration++;state.chatMsgs=[];state.chatInput='';state.chatLoading=false;state.aiDiagnostic=null;state.nomina={status:'idle',result:null,error:null};if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});}
@@ -1117,7 +1117,7 @@
     try{sync.load();}catch(e){alert(e.message);}
     sync.setOnline(navigator.onLine!==false);
     render();initCloud();
-    import('./ai-config.js').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
+    import('./ai-config.js?v=7').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
     document.addEventListener('DOMContentLoaded',()=>{if(!cloud.ready)initCloud();if(state.tab==='anual')render();});
 
     // ============================================================
