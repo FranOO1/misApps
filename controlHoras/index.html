@@ -17,10 +17,11 @@
   <script defer src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
 
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="./core.js?v=8"></script>
-  <script src="./sync.js?v=8"></script>
-  <script src="./ai-data.js?v=8"></script>
-  <script src="./reports.js?v=8"></script>
+  <script src="./core.js?v=10"></script>
+  <script src="./sync.js?v=10"></script>
+  <script src="./ai-data.js?v=10"></script>
+  <script src="./reports.js?v=10"></script>
+  <script src="./ai-history.js?v=10"></script>
   
 
   <style>
@@ -37,14 +38,19 @@
     button { cursor: pointer; border: none; background: none; color: inherit; font-family: inherit; }
     input, select { font-family: inherit; outline: none; }
     
-    .app-root { max-width: 640px; margin: 0 auto; padding: 12px 14px 12px; display: flex; flex-direction: column; flex: 1; width: 100%; }
+    .app-root { max-width: 640px; margin: 0 auto; padding: 8px 10px; display: flex; flex-direction: column; flex: 1; width: 100%; }
     
-    .tabs-bar { display: flex; flex-wrap: nowrap; gap: 2px; background: #1B2333; border: 1px solid #56627B; border-radius: 14px; padding: 4px; margin-bottom: 14px; flex: 0 0 auto;}
-    .tab-btn { flex: 1 0 auto; min-width: 44px; min-height: 46px; padding: 10px 3px; white-space: nowrap; border: 1px solid #495875; background: #273247; border-radius: 9px; color: #DCE5F5; font-size: clamp(12px,3.35vw,14px); font-weight: 600; transition: all 0.15s; }
-    .tab-btn.active { background: #375E88; border-color: #80BAFF; color: #F6FAFF; box-shadow: inset 0 -2px #9FCBFF; }
-    .hours-breakdown { margin-top: 5px; color: var(--muted); font-size: 12px; }
-    .eye-btn { width: 44px; flex: 0 0 44px; border-radius: 11px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
-    .eye-btn { min-height: 46px; }
+    .tabs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 6px; flex: 0 0 auto; }
+    .view-selector { display: flex; flex: 0 0 112px; padding: 2px; gap: 2px; background: #1B2330; border: 1px solid #303B4C; border-radius: 11px; }
+    .tab-btn { min-width: 44px; min-height: 44px; padding: 8px 5px; border-radius: 9px; color: #AFB8CC; font-size: 13px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: background-color .15s,color .15s; }
+    .view-selector .tab-btn { flex: 1; }
+    .tab-btn.active { background: rgba(79,163,255,.15); color: #9FCBFF; }
+    .view-selector .tab-btn.active { background: #29496C; color: #F6FAFF; }
+    .nav-link { flex: 1 0 auto; }
+    .nav-icon { flex: 0 0 44px; width: 44px; padding: 0; }
+    .hours-breakdown { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .eye-btn { width: 44px; flex: 0 0 44px; border-radius: 9px; color: var(--muted); display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0; }
+    @media (max-width: 379px) { .tabs-bar { display: grid; grid-template-columns: minmax(0,1fr) 44px 44px; gap: 3px 8px; } .view-selector { grid-column: 1; grid-row: 1; width: 112px; } #nav-ia { grid-column: 2 / span 2; grid-row: 1; } #nav-historico { grid-column: 1; grid-row: 2; justify-self: start; } #nav-ajustes { grid-column: 2; grid-row: 2; } .eye-btn { grid-column: 3; grid-row: 2; } }
     .history-list { display: flex; flex-direction: column; gap: 8px; }
     .history-year summary { padding: 12px 0; min-height: 44px; cursor: pointer; font-weight: 600; }
     .history-months { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 8px 0; }
@@ -57,7 +63,7 @@
     .report-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
     .report-actions .big-btn { flex: 1 1 170px; }
     .report-preview { width: 100%; min-height: 180px; font-size: 16px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 10px; }
-    .eye-btn.active { background: rgba(255,176,79,0.12); color: var(--warning); }
+    .eye-btn.active { color: #CFD7E5; }
     
     .tab-content { flex: 1; display: flex; flex-direction: column;  }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -69,22 +75,22 @@
     .big-btn { width: 100%; padding: 12px 10px; border-radius: 14px; border: 1.5px solid var(--border); background: rgba(255,255,255,0.03); color: #C9D2E3; font-size: 14px; font-weight: 600; text-align: center; }
     .config-input { width: 90px; padding: 7px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
     
-    .neto-block { text-align: center; padding: 18px 12px; border-radius: 16px; background: linear-gradient(160deg, rgba(79,163,255,0.1), rgba(123,232,168,0.07)); border: 1px solid var(--border); margin-bottom: 14px;}
-    .neto-value { font-family: 'Space Grotesk', system-ui; font-weight: 700; font-size: 38px; color: var(--success); margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
-    .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 12px; }
-    .day-cell { min-height: 46px; aspect-ratio: 1; border-radius: 10px; border: 1.5px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); padding:0; transition: border-color 0.15s; }
+    .neto-block { text-align: center; padding: 7px 10px; border-radius: 16px; background: linear-gradient(160deg, rgba(79,163,255,0.1), rgba(123,232,168,0.07)); border: 1px solid var(--border); margin-bottom: 8px;}
+    .neto-value { font-family: 'Space Grotesk', system-ui; font-weight: 700; font-size: 30px; color: var(--success); margin: 2px 0; font-variant-numeric: tabular-nums; }
+    .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 6px; }
+    .day-cell { min-height: 44px; aspect-ratio: auto; border-radius: 10px; border: 1.5px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.04); padding:0; transition: border-color 0.15s; }
     .day-cell.today { border-color: var(--accent); }
     .day-cell span:first-child { font-size: 13px; font-weight: 600; }
-    .day-cell span + span { font-size: 11px; }
+    .day-cell span + span { font-size: 11px; max-width: 100%; overflow-wrap: anywhere; }
     
-    .editor { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+    .editor { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 8px; margin-bottom: 8px; }
     .type-btn { flex: 1; padding: 10px 0; border-radius: 12px; border: 1.5px solid var(--border); font-size: 13px; font-weight: 600; background: transparent; color: var(--muted); }
-    .hours-input { width: 80px; padding: 10px 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 20px; font-weight: 700; text-align: center; font-family: 'Space Grotesk', system-ui; }
-    .step-btn { width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 22px; }
-    .add-btn { width: 100%; padding: 13px 0; border-radius: 14px; background: linear-gradient(100deg, #3FD68C, #7BE8A8); color: #0E1420; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', system-ui; }
+    .hours-input { width: 80px; padding: 7px 6px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 20px; font-weight: 700; text-align: center; font-family: 'Space Grotesk', system-ui; }
+    .step-btn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 22px; }
+    .add-btn { width: 100%; padding: 10px 0; border-radius: 14px; background: linear-gradient(100deg, #3FD68C, #7BE8A8); color: #0E1420; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', system-ui; }
     .day-earn-box { text-align: center; padding: 14px 12px; border-radius: 14px; background: linear-gradient(160deg, rgba(123,232,168,0.08), rgba(63,214,140,0.03)); border: 1px solid rgba(123,232,168,0.2); }
 
-    .week-banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: linear-gradient(160deg, rgba(79,163,255,0.10), rgba(79,163,255,0.03)); border: 1px solid var(--border);  }
+    .week-banner { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-radius: 12px; padding: 6px 8px; margin-bottom: 4px; background: linear-gradient(160deg, rgba(79,163,255,0.10), rgba(79,163,255,0.03)); border: 1px solid var(--border);  }
     
     .bubble { max-width: 85%; border-radius: 14px; border: 1px solid; padding: 9px 13px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
     .bubble.user { background: rgba(79,163,255,0.18); border-color: rgba(79,163,255,0.35); margin-left: auto; color: var(--text); }
@@ -116,22 +122,25 @@
     .card, .neto-block { overflow-wrap: anywhere; }
     .config-input { min-width: 0; max-width: 100%; }
     .day-cell span { line-height: 1.4; }
-    .calendar-legend { display: flex; gap: 18px; margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+    .calendar-legend { display: flex; gap: 10px; margin: 0; color: var(--muted); font-size: 12px; }
+    .calendar-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-bottom: 5px; }
+    .calendar-heading .privacy-note { margin: 0; font-size: 11px; }
+    .month-details { margin-bottom: 8px; }
+    .month-details > summary { min-height: 44px; padding: 10px 4px; color: var(--muted); font-weight: 600; cursor: pointer; }
+    .month-details[open] > summary { margin-bottom: 6px; }
     .calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 4px; }
     .tab-enter { animation: fadeIn 180ms ease-out; }
-    .money-detail { font-size: 14px; color: var(--text); line-height: 1.6; }
-    .hours-total { font-size: 19px; font-weight: 700; margin-top: 8px; }
+    .money-detail { font-size: 12px; color: var(--text); line-height: 1.35; }
+    .hours-total { font-size: 16px; font-weight: 700; margin-top: 4px; }
     .privacy-note { color: var(--muted); font-size: 12px; line-height: 1.5; }
     button:disabled { opacity: .65; cursor: default; }
     .modal { max-height: 90dvh; overflow-y: auto; }
     @media (max-width: 360px) {
-      .tabs-bar { gap: 1px; padding: 3px; }
-      .tab-btn { font-size: 12px; padding-inline: 1px; }
       .app-root { padding: 10px 6px; }
       .grid { gap: 0; }
       .day-cell { aspect-ratio: auto; min-height: 46px; }
-      .neto-value { font-size: 34px; }
+      .neto-value { font-size: 30px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
@@ -180,7 +189,7 @@
     const TYPES = {
       normal:   { label: "Normal",   color: "#4FA3FF", bg: "rgba(79,163,255,0.18)" },
       festivo:  { label: "Festivo",  color: "#FFB04F", bg: "rgba(255,176,79,0.20)" },
-      descanso: { label: "Descanso", color: "#723B43", bg: "#F2CCCC" },
+      descanso: { label: "Descanso", color: "#AAB5C5", bg: "#222B38", border: "#394557" },
     };
 
     const state = {
@@ -188,9 +197,9 @@
       config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
       allData: {},
       tab: "mes", selectedDay: null, draft: null, dayConfirmed: false,
-      chatMsgs: [], chatInput: "", chatLoading: false, aiEnabled: false, aiBlocked: false,
+      chatMsgs: [], chatContext: null, chatInput: "", chatLoading: false, aiEnabled: false, aiBlocked: false,
       nomina: { status: "idle", result: null, error: null },
-      pdfReady: null, reportPeriod: null, reportYear: new Date().getFullYear(), reportEconomy: false, reportScope: "month", reportQuestion: "", reportContext: "", reportNotice: "", payrollDrafts: {}
+      pdfReady: null, reportPeriod: null, reportYear: new Date().getFullYear(), reportEconomy: false, reportScope: "month", reportQuestion: "", reportContext: "", reportNotice: "", payrollDrafts: {}, moreDetailsOpen: false
     };
 
     // Privacy is a preference of this device, never an incoming cloud choice.
@@ -518,34 +527,15 @@
     const AI_UNAVAILABLE='La IA no está disponible ahora. Tus horas siguen guardándose con normalidad.';
     const canUseAI=()=>state.aiEnabled&&!state.aiBlocked;
     let aiService;
-    const ai=()=>aiService ||= import('./ai-service.js?v=8').catch(e=>{aiService=null;throw e;});
+    const ai=()=>aiService ||= import('./ai-service.js?v=10').catch(e=>{aiService=null;throw e;});
     const aiSession=()=>`${privateGeneration}:${cloud.user?.uid||''}`;
     const knownIdentifiers=()=>[state.config.userName,cloud.user?.displayName,cloud.user?.email].filter(Boolean);
-    function discardAI(){privateGeneration++;state.chatMsgs=[];state.chatInput='';state.chatLoading=false;state.aiDiagnostic=null;state.nomina={status:'idle',result:null,error:null};if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});}
-    function selectedAIPeriod(){return state.aiPeriod||monthKey(state.year,state.month);}
+    function discardAI(){privateGeneration++;state.chatMsgs=[];state.chatContext=null;state.chatInput='';state.chatLoading=false;state.aiDiagnostic=null;state.nomina={status:'idle',result:null,error:null};if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});}
     function expectedForPeriod(period){
       if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(period||''))return null;
       const [y,m]=period.split('-').map(Number),rec=state.allData[period],cfg=periodConfig(y,m-1),c=monthly(y,m-1);
       if(!c.hExtra&&(!rec||!Object.values(rec.days||{}).some(Boolean)))return null;
       return {period,gross:c.bruto,deductions:c.totalDed,net:c.neto,normalHours:c.hNormalPaid,holidayHours:c.hFestivo,extraHours:c.hExtra,normalRate:cfg.rateNormal,holidayRate:cfg.rateNormal+cfg.plusFestivo,extraRate:extraActive(cfg)?cfg.rateExtra:0,recordedHours:c.hNormal+c.hFestivo,workDays:c.diasTrab,restDays:c.diasDesc,generatedExtraHours:c.hExtraGen};
-    }
-    function minimalContext(question){
-      const period=selectedAIPeriod(),[py,pm]=period.split('-').map(Number),cfg=periodConfig(py,pm-1),ctx={period,limits:'Solo periodo seleccionado. '+(state.allData[period]?.historicalStatus==='confirmed'?'Tarifas del periodo confirmadas.':'Tarifas históricas desconocidas: se conservó la configuración disponible al migrar, pendiente de revisión.')+' Estimaciones porcentuales, no nómina exacta.'};
-      const calc=expectedForPeriod(period),financial=/tarifa|retenci|deducci|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question),amounts=/bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question),hours=/hora|jornada|d[ií]a|registr|semana|mes|resumen/i.test(question),day=/\bd[ií]a\s+(\d{1,2})\b/i.exec(question)?.[1],weekly=/semana/i.test(question);
-      if(calc&&amounts&&!day)ctx.calculated=calc;
-      else if(calc&&hours&&!day&&!weekly)ctx.calculated={recordedHours:calc.recordedHours,normalHours:calc.normalHours,holidayHours:calc.holidayHours,extraHours:calc.extraHours,workDays:calc.workDays,restDays:calc.restDays};
-      if(!calc&&(hours||amounts))ctx.missing='No hay registros del periodo.';
-      if(financial){
-        if(/tarifa|bruto|neto|calcul|n[oó]mina|compar|importe|salario|gan|cobr/i.test(question))ctx.rates={normal:cfg.rateNormal,holiday:cfg.rateNormal+cfg.plusFestivo,extra:extraActive(cfg)?cfg.rateExtra:0};
-        if(/retenci|deducci|neto|calcul|n[oó]mina|compar|salario/i.test(question))ctx.retentionPercentages=cfg.deductions.map((d,i)=>({label:'Retención '+(i+1),pct:d.pct}));
-        if(/extra|sintax|calcul|n[oó]mina|compar/i.test(question))ctx.extraAssumptions=extraActive(cfg)?'Sintax actual: semana lunes-domingo, umbral 40 h normales+festivas; exceso desde último día normal; festivos conservan tarifa; extras se estiman al mes siguiente.':'Sin extras Sintax activas.';
-      }
-      if(day&&(+day<1||+day>new Date(py,pm,0).getDate())){ctx.missing='El día solicitado no existe en este periodo.';return ctx;}
-      if(weekly){ctx.limits+=' La semana solicitada puede cruzar el mes o año; se incluyen únicamente sus totales.';const [y,m]=period.split('-').map(Number),d=day?+day:period===monthKey(new Date().getFullYear(),new Date().getMonth())?new Date().getDate():1,w=calcWeekInfo(new Date(y,m-1,d));ctx.week={from:w.monday.toLocaleDateString('sv-SE'),to:w.sunday.toLocaleDateString('sv-SE'),normalHours:w.hNormal,holidayHours:w.hFestivo,recordedHours:w.total,workDays:w.dias};}
-      if(/jornada|d[ií]a|registr/i.test(question)&&!weekly){ctx.days=Object.entries(state.allData[period]?.days||{}).filter(([d,e])=>e&&(!day||+d===+day)).map(([d,e])=>({day:+d,type:e.type,hours:Number(e.hours)||0}));
-        if(day&&amounts){const e=state.allData[period]?.days?.[+day];if(e)ctx.dailyEstimate={day:+day,gross:C.daily(state.allData,state.config,py,pm-1,+day,e).bruto,generatedExtraHours:C.daily(state.allData,state.config,py,pm-1,+day,e).extra,limit:'Importe diario estimado del periodo; extras generadas se excluyen y se estiman al mes siguiente.'};}
-      }
-      return ctx;
     }
     async function callAI(mode,question,text='',context=null){
       if(!canUseAI())throw {kind:'configuration',code:'probe/ai-paused'};
@@ -558,21 +548,30 @@
     async function aiError(e){try{const mod=await ai();state.aiDiagnostic={...mod.classify(e),stage:Object.hasOwn(AI_STAGES,e?.stage)?e.stage:state.aiDiagnostic?.stage,state:'error'};if(['permission','configuration'].includes(state.aiDiagnostic.kind))state.aiBlocked=true;}catch{}return AI_UNAVAILABLE;}
     window.verifyGemini=async()=>{
       if(!canUseAI()||state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status))return;
-      const session=aiSession();state.chatMsgs=[];state.chatLoading=true;render();
+      const session=aiSession();state.chatMsgs=[];state.chatContext=null;state.chatLoading=true;render();
       try{const result=await callAI('chat','Explica únicamente las 8,25 horas ficticias aportadas, sin calcular importes.','',{fictional:true,recordedHours:[4,4.25].reduce((sum,h)=>sum+h,0)});if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs=[{role:'bot',text:'Respuesta real recibida de Gemini para la consulta ficticia:\n'+result}];}
       catch(e){if(session!==aiSession())return;const message=await aiError(e);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs=[{role:'bot',text:message}];}
       finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
+    window.newConversation=()=>{if(['reading','loading'].includes(state.nomina.status))return;privateGeneration++;state.chatMsgs=[];state.chatContext=null;state.chatInput='';state.chatLoading=false;if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});render();};
     window.sendChat=async(forceText)=>{
       const q=String(forceText||state.chatInput).trim();if(!canUseAI()||!q||state.chatLoading||['reading','loading'].includes(state.nomina.status)||state.config.hideMoney)return;
       if(q.length>2000){alert('Consulta demasiado larga: máximo 2.000 caracteres.');return;}
-      if(!window.HorasAIData){state.chatMsgs.push({role:'bot',text:'No se pudo cargar Gemini. Reabre la app con conexión; tus registros siguen disponibles.'});render();return;}
-      const period=selectedAIPeriod(),mentioned=q.match(/\b\d{4}-(?:0[1-9]|1[0-2])\b/g)||[],otherMonth=MESES.some((name,i)=>new RegExp('\\b'+name+'\\b','i').test(q)&&i+1!==+period.slice(5));
-      if(mentioned.some(m=>m!==period)||otherMonth){state.chatMsgs.push({role:'bot',text:'Selecciona el periodo de la consulta antes de enviarla. Solo se envían datos del periodo seleccionado.'});render();return;}
-      const session=aiSession(),clean=HorasAIData.redact(q,knownIdentifiers()),context=minimalContext(clean);
+      if(!window.HorasAIData||!window.HorasAIHistory){state.chatMsgs.push({role:'bot',text:'No se pudo cargar el chat. Reabre la app con conexión; tus registros siguen disponibles.'});render();return;}
+      const session=aiSession(),clean=HorasAIData.redact(q,knownIdentifiers()),conversation=state.chatMsgs.slice(-6).map(m=>({role:m.role,text:HorasAIData.redact(m.text.slice(0,1200),knownIdentifiers())})),previousPlan=state.chatContext;
       state.chatInput='';state.chatMsgs.push({role:'user',text:q});state.chatLoading=true;render();
-      try{const reply=await callAI('chat',clean,'',context);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:reply});}
-      catch(e){if(session!==aiSession())return;const message=await aiError(e);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:message});}
+      let loaded=false;
+      try{
+        if(/^(?:hola|buenos días|buenas tardes|buenas noches|gracias)[!.¡\s]*$/i.test(clean)){loaded=true;const reply=await callAI('chat',clean,'',{general:true,conversation});if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:reply});return;}
+        const availability=await sync.ensureHistory();if(session!==aiSession())return;loaded=true;const queryData=C.copy(state.allData),queryConfig=C.copy(state.config);
+        const plannerContext={catalog:HorasAIHistory.catalog(queryData,queryConfig),previousPlan,conversation};
+        const plan=await callAI('history-plan',clean,'',plannerContext);if(session!==aiSession())return;
+        if(plan.clarification){state.chatMsgs.push({role:'bot',text:HorasAIData.redact(plan.clarification,knownIdentifiers())});return;}
+        const context=HorasAIHistory.query(queryData,queryConfig,plan,availability,{redact:t=>HorasAIData.redact(t,knownIdentifiers())});
+        const periodLabel=plan.groups.map(g=>`${g.from} – ${g.to}`).join(' · ');
+        const reply=await callAI('chat',clean,'',{history:context,conversation,previousPlan});
+        if(session===aiSession()&&!state.config.hideMoney){state.chatContext=plan;state.chatMsgs.push({role:'bot',text:`Periodo: ${periodLabel}\n${reply}`,periods:plan.groups.map(g=>({from:g.from,to:g.to}))});}
+      }catch(e){if(session!==aiSession())return;const message=loaded?await aiError(e):e.message;if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:message||'No se pudo cargar el historial completo. Tus horas siguen guardándose con normalidad.'});}
       finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
     async function extractTextFromPDF(file){
@@ -632,7 +631,7 @@
         const isT = state.month === new Date().getMonth() && state.year === new Date().getFullYear() && d === new Date().getDate();
         const isSel = state.selectedDay === d;
         
-        let borderColor = "transparent";
+        let borderColor = e?.type==='descanso'?TYPES.descanso.border:"transparent";
         if (isSel) borderColor = "#E8EDF7";
         else if (isT) borderColor = "var(--accent)";
         
@@ -641,7 +640,7 @@
                   style="border-color:${borderColor}; ${isT?'box-shadow:inset 0 0 0 2px var(--accent);':''} ${t ? `background:${t.bg}` : ''}"
                   aria-label="${d} de ${MESES[state.month]}, ${t?t.label:'sin registro'}${e&&e.type!=='descanso'?', '+fmtH(e.hours)+' horas':''}" aria-current="${isT?'date':'false'}" title="${isT?'Hoy. ':''}${isSel?'Día seleccionado. ':''}${t?t.label:'Sin registro'}" aria-pressed="${isSel}" onclick="selectDay(${d})">
             <span style="color:${t?t.color:'#AFB8CC'}">${d}</span>
-            ${e?e.type==='descanso'?`<span class="rest-marker" aria-hidden="true" style="color:${t.color};font-weight:700;letter-spacing:1px">ZZ</span>`:`<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>`:''}
+            ${e&&e.type!=='descanso'?`<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>`:''}
           </button>`;
       }
       grid.innerHTML = DIAS_SEMANA.map(d=>`<div style="text-align:center;color:var(--muted);font-size:11px;font-weight:600">${d}</div>`).join('') + gridHtml;
@@ -679,15 +678,15 @@
             <div style="color:${wColor}; font-size:11.5px; font-weight:600; margin-top:3px">${wLabel}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:24px; color:var(--text); font-variant-numeric:tabular-nums">${fmtH(w.total)} h</div>
-            <div style="color:var(--muted); font-size:11px">${fmtH(w.hNormal)} norm. · ${fmtH(w.hFestivo)} fest. · ${w.dias} días</div>
+            <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:20px; color:var(--text); font-variant-numeric:tabular-nums">${fmtH(w.total)} h</div>
+            <div id="weekly-hours-detail" style="color:var(--muted); font-size:11px">${w.dias} ${w.dias===1?'día':'días'}${w.hFestivo>0?' · '+fmtH(w.hFestivo)+' h festivas':''}</div>
           </div>
         </div>`;
       
       container.innerHTML = weekBanner + `
         <div class="editor">
-          <div style="font-weight:700; font-size:16px; margin-bottom:12px">${state.selectedDay} de ${MESES[state.month].toLowerCase()}</div>
-          <div style="display:flex; gap:8px; margin-bottom:12px">
+          <div style="font-weight:700; font-size:14px; margin-bottom:6px">${state.selectedDay} de ${MESES[state.month].toLowerCase()}</div>
+          <div style="display:flex; gap:6px; margin-bottom:6px">
             ${Object.entries(TYPES).map(([k, t]) => `<button class="type-btn" style="${s.type === k ? `background:${t.bg}; border-color:${t.color}; color:${t.color}` : ''}" aria-pressed="${s.type===k}" onclick="updateDraftType('${k}')">${t.label}</button>`).join('')}
           </div>
           ${s.type !== 'descanso' ? `
@@ -698,8 +697,7 @@
             <button class="step-btn" aria-label="Sumar media hora" onclick="stepHours(0.5)">+</button>
           </div>` : ''}
           
-          ${dayDetailsMarkup(s)}
-          <button id="btn-add-day" class="add-btn" style="display:${!state.dayConfirmed ? 'block' : 'none'}; margin-top:14px" onclick="saveDay()">✓ Añadir</button>
+          <button id="btn-add-day" class="add-btn" style="display:${!state.dayConfirmed ? 'block' : 'none'}; margin-top:6px" onclick="saveDay()">✓ Añadir</button>
           
           <div id="day-earn-box" class="day-earn-box" style="display:${state.dayConfirmed ? 'block' : 'none'}; margin-top:14px">
             ${s.type !== 'descanso' ? `
@@ -707,10 +705,10 @@
               <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:36px; color:var(--success); margin:4px 0">${fmt(imp)}</div>
               <div style="color:var(--muted); font-size:12px">${dayInfo.extra?fmtH(dayInfo.extra)+" h extra para el mes siguiente · ":""}${fmtH(s.hours-dayInfo.extra)} h × ${state.config.hideMoney?'•••• €/h':dayInfo.rate.toFixed(2)+' €/h'}</div>
             ` : `
-              <div style="font-size:26px; margin-bottom:2px">😌</div>
               <div style="color:var(--muted); font-size:13px">Día de descanso, bien merecido</div>
             `}
           </div>
+          ${dayDetailsMarkup(s)}
           ${monthRec.days[state.selectedDay] ? `<button class="big-btn" style="margin-top:10px; border-color:var(--danger); color:var(--danger)" onclick="clearDay()">Borrar este día</button>` : ''}
         </div>`;
     }
@@ -729,15 +727,14 @@
       refreshPayrollComparison();
       const active=document.activeElement,focusId=active?.id;
       const app = getEl("app");
-      const renderTabs = `
-        <nav class="tabs-bar" aria-label="Secciones de Mis Horas">
-          ${[["mes", "Mes"], ["anual", "Año"], ["ia", "IA"], ["ajustes", "Ajustes"], ["historico", "Histórico"]].map(([k, l]) => `
-            <button id="nav-${k}" aria-controls="tab-panel" class="tab-btn ${k==='historico'?'history-btn':''} ${state.tab === k ? 'active' : ''}" onclick="switchTab('${k}')">${l}</button>
-          `).join('')}
-          <button class="eye-btn ${state.config.hideMoney ? 'active' : ''}" aria-label="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" aria-pressed="${state.config.hideMoney}" onclick="toggleMoney()">
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>${state.config.hideMoney ? '<line x1="4.2" y1="20" x2="19.8" y2="4"/>' : ''}</svg>
-          </button>
-        </nav>`;
+      const icon=(path)=>`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`;
+      const renderTabs = `<nav class="tabs-bar" aria-label="Secciones de Mis Horas">
+        <div class="view-selector" role="group" aria-label="Vista de horas">${[["mes","Mes"],["anual","Año"]].map(([k,l])=>`<button id="nav-${k}" aria-controls="tab-panel" class="tab-btn ${state.tab===k?'active':''}" onclick="switchTab('${k}')">${l}</button>`).join('')}</div>
+        <button id="nav-ia" aria-controls="tab-panel" class="tab-btn nav-link ${state.tab==='ia'?'active':''}" onclick="switchTab('ia')">${icon('<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/>')}<span>IA</span></button>
+        <button id="nav-historico" aria-controls="tab-panel" class="tab-btn nav-link ${state.tab==='historico'?'active':''}" onclick="switchTab('historico')">${icon('<path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/><path d="M12 7v5l3 2"/>')}<span>Histórico</span></button>
+        <button id="nav-ajustes" class="tab-btn nav-icon ${state.tab==='ajustes'?'active':''}" aria-controls="tab-panel" aria-label="Ajustes" title="Ajustes" onclick="switchTab('ajustes')">${icon('<path d="m9 3-.7 2.5-2.3 1-2.3-.7L2 9l1.7 1.8v2.4L2 15l1.7 3.2 2.3-.7 2.3 1L9 21h6l.7-2.5 2.3-1 2.3.7L22 15l-1.7-1.8v-2.4L22 9l-1.7-3.2-2.3.7-2.3-1L15 3Z"/><circle cx="12" cy="12" r="3"/>')}</button>
+        <button class="eye-btn ${state.config.hideMoney?'active':''}" aria-label="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" title="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" aria-pressed="${state.config.hideMoney}" onclick="toggleMoney()">${icon('<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>'+(state.config.hideMoney?'<path d="m4.2 20 15.6-16"/>':''))}</button>
+      </nav>`;
 
       let content = "";
       
@@ -752,20 +749,20 @@
         content = `
           <div class="tab-content"><div class="two-col">
             <div class="col-scroll">
-              <div class="row" style="margin-bottom:14px">
+              <div class="row" style="margin-bottom:6px">
                 <button class="big-btn" style="width:42px" aria-label="Mes anterior" onclick="navMonth(-1)">‹</button>
-                <div style="text-align:center"><div style="font-size:22px; font-weight:700; font-family:'Space Grotesk', system-ui">${MESES[state.month]}</div><div style="font-size:12px; color:var(--muted)">${state.year}</div></div>
+                <div style="text-align:center"><div style="font-size:20px; font-weight:700; font-family:'Space Grotesk', system-ui">${MESES[state.month]}</div><div style="font-size:12px; color:var(--muted)">${state.year}</div></div>
                 <button class="big-btn" style="width:42px" aria-label="Mes siguiente" onclick="navMonth(1)">›</button>
               </div>
               <div class="neto-block">
-                <div style="color:var(--muted); font-size:12px; font-weight:600; letter-spacing:1px">Neto estimado · registros del mes</div>
+                <div style="color:var(--muted); font-size:11px; font-weight:600">Neto estimado · registros del mes</div>
                 <div class="neto-value">${fmt(c.neto)}</div>
                 <div class="money-detail">Bruto ${fmt(c.bruto)} · Retenciones −${fmt(c.totalDed)}</div>
                 <div id="monthly-hours" class="hours-total">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes</div>
                 ${c.hFestivo>0?`<div id="monthly-hours-breakdown" class="hours-breakdown">${fmtH(c.hFestivo)} horas festivas</div>`:''}
               </div>
               
-              <p class="privacy-note">Toca un día para registrar tus horas</p><div class="calendar-legend"><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.festivo.bg}"></i>Festivo</span><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.descanso.bg}"></i>Descanso</span></div><div id="calendar-grid" class="grid"></div>
+              <div class="calendar-heading"><p class="privacy-note">Toca un día para registrar tus horas</p><div class="calendar-legend"><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.festivo.bg}"></i>Festivo</span><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.descanso.bg};border:1px solid ${TYPES.descanso.border}"></i>Descanso</span></div></div><div id="calendar-grid" class="grid"></div>
               <div id="editor-container"></div>
             </div>
             
@@ -781,6 +778,7 @@
                 </div>
               ` : ''}
 
+              <details id="more-details" class="month-details" ${state.moreDetailsOpen?'open':''} ontoggle="state.moreDetailsOpen=this.open"><summary>Más detalles</summary>
               <div class="card">
                 <div class="card-title">Cálculo según registros del mes</div><p class="privacy-note">${monthRec.historicalStatus==='confirmed'?'Tarifas del periodo confirmadas.':'Tarifas históricas sin confirmar: se conservó la configuración disponible al migrar.'} Retenciones aproximadas sobre bruto; una nómina real puede contener otros conceptos y bases.</p>${ei?`<p class="privacy-note">Hipótesis Sintax conservada: semana lunes–domingo, umbral de 40 h normales + festivas, extras desde el último día normal. Festivos mantienen tarifa. ${fmtH(c.hExtraGen)} h generadas para el mes siguiente; ${fmtH(c.hExtra)} h del mes anterior estimadas aquí. El abono real no está confirmado.</p>`:''}<p class="privacy-note">Importes estimados con las tarifas y porcentajes configurados. Una nómina real puede incluir otros conceptos y bases.</p>
                 <div class="row"><span>H. normales (${c.hNormalPaid}h)</span> <span>${fmt(c.brutoNormal)}</span></div>
@@ -801,6 +799,7 @@
                 ${payrollMarkup()}
               </div>
 
+              </details>
               <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:10px" onclick="openExportModal()">📄 Exportar PDF</button>
             </div>
           </div></div>`;
@@ -818,7 +817,7 @@
             <div class="col-scroll">
               <div class="row" style="margin-bottom:14px; justify-content:center; gap:20px">
                 <button class="big-btn" style="width:42px" onclick="vibrate(20); state.year--; render()">‹</button>
-                <div style="font-size:22px; font-weight:700; font-family:'Space Grotesk', system-ui">${state.year}</div>
+                <div style="font-size:20px; font-weight:700; font-family:'Space Grotesk', system-ui">${state.year}</div>
                 <button class="big-btn" style="width:42px" onclick="vibrate(20); state.year++; render()">›</button>
               </div>
               <div class="neto-block">
@@ -855,7 +854,7 @@
             <div class="card" style="display:flex; flex-direction:column; flex:1; max-height: 70vh; min-height: 50vh;">
               <div class="card-title">Asistente Gemini · Mis Horas</div><details><summary class="privacy-note">Diagnóstico de conexión</summary><p id="ai-diagnostic" class="privacy-note">${esc(diagnosticText())}</p></details><details><summary class="privacy-note">Comprobar conexión con datos ficticios</summary><p class="privacy-note">Solo se envían a Google 4 + 4,25 = 8,25 horas ficticias y la petición de explicarlas. No se leen ni envían registros o nóminas. Usa tu sesión Google y App Check reales. La respuesta no se guarda. Se aplican las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a>.</p><button class="big-btn" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="verifyGemini()">Autorizar consulta ficticia a Google</button></details>
               
-              <label class="privacy-note" for="ai-period">Periodo de la consulta</label><input id="ai-period" type="month" class="config-input" style="width:100%;text-align:left;margin-bottom:8px" value="${esc(selectedAIPeriod())}" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onchange="if(/^\\d{4}-(0[1-9]|1[0-2])$/.test(this.value)){state.aiPeriod=this.value;discardAI();render();}"><p class="privacy-note">Se envían a Google solo la consulta y los datos necesarios del periodo seleccionado, sin conversaciones anteriores. Las consultas de una semana incluyen sus totales si cruza un mes o año. Evita datos personales.</p><div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
+              <div class="report-actions"><button id="new-conversation" class="big-btn" ${['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="newConversation()">Nueva conversación</button></div><p class="privacy-note">Puedes preguntar por cualquier mes, año o por todo tu historial. Se envían a Google tu consulta, una parte reciente de la conversación y los resúmenes necesarios. No se envían notas libres ni documentos nuevos sin tu autorización. La conversación se conserva solo mientras usas esta cuenta; Nueva conversación la borra.</p><div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
                 ${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: conversaciones y resultados de IA ocultos.</p>':''}${!state.config.hideMoney && state.chatMsgs.length === 0 ? `<p style="color:var(--muted); font-size:13px">Gemini explica los cálculos de la app y ayuda a consultar horas, tarifas y retenciones. No cambia tus registros. Necesita conexión y sesión Google.</p>` : ''}
                 ${(state.config.hideMoney?[]:state.chatMsgs).map(m => `<div class="bubble ${m.role === 'user' ? 'user' : 'bot'}">${esc(m.text)}</div>`).join('')}
                 ${!state.config.hideMoney && state.chatLoading ? `<div class="bubble bot">Consultando Gemini…</div>` : ''}
@@ -1116,7 +1115,7 @@
     try{sync.load();}catch(e){alert(e.message);}
     sync.setOnline(navigator.onLine!==false);
     render();initCloud();
-    import('./ai-config.js?v=8').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
+    import('./ai-config.js?v=10').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
     document.addEventListener('DOMContentLoaded',()=>{if(!cloud.ready)initCloud();if(state.tab==='anual')render();});
 
     // ============================================================
