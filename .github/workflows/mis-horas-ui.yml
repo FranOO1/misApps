@@ -18,6 +18,7 @@ jobs:
           node-version: '24'
       - run: node controlHoras/tests/ui.test.cjs
       - run: node controlHoras/tests/ai.test.cjs
+      - run: node controlHoras/tests/reports.test.cjs
       - run: node controlHoras/tests/core.test.cjs
       - run: node controlHoras/tests/sync.test.cjs
       - run: node controlHoras/tests/diagnostic.test.cjs
@@ -25,9 +26,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install playwright==1.55.0
+      - run: pip install playwright==1.55.0 pypdf==5.9.0
       - run: python -m playwright install --with-deps chromium
       - run: python controlHoras/tests/browser_ui.py
+      - run: python controlHoras/tests/browser_reports.py
       - run: python controlHoras/tests/browser_gemini.py
       - run: python controlHoras/tests/browser_probe.py
       - run: python controlHoras/tests/browser_data.py
@@ -44,3 +46,4 @@ jobs:
           name: mis-horas-ui-captures
           path: controlHoras/captures/*.png
           if-no-files-found: warn
+

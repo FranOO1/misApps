@@ -43,3 +43,23 @@ test('a failed rate migration can be retried explicitly without overwriting exis
  s.db.runTransaction=async fn=>{if(++calls===1)throw Error('Temporary failure');await fn({get:async()=>({exists:true,data:()=>C.copy(s.docs.get('one'))}),set:(ref,patch,{mergeFields})=>{const ops=mergeFields.map(f=>{let value=patch;for(const k of f.parts)value=value[k];return {path:f.parts,value};});s.docs.set('one',C.applyOps(s.docs.get('one'),ops));s.emit('one');}});};
  const a=device(s);await login(a);await tick();assert.equal(a.statuses.at(-1)[0],'error');assert.equal(calls,1);assert(!s.docs.get('one').data['2026-09'].rateConfig);await a.engine.retry();await tick();await tick();assert.equal(calls,2);assert.equal(s.docs.get('one').data['2026-09'].rateConfig.rateNormal,10);assert.equal(a.p.data['2026-09'].historicalStatus,'unknown');assert(a.store.has('horas-before-cloud-migration:one'));
 });
+
+test('different payroll concepts, scalar totals and days commute across devices without replacing the month',async()=>{
+ const s=server(),a=device(s),b=device(s);await login(a);await login(b);a.edit(1,8);await tick();await tick();
+ a.engine.setOnline(false);b.engine.setOnline(false);
+ a.p.data['2026-10'].payroll={...C.emptyPayroll(),gross:125,incomes:{base:{name:'Base',kind:'base',amount:125}}};a.engine.save();
+ b.p.data['2026-10'].payroll={...C.emptyPayroll(),net:110,deductions:{irpf:{name:'IRPF',kind:'irpf',base:125,pct:12,amount:15}}};b.engine.save();
+ a.engine.setOnline(true);b.engine.setOnline(true);await tick();await tick();await tick();
+ const p=s.docs.get('one').data['2026-10'].payroll;assert.equal(p.gross,125);assert.equal(p.net,110);assert.equal(p.incomes.base.amount,125);assert.equal(p.deductions.irpf.amount,15);assert.equal(b.p.data['2026-10'].days[1].hours,8);
+ assert(s.writes.flatMap(w=>w.ops).filter(o=>o.path[2]==='payroll').every(o=>o.path.length>=4));
+});
+test('payroll tombstones and partial null fields survive offline restart and cannot be resurrected by other edits',async()=>{
+ const s=server(),a=device(s),b=device(s);await login(a);await login(b);a.edit(1,8);await tick();a.p.data['2026-10'].payroll={...C.emptyPayroll(),gross:0,incomes:{deleted:{name:'Otro',kind:'other',amount:2}}};a.engine.save();await tick();await tick();
+ b.engine.setOnline(false);b.p.data['2026-10'].payroll.net=0;b.engine.save();const restored=device(s,b.store);restored.engine.setOnline(false);await login(restored);
+ a.p.data['2026-10'].payroll.incomes.deleted=null;a.engine.save();await tick();restored.engine.setOnline(true);await tick();await tick();
+ assert.equal(s.docs.get('one').data['2026-10'].payroll.incomes.deleted,null);assert.equal(restored.p.data['2026-10'].payroll.net,0);assert.equal(restored.p.data['2026-10'].payroll.received,null);
+});
+test('storage failure rolls back real payroll and does not enqueue financial writes',async()=>{
+ const s=server(),a=device(s);await login(a);a.edit(1,8);await tick();await tick();const before=C.copy(a.p),count=s.writes.length;
+ a.store.set=(k,v)=>{if(k==='horas-app-v3:one')throw Error('Full');return Map.prototype.set.call(a.store,k,v);};a.p.data['2026-10'].payroll={...C.emptyPayroll(),gross:123};assert.throws(()=>a.engine.save(),/Full/);assert.deepEqual(a.p,before);await tick();assert.equal(s.writes.length,count);
+});

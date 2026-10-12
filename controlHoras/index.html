@@ -20,6 +20,7 @@
   <script src="./core.js"></script>
   <script src="./sync.js"></script>
   <script src="./ai-data.js"></script>
+  <script src="./reports.js"></script>
   
 
   <style>
@@ -38,12 +39,26 @@
     
     .app-root { max-width: 640px; margin: 0 auto; padding: 12px 14px 12px; display: flex; flex-direction: column; flex: 1; width: 100%; }
     
-    .tabs-bar { display: flex; gap: 4px; background: #1B2333; border: 1px solid #56627B; border-radius: 14px; padding: 5px; margin-bottom: 14px; flex: 0 0 auto;}
+    .tabs-bar { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; background: #1B2333; border: 1px solid #56627B; border-radius: 14px; padding: 5px; margin-bottom: 14px; flex: 0 0 auto;}
     .tab-btn { flex: 1 1 0; min-width: 0; min-height: 46px; padding: 10px 1px; border: 1px solid #495875; background: #273247; border-radius: 9px; color: #DCE5F5; font-size: 14px; font-weight: 600; transition: all 0.15s; }
     .tab-btn.active { background: #375E88; border-color: #80BAFF; color: #F6FAFF; box-shadow: inset 0 -2px #9FCBFF; }
-    .day-cell .rest-marker { font-weight: 700; font-size: 13px; }
     .hours-breakdown { margin-top: 5px; color: var(--muted); font-size: 12px; }
     .eye-btn { width: 44px; flex: 0 0 44px; border-radius: 11px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .history-btn { grid-column: 1 / span 3; }
+    .eye-btn { width: 100%; min-height: 46px; }
+    @media (min-width: 600px) { .tabs-bar { display: flex; } .history-btn { flex: 2.7; } .eye-btn { width: 44px; } }
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+    .history-year summary { padding: 12px 0; min-height: 44px; cursor: pointer; font-weight: 600; }
+    .history-months { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 8px 0; }
+    .report-field { display: flex; flex-direction: column; gap: 5px; margin: 9px 0; font-size: 13px; min-width: 0; }
+    .report-field input,.report-field select,.report-field textarea { width: 100%; min-height: 44px; background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 9px; border-radius: 9px; font-size: 16px; }
+    .report-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+    .payroll-line { padding: 12px; margin: 12px 0; border: 1px solid var(--border); border-radius: 12px; }
+    .report-choice { display: flex; align-items: center; gap: 10px; min-height: 46px; margin: 10px 0; font-size: 13px; }
+    .report-choice input { width: 22px; height: 22px; flex: 0 0 22px; }
+    .report-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .report-actions .big-btn { flex: 1 1 170px; }
+    .report-preview { width: 100%; min-height: 180px; font-size: 16px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 10px; }
     .eye-btn.active { background: rgba(255,176,79,0.12); color: var(--warning); }
     
     .tab-content { flex: 1; display: flex; flex-direction: column;  }
@@ -166,7 +181,7 @@
     const TYPES = {
       normal:   { label: "Normal",   color: "#4FA3FF", bg: "rgba(79,163,255,0.18)" },
       festivo:  { label: "Festivo",  color: "#FFB04F", bg: "rgba(255,176,79,0.20)" },
-      descanso: { label: "Descanso", color: "#FFD5DB", bg: "#56333D" },
+      descanso: { label: "Descanso", color: "#D2DDEC", bg: "#303D50" },
     };
 
     const state = {
@@ -176,7 +191,7 @@
       tab: "mes", selectedDay: null, draft: null, dayConfirmed: false,
       chatMsgs: [], chatInput: "", chatLoading: false, aiEnabled: false, aiBlocked: false,
       nomina: { status: "idle", result: null, error: null },
-      pdfReady: null
+      pdfReady: null, reportPeriod: null, reportYear: new Date().getFullYear(), reportEconomy: false, reportScope: "month", reportQuestion: "", reportContext: "", reportNotice: "", payrollDrafts: {}
     };
 
     // Privacy is a preference of this device, never an incoming cloud choice.
@@ -187,7 +202,7 @@
     window.toggleMoney = () => {
       state.config.hideMoney=!state.config.hideMoney;
       // Discard in-flight or previously displayed AI results when privacy changes.
-      discardAI();render();
+      discardAI();if(state.config.hideMoney)clearReportPrivate();render();
       try{localStorage.setItem(MONEY_KEY,state.config.hideMoney?'1':'0');}catch{alert('Se aplicó tu elección, pero no se pudo guardar la preferencia para la próxima apertura.');}
     };
     const eur = (n) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n || 0);
@@ -195,7 +210,7 @@
     const fmtH = (n) => String(Math.round((Number(n) || 0) * 100) / 100).replace(".", ",");
     const monthKey = (y, m) => `${y}-${String(m + 1).padStart(2, "0")}`;
     const extraActive = (cfg) => cfg.profile === "sintax" && cfg.sintaxUnlocked;
-    const C = HorasCore;
+    const C = HorasCore, R = HorasReports;
     const periodConfig = (y=state.year,m=state.month) => C.cfgFor(state.allData,state.config,y,m);
     const monthly = (y=state.year,m=state.month) => C.calculate(state.allData,state.config,y,m);
     const payload = () => ({schemaVersion:3,config:{...state.config,hideMoney:false},data:state.allData});
@@ -225,7 +240,7 @@
 
     const cloud = {ready:false,user:null,status:'local',errorMsg:''};
     const sync=HorasSync.create({defaults:DEFAULT_CONFIG,getState:payload,
-      apply:p=>{const hidden=state.config.hideMoney;state.config={...p.config,hideMoney:hidden};state.allData=p.data;if(state.selectedDay && state.dayConfirmed){const e=state.allData[monthKey(state.year,state.month)]?.days[state.selectedDay];if(e)state.draft={...e};else state.selectedDay=null;}},
+      apply:p=>{const hidden=state.config.hideMoney;state.config={...p.config,hideMoney:hidden};state.allData=p.data;if(state.selectedDay && state.dayConfirmed){const e=state.allData[monthKey(state.year,state.month)]?.days[state.selectedDay];if(e)state.draft=C.copy(e);else state.selectedDay=null;}},
       onStatus:(kind,message)=>{cloud.status=kind;cloud.errorMsg=message;for(const id of ['cloud-status','local-status']){const el=document.getElementById(id);if(el){el.textContent=message;el.style.color=kind==='error'?'var(--danger)':'var(--muted)';}}},onRemote:()=>{if(!document.activeElement?.matches('input,textarea,select'))render();else state.remoteRefresh=true;},
       db:{collection:(...args)=>cloud.db.collection(...args),runTransaction:(...args)=>cloud.db.runTransaction(...args)},FieldPath:class {constructor(...parts){return new firebase.firestore.FieldPath(...parts);}}
     });
@@ -237,7 +252,7 @@
         firebase.auth().onAuthStateChanged(user=>{
           if(cloud.user?.uid!==user?.uid){discardAI();state.selectedDay=null;state.draft=null;state.pdfReady=null;}
           cloud.user=user;
-          try{sync.switchAccount(user);}catch{cloud.status='error';cloud.errorMsg='No se pudo abrir la copia de esta cuenta. Se conserva la original.';}
+          try{clearReportPrivate();sync.switchAccount(user);}catch{cloud.status='error';cloud.errorMsg='No se pudo abrir la copia de esta cuenta. Se conserva la original.';}
           render();
         });
       }catch{cloud.status='local';cloud.errorMsg='Nube no disponible. Puedes registrar horas aquí.';const el=getEl('local-status');if(el)el.textContent=cloud.errorMsg;}
@@ -263,7 +278,7 @@
     window.copyGuest=()=>{
       if(!cloud.user)return;
       const raw=localStorage.getItem('horas-app-v3:guest');if(!raw){alert('No hay datos sin cuenta.');return;}
-      try{const p=C.validateBackup(JSON.parse(raw).payload,DEFAULT_CONFIG),merged=C.mergeLegacy(payload(),p);if(!merged.added){alert('No hay jornadas nuevas para añadir. Las existentes y los borrados de esta cuenta se han conservado.');return;}replaceFromBackup(merged.payload,'Confirma que los datos locales anteriores son tuyos. Añadir '+merged.added+' jornadas nuevas; conservar '+merged.conflicts+' diferencias y borrados según esta cuenta');}catch(e){alert(e.message);}
+      try{const p=C.validateBackup(JSON.parse(raw).payload,DEFAULT_CONFIG),merged=C.mergeLegacy(payload(),p);if(!merged.added&&!merged.addedPayroll){alert('No hay jornadas ni conceptos de nómina nuevos para añadir. Las existentes y los borrados de esta cuenta se han conservado.');return;}replaceFromBackup(merged.payload,'Confirma que los datos locales anteriores son tuyos. Añadir '+merged.added+' jornadas y '+merged.addedPayroll+' datos de nómina; conservar '+merged.conflicts+' diferencias y borrados según esta cuenta');}catch(e){alert(e.message);}
     };
     window.addEventListener('offline',()=>sync.setOnline(false));
     window.addEventListener('online',()=>sync.setOnline(true));
@@ -370,7 +385,7 @@
       const pages = [[]]; let y = 786;
       const cur = () => pages[pages.length - 1];
       const addPage = () => { pages.push([]); y = 786; };
-      const need = (h) => { if (y - h < 56) addPage(); };
+      const need = (h) => { if (y - h < 56) {addPage();return true;}return false; };
       const txt = (x, s, o = {}) => {
         const size = o.size || 10; const tx = o.right ? x - (String(s).length * size * 0.5) : x;
         const col = o.color || (o.gray ? "0.45 0.48 0.55" : "0.08 0.1 0.14");
@@ -389,7 +404,7 @@
       push(`3 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> endobj\n`);
       push(`4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> endobj\n`);
       pages.forEach((opsArr, i) => {
-        const content = opsArr.join("\n");
+        const content = [`BT /F2 9 Tf 0.25 0.28 0.32 rg 1 0 0 1 40 815 Tm (Mis Horas - Informe) Tj ET`,...opsArr,`BT /F1 9 Tf 0.25 0.28 0.32 rg 1 0 0 1 40 28 Tm (${pdfEsc("Página "+(i+1)+" de "+n)}) Tj ET`].join("\n");
         push(`${5 + i * 2} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${6 + i * 2} 0 R >> endobj\n`);
         push(`${6 + i * 2} 0 obj << /Length ${content.length} >> stream\n${content}\nendstream endobj\n`);
       });
@@ -400,34 +415,8 @@
       return out;
     }
 
-    function buildMonthReport(doc, yy, mm) {
-      const k = monthKey(yy, mm); const rec = state.allData[k] || { days: {} };
-      const dim = new Date(yy, mm + 1, 0).getDate();
-      const cfg=periodConfig(yy,mm);
-      const c=monthly(yy,mm);
-      
-      doc.need(60); 
-      doc.txt(40, `Resumen de horas - ${MESES[mm]} ${yy}`, { size: 16, bold: true }); doc.down(16);
-      
-      if(state.config.userName) {
-        doc.txt(40, `Trabajador: ${state.config.userName}`, { size: 10, gray: false, bold: true }); doc.down(16);
-      }
-
-      doc.txt(40, `Tarifa normal ${cfg.rateNormal.toFixed(4)} EUR/h  ·  Festivo ${(cfg.rateNormal + cfg.plusFestivo).toFixed(4)} EUR/h`, { size: 9, gray: true }); doc.down(22);
-      doc.need(20); doc.txt(40, "DIA", { size: 8.5, bold: true, gray: true }); doc.txt(170, "TIPO", { size: 8.5, bold: true, gray: true }); doc.txt(390, "HORAS", { size: 8.5, bold: true, gray: true, right: true }); doc.txt(555, "IMPORTE", { size: 8.5, bold: true, gray: true, right: true }); doc.down(5); doc.hr(); doc.down(13);
-
-      for (let d = 1; d <= dim; d++) {
-        const e = (rec.days||{})[d]; if (!e) continue;
-        const h=e.hours;const info=C.daily(state.allData,state.config,yy,mm,d,e),imp=info.bruto;
-        doc.need(13); doc.txt(40, `${d} ${MESES_CORTO[mm]}`, { size: 9.5 }); doc.txt(170, TYPES[e.type].label+(info.extra?' / '+info.extra+' extra pendiente':''), { size: 9.5, gray: e.type === "descanso" }); doc.txt(390, e.type === "descanso" ? "-" : String(h), { size: 9.5, right: true }); doc.txt(555, e.type === "descanso" ? "-" : eurPdf(imp), { size: 9.5, right: true }); doc.down(13);
-      }
-      doc.down(2); doc.hr(); doc.down(16); doc.need(15);
-      doc.txt(40, `Dias: ${c.diasTrab} trab. / ${c.diasDesc} desc.   ·   H: ${c.hNormalPaid} norm. / ${c.hFestivo} fest.`, { size: 9.5 }); doc.down(14);
-      if(extraActive(cfg)){doc.need(30);doc.txt(40,`Extras generadas pendientes del mes siguiente: ${fmtH(c.hExtraGen)} h`,{size:9});doc.down(13);doc.txt(40,`Extras del mes anterior estimadas en este mes: ${fmtH(c.hExtra)} h / ${eurPdf(c.brutoExtra)}`,{size:9});doc.down(15);}
-      doc.need(15); doc.txt(40, "Total bruto", { size: 10.5, bold: true }); doc.txt(555, eurPdf(c.bruto), { size: 10.5, bold: true, right: true }); doc.down(15);
-      c.dets.forEach((dd) => { doc.need(12); doc.txt(40, `${dd.name} (${dd.pct}%)`, { size: 9, gray: true }); doc.txt(555, "-" + eurPdf(dd.amount), { size: 9, gray: true, right: true }); doc.down(12); });
-      doc.down(2); doc.hr(); doc.down(17); doc.need(18);
-      doc.txt(40, "NETO ESTIMADO (no es nomina real)", { size: 11, bold: true }); doc.txt(555, eurPdf(c.neto), { size: 13, bold: true, right: true }); doc.down(20);doc.need(24);doc.txt(40,rec.historicalStatus==='confirmed'?'Tarifas del periodo confirmadas. Retenciones aproximadas sobre bruto.':'Tarifas historicas desconocidas: copia de la configuracion de migracion.',{size:8,gray:true});doc.down(15);
+    function buildMonthReport(doc,yy,mm,includeEconomic=true) {
+      R.monthly(doc,R.month(state.allData,state.config,monthKey(yy,mm)),{includeEconomic,identity:state.config.userName});
     }
 
     function blobToBase64(blob) {
@@ -460,23 +449,70 @@
       }
     }
 
-    window.doExportMonth = () => {
-      const doc = createPdfDoc(); buildMonthReport(doc, state.year, state.month);
-      const blob = new Blob([new Uint8Array([...assemblePdf(doc.pages)].map(c=>c.charCodeAt(0)))], { type: "application/pdf" });
-      const fname = `Horas_${MESES[state.month]}_${state.year}.pdf`;
-      state.pdfReady = { blob, filename: fname };
-      processDownload(blob, fname); render();
+    function reportBlob(doc){return new Blob([new Uint8Array([...assemblePdf(doc.pages)].map(c=>c.charCodeAt(0)))],{type:'application/pdf'});}
+    window.doExportMonth=(period=monthKey(state.year,state.month))=>{
+      const [y,m]=period.split('-').map(Number),doc=createPdfDoc();buildMonthReport(doc,y,m-1,state.reportEconomy===true);
+      const blob=reportBlob(doc),filename=`Mis_Horas_${period}_${state.reportEconomy?'con_importes':'sin_importes'}.pdf`;
+      state.pdfReady={blob,filename};processDownload(blob,filename);render();
+    };
+    window.doExportYear=yy=>{
+      const doc=createPdfDoc();R.annual(doc,R.year(state.allData,state.config,Number(yy)),{includeEconomic:state.reportEconomy===true,identity:state.config.userName});
+      const blob=reportBlob(doc),filename=`Mis_Horas_${yy}_anual_${state.reportEconomy?'con_importes':'sin_importes'}.pdf`;
+      state.pdfReady={blob,filename};processDownload(blob,filename);render();
     };
 
-    window.doExportYear = (yy) => {
-      const doc = createPdfDoc(); doc.txt(40, `Resumen anual - ${yy}`, { size: 16, bold: true }); doc.down(30);
-      if(state.config.userName) { doc.txt(40, `Trabajador: ${state.config.userName}`, { size: 10, bold: true }); doc.down(16); }
-      for(let m=0;m<12;m++) if(state.allData[monthKey(yy,m)]||monthly(yy,m).hExtra>0) buildMonthReport(doc, yy, m);
-      const blob = new Blob([new Uint8Array([...assemblePdf(doc.pages)].map(c=>c.charCodeAt(0)))], { type: "application/pdf" });
-      const fname = `Horas_${yy}_completo.pdf`;
-      state.pdfReady = { blob, filename: fname };
-      processDownload(blob, fname); render();
+    // HISTÓRICO: explicit, local reports and partial real payrolls.
+    const reportPeriod=()=>state.reportPeriod||monthKey(state.year,state.month);
+    function clearReportPrivate(){state.payrollDrafts={};state.reportContext='';state.reportQuestion='';state.reportEconomy=false;state.reportNotice='';state.pdfReady=null;}
+    const draftCopy=value=>Array.isArray(value)?value.map(draftCopy):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,draftCopy(v)])):value;
+    function payrollDraft(period=reportPeriod()){
+      const value=C.realPayroll(state.allData[period]?.payroll||C.emptyPayroll());
+      for(const op of state.payrollDrafts[period]||[]){if(op.collection)value[op.collection][op.key]=draftCopy(op.value);else value[op.key]=draftCopy(op.value);}return value;
+    }
+    function setPayrollEdit(key,value,collection=null){
+      if(state.config.hideMoney)return;
+      const period=reportPeriod(),ops=state.payrollDrafts[period] ||= [],existing=ops.find(o=>o.key===key&&o.collection===collection);
+      if(existing)existing.value=draftCopy(value);else ops.push({key,value:draftCopy(value),collection});state.reportNotice='Cambios de nómina sin guardar.';
+      const notice=getEl('report-notice');if(notice)notice.textContent=state.reportNotice;
+    }
+    const optionalNumber=value=>String(value).trim()===''?null:Number(String(value).replace(',','.'));
+    window.editRealPayroll=(key,value)=>{if(!C.payrollFields.includes(key)||key==='recordedAt')return;setPayrollEdit(key,['gross','deductionsTotal','net','received'].includes(key)?optionalNumber(value):value);};
+    window.editRealLine=(collection,id,key,value)=>{if(!['incomes','deductions'].includes(collection))return;const line=payrollDraft()[collection][id];if(!line||!Object.hasOwn(line,key))return;setPayrollEdit(id,{...line,[key]:['amount','base','pct'].includes(key)?optionalNumber(value):value},collection);};
+    window.addRealLine=collection=>{if(state.config.hideMoney||!['incomes','deductions'].includes(collection))return;const value={name:'',kind:'other',amount:null,...(collection==='deductions'?{base:null,pct:null}:{})};setPayrollEdit(crypto.randomUUID(),value,collection);render();};
+    window.removeRealLine=(collection,id)=>{if(!['incomes','deductions'].includes(collection))return;setPayrollEdit(id,null,collection);render();};
+    window.saveRealPayroll=()=>{
+      if(state.config.hideMoney)return;
+      try{
+        const period=reportPeriod(),validated=C.realPayroll({...payrollDraft(),recordedAt:new Date().toISOString()});
+        if(!state.allData[period])state.allData[period]={days:{},rateConfig:C.financial(state.config),historicalStatus:period===monthKey(new Date().getFullYear(),new Date().getMonth())?'confirmed':'unknown'};
+        state.allData[period].payroll=validated;if(!saveState()){render();return;}
+        delete state.payrollDrafts[period];state.reportNotice='Nómina guardada en este dispositivo.';render();
+      }catch(e){state.reportNotice=e.message;render();}
     };
+    window.cancelRealEdits=()=>{delete state.payrollDrafts[reportPeriod()];state.reportNotice='Cambios pendientes descartados.';render();};
+    window.selectReportMonth=period=>{if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(period))return;state.reportPeriod=period;state.reportYear=Number(period.slice(0,4));state.reportContext='';state.reportNotice='';state.pdfReady=null;render();};
+    window.openHistory=()=>{state.reportPeriod=monthKey(state.year,state.month);state.reportYear=state.year;switchTab('historico');};
+    window.copyReportContext=async()=>{
+      const includeEconomic=state.reportEconomy&&!state.config.hideMoney,model=state.reportScope==='year'?R.year(state.allData,state.config,state.reportYear):R.month(state.allData,state.config,reportPeriod());
+      const text=HorasAIData.redact(R.context(model,{annualReport:state.reportScope==='year',includeEconomic,question:state.reportQuestion}),knownIdentifiers());
+      state.reportContext=text;state.reportNotice='Contexto preparado en este dispositivo. No se ha enviado a ninguna IA.';render();
+      try{await navigator.clipboard.writeText(text);state.reportNotice='Contexto copiado. No se ha enviado a ninguna IA.';}catch{getEl('report-context')?.select();state.reportNotice='Selecciona y copia el contexto mostrado. No se ha enviado a ninguna IA.';}
+      const notice=getEl('report-notice');if(notice)notice.textContent=state.reportNotice;
+    };
+    function realPayrollMarkup(){
+      if(state.config.hideMoney)return '<p class="privacy-note">Importes ocultos. Muestra los importes para registrar o editar una nómina real.</p>';
+      const draft=payrollDraft(),input=(id,label,value,change,type='number')=>`<label class="report-field" for="${id}">${label}<input id="${id}" type="${type}" ${type==='number'?'step="0.01" inputmode="decimal"':''} value="${esc(value??'')}" oninput="${change}"></label>`;
+      const groups=['incomes','deductions'].map(collection=>`<h3 style="font-size:15px">${collection==='incomes'?'Ingresos por concepto':'Deducciones por concepto'}</h3>${Object.entries(draft[collection]).filter(([,l])=>l).map(([id,line])=>{
+        const arg=esc(JSON.stringify(id)),prefix='real-'+id,handler=key=>`editRealLine('${collection}',${arg},'${key}',this.value)`,categories=collection==='incomes'?[['base','Salario base'],['complement','Complemento'],['extra','Horas extra'],['holiday','Festivos'],['extraPay','Paga extraordinaria'],['arrears','Atrasos'],['other','Otro']]:[['irpf','IRPF'],['socialSecurity','Seguridad Social'],['other','Otra']];
+        return `<div class="payroll-line">${input(prefix+'-name','Nombre del concepto',line.name,handler('name'),'text')}<label class="report-field" for="${prefix}-kind">Tipo de concepto<select id="${prefix}-kind" onchange="editRealLine('${collection}',${arg},'kind',this.value)">${categories.map(([k,l])=>`<option value="${k}" ${line.kind===k?'selected':''}>${l}</option>`).join('')}</select></label><div class="report-fields">${collection==='deductions'?input(prefix+'-base','Base (EUR)',line.base,handler('base'))+input(prefix+'-pct','Porcentaje (%)',line.pct,handler('pct')):''}${input(prefix+'-amount','Importe (EUR)',line.amount,handler('amount'))}</div><button class="big-btn" onclick="removeRealLine('${collection}',${arg})">Eliminar concepto</button></div>`;
+      }).join('')}<button class="big-btn" onclick="addRealLine('${collection}')">${collection==='incomes'?'Añadir ingreso':'Añadir deducción'}</button><label class="report-choice"><input type="checkbox" ${draft[collection==='incomes'?'incomesComplete':'deductionsComplete']?'checked':''} onchange="editRealPayroll('${collection==='incomes'?'incomesComplete':'deductionsComplete'}',this.checked)">Confirmo que este desglose está completo</label>`).join('');
+      return `<p class="privacy-note">Transcribe la nómina del mes seleccionado. Puedes guardar datos parciales: vacío significa «No registrado»; escribe 0 para un cero real. Se admiten ajustes negativos tal como figuren en la nómina. Los subtotales no sustituyen los totales hasta confirmar el desglose completo.</p>${groups}<h3 style="font-size:15px">Totales que figuran en la nómina</h3><div class="report-fields">${[['gross','Bruto real (EUR)'],['deductionsTotal','Total de deducciones real (EUR)'],['net','Neto de nómina (EUR)'],['received','Importe recibido (EUR)']].map(([key,label])=>input('real-'+key,label,draft[key],`editRealPayroll('${key}',this.value)`)).join('')}</div><label class="report-field" for="real-note">Notas de la nómina<textarea id="real-note" maxlength="2000" oninput="editRealPayroll('note',this.value)">${esc(draft.note)}</textarea></label><div class="report-actions"><button class="big-btn" style="color:var(--success)" onclick="saveRealPayroll()">Guardar nómina real</button><button class="big-btn" onclick="cancelRealEdits()">Descartar cambios pendientes</button></div>`;
+    }
+    function historyMarkup(){
+      const periods=R.available(state.allData,state.config),years=[...new Set([...periods.map(p=>+p.slice(0,4)),state.year,state.reportYear])].sort((a,b)=>b-a),period=reportPeriod(),model=R.month(state.allData,state.config,period);
+      const listing=years.map(y=>`<details class="history-year" ${y===state.reportYear?'open':''}><summary>${y}</summary><div class="history-months">${periods.filter(p=>+p.slice(0,4)===y).map(p=>{const m=R.month(state.allData,state.config,p);return `<button class="big-btn" aria-pressed="${p===period}" style="${p===period?'border-color:var(--accent);color:var(--accent)':''}" onclick="selectReportMonth('${p}')">${esc(m.title)}<br><small>${m.hasHours?'Con jornadas':'Sin jornadas'} · ${m.payroll.exists?'Con nómina':'Sin nómina'}</small></button>`;}).join('')||'<p class="privacy-note">Sin meses guardados.</p>'}</div></details>`).join('');
+      return `<div class="tab-content"><div class="two-col"><div class="col-scroll"><div class="card"><div class="card-title">Histórico e informes</div><p class="privacy-note">Meses disponibles, del más reciente al más antiguo. Cada descarga es un PDF individual, sin ZIP.</p><div class="history-list">${listing}</div><label class="report-field" for="report-period">Mes del informe y de la nómina<input id="report-period" type="month" value="${period}" onchange="selectReportMonth(this.value)"></label><label class="report-field" for="report-year">Año del informe completo<select id="report-year" onchange="state.reportYear=Number(this.value);state.reportContext='';render()">${years.map(y=>`<option ${y===state.reportYear?'selected':''} value="${y}">${y}</option>`).join('')}</select></label><label class="report-choice"><input id="report-economy" type="checkbox" ${state.reportEconomy?'checked':''} onchange="state.reportEconomy=this.checked;state.reportContext='';state.pdfReady=null;render()">Incluir información económica en el PDF</label><p class="privacy-note">Sin esta opción se omiten nóminas, importes, tarifas, porcentajes y notas libres. Si la activas, el PDF contendrá datos económicos aunque estén ocultos en pantalla.</p><div class="report-actions"><button class="big-btn" onclick="doExportMonth(reportPeriod())">Descargar PDF mensual</button><button class="big-btn" onclick="doExportYear(state.reportYear)">Descargar PDF anual completo</button></div>${state.pdfReady?`<p class="privacy-note">PDF preparado: ${esc(state.pdfReady.filename)}</p><button class="big-btn" onclick="processDownload(state.pdfReady.blob,state.pdfReady.filename)">Descargar / Compartir PDF preparado</button>`:''}<h3 style="font-size:15px">Contexto para IA</h3><p class="privacy-note">Prepara un texto del informe para copiarlo tú. No se envía automáticamente. Con importes ocultos, el contexto omite información económica. Revisa y elimina información personal antes de compartirlo.</p><label class="report-field" for="report-scope">Informe del contexto<select id="report-scope" onchange="state.reportScope=this.value;state.reportContext='';render()"><option value="month" ${state.reportScope==='month'?'selected':''}>Mes seleccionado</option><option value="year" ${state.reportScope==='year'?'selected':''}>Año seleccionado</option></select></label><label class="report-field" for="report-question">Mi pregunta<textarea id="report-question" maxlength="2000" oninput="state.reportQuestion=this.value">${esc(state.reportQuestion)}</textarea></label><button class="big-btn" onclick="copyReportContext()">Copiar contexto para IA</button>${state.reportContext?`<label class="report-field" for="report-context">Contexto preparado<textarea id="report-context" class="report-preview" readonly>${esc(state.reportContext)}</textarea></label>`:''}</div></div><div class="col-scroll"><div class="card"><div class="card-title">Nómina real · ${esc(model.title)}</div><p class="privacy-note">${model.payroll.exists?'Hay datos reales registrados.':'No hay nómina registrada.'} Las tarifas y retenciones actuales no cambian estos datos ni las tarifas ya guardadas del mes.</p><p id="report-notice" class="privacy-note" role="status">${esc(state.reportNotice)}</p>${realPayrollMarkup()}</div></div></div></div>`;
+    }
 
     // ============================================================
     // GEMINI: optional assistant, one selected period, no automatic data edits.
@@ -603,14 +639,24 @@
         
         gridHtml += `
           <button id="day-btn-${d}" class="day-cell" 
-                  style="border-color:${borderColor}; ${t ? `background:${t.bg}` : ''}" 
-                  aria-label="${d} de ${MESES[state.month]}, ${t?t.label:'sin registro'}${e&&e.type!=='descanso'?', '+fmtH(e.hours)+' horas':''}" aria-pressed="${isSel}" onclick="selectDay(${d})">
+                  style="border-color:${borderColor}; ${isT?'box-shadow:inset 0 0 0 2px var(--accent);':''} ${t ? `background:${t.bg}` : ''}"
+                  aria-label="${d} de ${MESES[state.month]}, ${t?t.label:'sin registro'}${e&&e.type!=='descanso'?', '+fmtH(e.hours)+' horas':''}" aria-current="${isT?'date':'false'}" title="${isT?'Hoy. ':''}${isSel?'Día seleccionado. ':''}${t?t.label:'Sin registro'}" aria-pressed="${isSel}" onclick="selectDay(${d})">
             <span style="color:${t?t.color:'#AFB8CC'}">${d}</span>
-            ${e && e.type !== 'descanso' ? `<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>` : e?.type==='descanso'?`<span class="rest-marker" aria-hidden="true" style="color:${TYPES.descanso.color}">Z</span>`:''}
+            ${e?`<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>`:''}
           </button>`;
       }
       grid.innerHTML = DIAS_SEMANA.map(d=>`<div style="text-align:center;color:var(--muted);font-size:11px;font-weight:600">${d}</div>`).join('') + gridHtml;
     }
+
+    function dayDetailsMarkup(draft){
+      const number=(key,label)=>`<label class="report-field" for="day-${key}">${label}<input id="day-${key}" type="number" min="0" step="0.01" value="${esc(draft[key]??'')}" oninput="editDayDetail('${key}',this.value)"></label>`;
+      return `<details style="margin-top:12px"><summary class="privacy-note" style="min-height:44px;padding:12px 0;cursor:pointer">Detalles para el informe (opcional)</summary><p class="privacy-note">Estos detalles no recalculan las horas de la jornada. Las horas extra y nocturnas identificadas pueden solaparse; no se suman otra vez.</p><div class="report-fields">${number('extraHours','Horas extra identificadas')}${number('nightHours','Horas nocturnas identificadas')}${number('breakMinutes','Pausas totales (minutos)')}<label class="report-field" for="day-shift">Turno<input id="day-shift" type="text" maxlength="100" value="${esc(draft.shift||'')}" oninput="editDayDetail('shift',this.value)"></label></div>${(draft.segments||[]).map((t,i)=>`<div class="payroll-line"><p class="privacy-note">Tramo ${i+1}</p><div class="report-fields">${['start','end'].map(k=>`<label class="report-field" for="segment-${i}-${k}">${k==='start'?'Entrada':'Salida'}<input id="segment-${i}-${k}" type="time" value="${esc(t[k]||'')}" oninput="editDaySegment(${i},'${k}',this.value)"></label>`).join('')}<label class="report-field" for="segment-${i}-pause">Pausa del tramo (minutos)<input id="segment-${i}-pause" type="number" min="0" max="1440" value="${esc(t.breakMinutes??'')}" oninput="editDaySegment(${i},'breakMinutes',this.value)"></label></div><button class="big-btn" onclick="removeDaySegment(${i})">Eliminar tramo</button></div>`).join('')}<button class="big-btn" ${(draft.segments||[]).length>=8?'disabled':''} onclick="addDaySegment()">Añadir tramo de entrada y salida</button><label class="report-field" for="day-notes">Notas<textarea id="day-notes" maxlength="2000" oninput="editDayDetail('notes',this.value)">${esc(draft.notes||'')}</textarea></label></details>`;
+    }
+    function markDayDetails(){state.dayConfirmed=false;const button=getEl('btn-add-day');if(button)button.style.display='block';const earn=getEl('day-earn-box');if(earn)earn.style.display='none';}
+    window.editDayDetail=(key,value)=>{if(!state.draft||!['extraHours','nightHours','breakMinutes','shift','notes'].includes(key))return;state.draft[key]=['shift','notes'].includes(key)?value:optionalNumber(value);markDayDetails();};
+    window.editDaySegment=(i,key,value)=>{if(!state.draft?.segments?.[i]||!['start','end','breakMinutes'].includes(key))return;state.draft.segments[i][key]=key==='breakMinutes'?optionalNumber(value):value||null;markDayDetails();};
+    window.addDaySegment=()=>{if(!state.draft)return;state.draft.segments ||= [];if(state.draft.segments.length>=8)return;state.draft.segments.push({start:null,end:null,breakMinutes:null});markDayDetails();renderEditor();};
+    window.removeDaySegment=i=>{if(!state.draft?.segments?.[i])return;state.draft.segments.splice(i,1);markDayDetails();renderEditor();};
 
     function renderEditor() {
       const container = getEl('editor-container');
@@ -653,6 +699,7 @@
             <button class="step-btn" aria-label="Sumar media hora" onclick="stepHours(0.5)">+</button>
           </div>` : ''}
           
+          ${dayDetailsMarkup(s)}
           <button id="btn-add-day" class="add-btn" style="display:${!state.dayConfirmed ? 'block' : 'none'}; margin-top:14px" onclick="saveDay()">✓ Añadir</button>
           
           <div id="day-earn-box" class="day-earn-box" style="display:${state.dayConfirmed ? 'block' : 'none'}; margin-top:14px">
@@ -685,8 +732,8 @@
       const app = getEl("app");
       const renderTabs = `
         <nav class="tabs-bar" aria-label="Secciones de Mis Horas">
-          ${[["mes", "Mes"], ["anual", "Año"], ["ia", "IA"], ["ajustes", "Ajustes"]].map(([k, l]) => `
-            <button id="nav-${k}" aria-controls="tab-panel" class="tab-btn ${state.tab === k ? 'active' : ''}" onclick="switchTab('${k}')">${l}</button>
+          ${[["mes", "Mes"], ["anual", "Año"], ["ia", "IA"], ["ajustes", "Ajustes"], ["historico", "Histórico e informes"]].map(([k, l]) => `
+            <button id="nav-${k}" aria-controls="tab-panel" class="tab-btn ${k==='historico'?'history-btn':''} ${state.tab === k ? 'active' : ''}" onclick="switchTab('${k}')">${l}</button>
           `).join('')}
           <button class="eye-btn ${state.config.hideMoney ? 'active' : ''}" aria-label="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" aria-pressed="${state.config.hideMoney}" onclick="toggleMoney()">
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>${state.config.hideMoney ? '<line x1="4.2" y1="20" x2="19.8" y2="4"/>' : ''}</svg>
@@ -716,7 +763,7 @@
                 <div class="neto-value">${fmt(c.neto)}</div>
                 <div class="money-detail">Bruto ${fmt(c.bruto)} · Retenciones −${fmt(c.totalDed)}</div>
                 <div id="monthly-hours" class="hours-total">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes</div>
-                ${c.hFestivo>0?`<div id="monthly-hours-breakdown" class="hours-breakdown">${fmtH(c.hNormal)} horas normales · ${fmtH(c.hFestivo)} horas festivas</div>`:''}
+                ${c.hFestivo>0?`<div id="monthly-hours-breakdown" class="hours-breakdown">${fmtH(c.hFestivo)} horas festivas</div>`:''}
               </div>
               
               <p class="privacy-note">Toca un día para registrar tus horas</p><div class="calendar-legend"><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.festivo.bg}"></i>Festivo</span><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.descanso.bg}"></i>Descanso</span></div><div id="calendar-grid" class="grid"></div>
@@ -800,6 +847,8 @@
           </div></div>`;
         setTimeout(renderChart, 100);
       }
+
+      else if (state.tab === "historico") { content=historyMarkup(); }
 
       else if (state.tab === "ia") {
         content = !canUseAI()?`<div class="tab-content"><div class="ia-wrap"><div class="card"><div class="card-title">Asistente · Mis Horas</div><p class="privacy-note" role="status">${AI_UNAVAILABLE}</p></div></div></div>`:`
@@ -898,7 +947,7 @@
         </div>
       `;
       const pane=app.querySelector('.tab-content');if(pane){pane.id='tab-panel';pane.setAttribute('aria-labelledby','nav-'+state.tab);}if(pane&&state.tab!==lastRenderedTab)pane.classList.add('tab-enter');lastRenderedTab=state.tab;
-      app.querySelectorAll('input,select').forEach((el,i)=>{if(!el.id)el.id='field-'+i;if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label',el.closest('.row')?.querySelector('span')?.textContent||el.placeholder||'Ajuste');});
+      app.querySelectorAll('input,select').forEach((el,i)=>{if(!el.id)el.id='field-'+i;if(!el.hasAttribute('aria-label')&&!el.labels?.length)el.setAttribute('aria-label',el.closest('.row')?.querySelector('span')?.textContent||el.placeholder||'Ajuste');});
       app.querySelectorAll('.tab-btn').forEach(el=>el.setAttribute('aria-current',el.classList.contains('active')?'page':'false'));
       if(focusId)document.getElementById(focusId)?.focus({preventScroll:true});
       renderModalExport();
@@ -930,7 +979,7 @@
       state.selectedDay = state.selectedDay === d ? null : d;
       const mk = monthKey(state.year, state.month);
       const ex = (state.allData[mk]?.days || {})[state.selectedDay];
-      state.draft = ex ? { ...ex } : { type: "normal", hours: 8 };
+      state.draft = ex ? C.copy(ex) : { type: "normal", hours: 8 };
       state.dayConfirmed = !!ex;
       
       renderCalendarGrid();
@@ -940,7 +989,7 @@
     window.updateDraftType = (type) => {
       vibrate(20);
       state.draft.type = type;
-      if (type === 'descanso') state.draft.hours = 0;
+      if (type === 'descanso') {state.draft.hours=0;state.draft.extraHours=null;state.draft.nightHours=null;}
       state.dayConfirmed = false;
       renderEditor();
     };
@@ -972,7 +1021,8 @@
       const mk = monthKey(state.year, state.month);
       if(!state.selectedDay||!state.draft||!Number.isFinite(state.draft.hours)||state.draft.hours<0||state.draft.hours>24){alert('Horas no válidas.');return;}
       ensurePeriod();
-      state.allData[mk].days[state.selectedDay] = { type: state.draft.type, hours: state.draft.type === "descanso" ? 0 : Number(state.draft.hours) };
+      try{C.validateDay(state.draft);}catch(e){alert(e.message);return;}
+      state.allData[mk].days[state.selectedDay] = C.copy(state.draft);
       if(!saveState())return;
       state.dayConfirmed = true;
       render(); 
@@ -1009,10 +1059,13 @@
       if(!confirm(`${reason}: se reemplazarán los registros y ajustes de esta copia local (${Object.keys(state.allData).length} meses) por ${Object.keys(p.data).length} meses. Los borrados se sincronizarán en esta cuenta. Se conservará una recuperación previa. La preferencia de ocultar importes no cambia.`))return;
       sync.recover('Antes de importar');
       for(const [mk,old] of Object.entries(state.allData)) {
-        if(!p.data[mk])p.data[mk]={...C.copy(old),days:{}};
+        if(!p.data[mk])p.data[mk]={...C.copy(old),days:{},payroll:C.emptyPayroll()};
         for(const d of Object.keys(old.days))if(!(d in p.data[mk].days))p.data[mk].days[d]=null;
+         const oldPayroll=old.payroll||{},nextPayroll=p.data[mk].payroll||C.emptyPayroll();
+         for(const col of ['incomes','deductions'])for(const id of Object.keys(oldPayroll[col]||{}))if(!Object.hasOwn(nextPayroll[col],id))nextPayroll[col][id]=null;
+         if(old.payroll||p.data[mk].payroll)p.data[mk].payroll=nextPayroll;
       }
-      const hidden=state.config.hideMoney;state.config={...p.config,hideMoney:hidden};state.allData=p.data;if(!saveState()){render();return;}state.selectedDay=null;discardAI();render();
+      const hidden=state.config.hideMoney;state.config={...p.config,hideMoney:hidden};state.allData=p.data;if(!saveState()){render();return;}state.selectedDay=null;discardAI();clearReportPrivate();render();
     }
     window.importBackup=async(e)=>{
       const file=e.target.files[0],session=sync.session();e.target.value='';if(!file)return;
@@ -1040,8 +1093,8 @@
       const m = getEl('modal-export-content'); if(!m) return;
       if (!state.pdfReady) {
         m.innerHTML = `
-          <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:17px; margin-bottom:14px">Exportar PDF</div><p class="privacy-note">El PDF contiene datos económicos aunque estén ocultos en pantalla. Es un resumen estimado, no una nómina real.</p>
-          <button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:16px" onclick="doExportMonth()">📄 Este mes · ${MESES[state.month]} ${state.year}</button>
+          <div style="font-family:'Space Grotesk', system-ui; font-weight:700; font-size:17px; margin-bottom:14px">Exportar PDF</div><p class="privacy-note">Elige si el PDF incluye información económica. Los datos reales y las estimaciones se identifican por separado.</p>
+          <label class="report-choice"><input type="checkbox" ${state.reportEconomy?'checked':''} onchange="state.reportEconomy=this.checked;state.pdfReady=null">Incluir información económica</label><p class="privacy-note">Si la activas, el PDF contiene datos económicos aunque estén ocultos en pantalla.</p><button class="big-btn" onclick="closeExport();openHistory()">Elegir cualquier mes en Histórico e informes</button><button class="big-btn" style="border-color:var(--accent); color:var(--accent); margin-bottom:16px" onclick="doExportMonth()">📄 Este mes · ${MESES[state.month]} ${state.year}</button>
           <div style="color:var(--muted); font-size:11px; font-weight:600; margin-bottom:8px">O AÑO COMPLETO</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap">
             ${[state.year, state.year-1].map(y => `<button class="big-btn" style="flex:1 0 45%; padding:10px 0" onclick="doExportYear(${y})">🗓 ${y}</button>`).join('')}
