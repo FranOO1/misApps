@@ -4,6 +4,12 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright,expect
 ROOT=Path(__file__).resolve().parents[2];OUT=ROOT/'controlHoras/captures';OUT.mkdir(exist_ok=True)
 class Handler(http.server.SimpleHTTPRequestHandler):
+ def do_GET(self):
+  # This suite covers the paused UI without a cloud/session. Enabled AI is tested separately.
+  if self.path.split('?')[0].endswith('/ai-config.js'):
+   body=(ROOT/'controlHoras/ai-config.js').read_text().replace('enabled:true','enabled:false').encode()
+   self.send_response(200);self.send_header('Content-Type','application/javascript');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body);return
+  super().do_GET()
  def log_message(self,*args):pass
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Handler,directory=str(ROOT)))
 threading.Thread(target=server.serve_forever,daemon=True).start();URL=f'http://127.0.0.1:{server.server_port}/controlHoras/'

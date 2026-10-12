@@ -91,6 +91,6 @@ test('safe rejection categories distinguish registration, site key, domain and a
 });
 test('paused service and fixed-only diagnostic reject before loading SDK or sending data',async()=>{
  const {createService,diagnosticQuestion}=await import(root+'ai-service.js');let loads=0;const load=async()=>{loads++;throw Error('not to load');},h=await fixture();
- const paused=createService(load);await assert.rejects(paused.query(h.input),e=>e.code==='probe/ai-paused');
+ const paused=createService(load,{enabled:false});await assert.rejects(paused.query(h.input),e=>e.code==='probe/ai-paused');
  const probe=createService(load,{enabled:true,diagnosticOnly:true});for(const input of [h.input,{...h.input,question:diagnosticQuestion,context:{recordedHours:8.25}},{...h.input,question:diagnosticQuestion,mode:'payroll',text:'PRIVATE_FIXTURE'}])await assert.rejects(probe.query(input),e=>e.code==='probe/diagnostic-only');assert.equal(loads,0);
 });
