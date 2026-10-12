@@ -17,10 +17,10 @@
   <script defer src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
 
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="./core.js?v=7"></script>
-  <script src="./sync.js?v=7"></script>
-  <script src="./ai-data.js?v=7"></script>
-  <script src="./reports.js?v=7"></script>
+  <script src="./core.js?v=8"></script>
+  <script src="./sync.js?v=8"></script>
+  <script src="./ai-data.js?v=8"></script>
+  <script src="./reports.js?v=8"></script>
   
 
   <style>
@@ -519,7 +519,7 @@
     const AI_UNAVAILABLE='La IA no está disponible ahora. Tus horas siguen guardándose con normalidad.';
     const canUseAI=()=>state.aiEnabled&&!state.aiBlocked;
     let aiService;
-    const ai=()=>aiService ||= import('./ai-service.js?v=7').catch(e=>{aiService=null;throw e;});
+    const ai=()=>aiService ||= import('./ai-service.js?v=8').catch(e=>{aiService=null;throw e;});
     const aiSession=()=>`${privateGeneration}:${cloud.user?.uid||''}`;
     const knownIdentifiers=()=>[state.config.userName,cloud.user?.displayName,cloud.user?.email].filter(Boolean);
     function discardAI(){privateGeneration++;state.chatMsgs=[];state.chatInput='';state.chatLoading=false;state.aiDiagnostic=null;state.nomina={status:'idle',result:null,error:null};if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});}
@@ -1117,7 +1117,7 @@
     try{sync.load();}catch(e){alert(e.message);}
     sync.setOnline(navigator.onLine!==false);
     render();initCloud();
-    import('./ai-config.js?v=7').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
+    import('./ai-config.js?v=8').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
     document.addEventListener('DOMContentLoaded',()=>{if(!cloud.ready)initCloud();if(state.tab==='anual')render();});
 
     // ============================================================

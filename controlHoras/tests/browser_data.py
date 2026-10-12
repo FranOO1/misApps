@@ -12,7 +12,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
  def do_GET(self):
   path=self.path.split('?')[0]
   legacy_name=Path(path).name
-  if previous_release and '?v=7' not in self.path and legacy_name in ['core.js','sync.js','ai-config.js']:
+  if previous_release and '?v=' not in self.path and legacy_name in ['core.js','sync.js','ai-config.js']:
    body=(ROOT/'controlHoras/tests/fixtures'/f'{Path(legacy_name).stem}-v5.js').read_bytes();self.send_response(200);self.send_header('Content-Type','application/javascript');self.send_header('Cache-Control','public, max-age=3600');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body);return
   body=PREVIOUS_SW if previous_release and path=='/controlHoras/sw.js' else PREVIOUS_HTML if previous_release and path in ['/controlHoras/','/controlHoras/index.html'] else None
   if body is None:return super().do_GET()
