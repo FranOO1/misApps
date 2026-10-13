@@ -581,7 +581,7 @@
     }
     window.handleNominaUpload=async(e)=>{
       const file=e.target.files[0];e.target.value='';if(!file||state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status))return;
-      const session=aiSession();state.nomina={status:'reading',result:null,error:null};render();
+      const session=aiSession();state.nomina={status:'reading',result:null,error:null};state.moreDetailsOpen=true;render();
       try{if(file.size>10*1024*1024)throw Error('PDF demasiado grande: máximo 10 MB. No se ha enviado.');const extracted=await extractTextFromPDF(file);if(session===aiSession())state.nomina={status:'review',text:HorasAIData.redact(extracted.text,knownIdentifiers()),pages:extracted.pages,result:null,error:null};}
       catch(e){if(session===aiSession())state.nomina={status:'error',result:null,error:e.message||'No se pudo preparar el PDF. No se ha enviado.'};}
       if(session===aiSession())render();
@@ -778,7 +778,7 @@
                 </div>
               ` : ''}
 
-              <details id="more-details" class="month-details" ${state.moreDetailsOpen?'open':''} ontoggle="state.moreDetailsOpen=this.open"><summary>Más detalles</summary>
+              <details id="more-details" class="month-details" ${state.moreDetailsOpen?'open':''} ontoggle="if(this.isConnected)state.moreDetailsOpen=this.open"><summary>Más detalles</summary>
               <div class="card">
                 <div class="card-title">Cálculo según registros del mes</div><p class="privacy-note">${monthRec.historicalStatus==='confirmed'?'Tarifas del periodo confirmadas.':'Tarifas históricas sin confirmar: se conservó la configuración disponible al migrar.'} Retenciones aproximadas sobre bruto; una nómina real puede contener otros conceptos y bases.</p>${ei?`<p class="privacy-note">Hipótesis Sintax conservada: semana lunes–domingo, umbral de 40 h normales + festivas, extras desde el último día normal. Festivos mantienen tarifa. ${fmtH(c.hExtraGen)} h generadas para el mes siguiente; ${fmtH(c.hExtra)} h del mes anterior estimadas aquí. El abono real no está confirmado.</p>`:''}<p class="privacy-note">Importes estimados con las tarifas y porcentajes configurados. Una nómina real puede incluir otros conceptos y bases.</p>
                 <div class="row"><span>H. normales (${c.hNormalPaid}h)</span> <span>${fmt(c.brutoNormal)}</span></div>

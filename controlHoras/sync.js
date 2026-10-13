@@ -20,7 +20,7 @@
       const raw=storage.getItem(key());
       if(raw){
         const saved=JSON.parse(raw);pending=saved.pending||[];
-        historyConfirmed=account!=='guest'&&saved.historyComplete===true;historyAt=historyConfirmed&&typeof saved.historyAt==='string'?saved.historyAt:null;
+        historyConfirmed=account!=='guest'&&saved.historyComplete===true;historyAt=historyConfirmed&&typeof saved.historyAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(saved.historyAt)&&Number.isFinite(Date.parse(saved.historyAt))?saved.historyAt:null;
         if(!Array.isArray(pending)||pending.length>100000)throw Error('Diario local no válido.');
         for(const op of pending){
           if(typeof op.id!=='string'||!op.id||!Array.isArray(op.path)||!(['config','data'].includes(op.path[0]))||op.path.some(k=>typeof k!=='string'))throw Error('Diario local no válido.');
@@ -171,7 +171,7 @@
         if(session!==epoch||user?.uid!==uid)throw Error('La cuenta ha cambiado. No se ha consultado el historial anterior.');
         if(snap.metadata?.fromCache||snap.metadata?.hasPendingWrites)throw Error('El historial de la nube todavía no está confirmado. Espera a sincronizar.');
         if(!receive(snap.exists?snap.data():{}, {...snap.metadata,historyRead:true}))throw Error('No se pudo validar el historial completo. Se conserva la copia local.');
-        return historyState();
+        return {...historyState(),source:'server',fresh:true};
       }catch(e){if(session!==epoch)throw Error('La cuenta ha cambiado.');const safe=new Set(['No se pudo completar la carga del historial. Tus registros siguen guardados.','El historial de la nube todavía no está confirmado. Espera a sincronizar.','No se pudo validar el historial completo. Se conserva la copia local.']);throw Error(safe.has(e.message)?e.message:e.code==='permission-denied'?'No hay permiso para cargar el historial de esta cuenta. Tus registros siguen guardados.':'No se pudo cargar el historial completo. Comprueba la conexión.');}
       finally{clearTimeout(timer);}
     }
