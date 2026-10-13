@@ -29,12 +29,12 @@ try:
   for width,height in [(320,740),(390,844),(768,1024),(844,390),(1280,900)]:
    ctx=browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce',service_workers='block',has_touch=True)
    ctx.route('https://**/*',external);ctx.add_init_script("if(!localStorage.getItem('horas-app-v2'))localStorage.setItem('horas-app-v2',"+json.dumps(json.dumps(fixture))+");const OriginalDate=Date;window.Date=class extends OriginalDate{constructor(...a){super(...(a.length?a:['2026-10-08T12:00:00Z']));}static now(){return new OriginalDate('2026-10-08T12:00:00Z').getTime();}};")
-   page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept());page.goto(URL);expect(page.get_by_text('Toca un día para registrar tus horas')).to_be_visible();no_overflow(page)
+   page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept());page.goto(URL);expect(page.get_by_text('Toca un día para registrar tus horas')).to_have_count(0);no_overflow(page)
    expect(page.locator('#more-details')).not_to_have_attribute('open','')
    expect(page.get_by_text('Proyección a fin de mes',exact=True)).to_be_visible()
-   for day,count in [(1,2),(3,2),(4,1)]:
+   for day,count in [(1,2),(3,2),(4,2)]:
     assert page.locator(f'#day-btn-{day} span').count()==count
-   assert page.locator('#day-btn-4').inner_text().split()==['4']
+   assert page.locator('#day-btn-4').inner_text().split()==['4','ZZ']
    colors=[page.locator(f'#day-btn-{day}').evaluate('e=>getComputedStyle(e).backgroundColor') for day in [1,3,4]];assert len(set(colors))==3
    expect(page.locator('#monthly-hours')).to_contain_text('48,5 h este mes')
    expect(page.locator('#monthly-hours-breakdown')).to_have_text('10,75 horas festivas')
@@ -64,8 +64,8 @@ try:
     expect(page.locator('#nav-'+key)).to_have_attribute('aria-current','page');expect(page.locator('#nav-'+key)).to_be_focused()
    page.locator('#nav-privacy').focus();page.keyboard.press('Space');expect(page.locator('#nav-privacy')).to_be_focused();expect(page.locator('#nav-privacy')).to_have_attribute('aria-pressed','true');page.keyboard.press('Space');expect(page.locator('#nav-privacy')).to_be_focused();expect(page.locator('#nav-privacy')).to_have_attribute('aria-pressed','false')
    page.locator('#nav-mes').tap();expect(page.locator('#day-btn-4')).to_have_attribute('aria-label','4 de Octubre, Descanso')
-   expect(page.locator('#day-btn-4 .rest-marker')).to_have_count(0);expect(page.locator('#day-btn-4')).to_have_text('4')
-   assert page.locator('#day-btn-4').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(34, 43, 56)'
+   assert page.locator('.calendar-heading,.calendar-legend').count()==0;expect(page.locator('#day-btn-4')).to_have_text('4 ZZ')
+   assert page.locator('#day-btn-4').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(51, 31, 38)'
    page.screenshot(path=str(OUT/f'visible-{width}.png'),full_page=True,animations='disabled')
    page.evaluate('selectDay(8)')
    add=page.locator('#btn-add-day');box=add.bounding_box()

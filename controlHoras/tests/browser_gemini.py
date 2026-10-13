@@ -47,6 +47,9 @@ def route_external(route):
     if 'Compara septiembre' in question:groups=[{'label':'Septiembre','from':'2026-09-01','to':'2026-09-30'},groups[0]];operation='compare'
     elif 'año 2026' in question:groups=[{'label':'Año 2026','from':'2026-01-01','to':'2026-12-31'}]
     elif 'festivas' in question:groups=context['previousPlan']['groups'];metrics=['holidayHours']
+    elif 'junio' in question:groups=[{'label':'Junio','from':'2026-06-01','to':'2026-06-30'}];metrics=['realPayroll']
+    elif 'julio' in question:groups=[{'label':'Julio','from':'2026-07-01','to':'2026-07-31'}];metrics=['realPayroll']
+    elif 'mes a mes' in question:groups=[{'label':'Intervalo corto erróneo','from':'2026-04-01','to':'2026-07-31'}];metrics=['realPayroll']
     text=json.dumps({'clarification':None,'groups':groups,'metrics':metrics,'operation':operation,'detail':False})
    else:text='{invalid}' if mode=='invalid' else json.dumps(facts) if payroll else '<img src=x onerror="window.pwned=1"> 10 horas registradas.'
    route.fulfill(json={'candidates':[{'content':{'role':'model','parts':[{'text':text}]},'finishReason':'STOP'}]},headers=headers)
@@ -61,12 +64,22 @@ try:
    page.evaluate('''async()=>{const a=firebase.initializeApp(firebaseConfig,'fixture-user');const c=await a.auth().signInWithCustomToken('fixture-custom-token');cloud.user=c.user;sync.ensureHistory=async()=>({complete:true,source:'fixture',updatedAt:null});}''')
    page.get_by_role('button',name='IA',exact=True).click();expect(page.locator('#ai-period')).to_have_count(0);page.locator('#chat-input').fill('¿Cuántas horas registré este mes?');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot')).to_contain_text('10 horas registradas.',timeout=60000)
    req=requests[-1];assert req['headers'].get('authorization')=='Firebase '+jwt,'Official SDK Auth session header';assert req['headers'].get('x-firebase-appcheck') in consumed_tokens,'Official SDK limited-use attestation header';payload=json.dumps(req['payload']);assert '2026-09' not in payload;assert '2026-09' not in payload;assert 'Persona Ficticia' not in payload;assert 'gross' not in payload;assert page.locator('.bubble img').count()==0;assert not page.evaluate('window.pwned||false');assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1');page.screenshot(path=str(OUT/f'gemini-chat-{width}.png'),full_page=True)
-   page.locator('#chat-input').fill('Compara septiembre con octubre de 2026');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('2026-09-01',timeout=60000)
+   page.locator('#chat-input').fill('Compara septiembre con octubre de 2026');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('septiembre 2026',timeout=60000)
    prompt=requests[-1]['payload']['contents'][0]['parts'][0]['text'];ctx_data=json.loads(prompt.split(':\n',1)[1].rsplit('\nConsulta:\n',1)[0]);assert ctx_data['history']['comparisons'][0]['difference']['hours']==-10;assert len(ctx_data['conversation'])==2
-   page.locator('#chat-input').fill('Horas del año 2026');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('2026-01-01',timeout=60000)
+   page.locator('#chat-input').fill('Horas del año 2026');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('2026',timeout=60000)
    prompt=requests[-1]['payload']['contents'][0]['parts'][0]['text'];ctx_data=json.loads(prompt.split(':\n',1)[1].rsplit('\nConsulta:\n',1)[0]);assert ctx_data['history']['groups'][0]['totals']['hours']==30
-   page.locator('#chat-input').fill('¿Y las festivas?');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('2026-01-01',timeout=60000)
+   page.locator('#chat-input').fill('¿Y las festivas?');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('2026',timeout=60000)
    prompt=requests[-1]['payload']['contents'][0]['parts'][0]['text'];ctx_data=json.loads(prompt.split(':\n',1)[1].rsplit('\nConsulta:\n',1)[0]);assert ctx_data['history']['groups'][0]['totals']['holidayHours']==0;assert ctx_data['previousPlan']['groups'][0]['from']=='2026-01-01'
+   original=page.evaluate('JSON.parse(JSON.stringify(state.allData))')
+   page.add_script_tag(url=URL.rsplit('/',1)[0]+'/../gemini-prueba/economia-fixture.js')
+   page.evaluate('const f=HorasEconomiaFixture.create();state.allData=f.data;state.config={...state.config,...f.config};render()')
+   for question,month,estimated,real in [('¿Cuánto cobré en junio de 2026?','junio',54,None),('¿Y en julio de 2026?','julio',63,100),('Consúltame mes a mes el neto y dime el total.','octubre',441,100),('Ahora solo junio de 2026.','junio',54,None)]:
+    page.locator('#chat-input').fill(question);page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('#chat-input')).to_be_enabled(timeout=60000);expect(page.locator('.bubble.bot').last.locator('.chat-net')).to_be_visible(timeout=60000)
+    summary=page.evaluate('state.chatMsgs.at(-1).netSummary[0]');assert summary['estimatedTotal']==estimated;assert summary['realTotal']==real;expect(page.locator('.bubble.bot').last).to_contain_text(month)
+    assert 'null' not in page.locator('.bubble.bot').last.inner_text();assert page.locator('.bubble.bot').last.locator('.chat-period').count()==1
+    if 'mes a mes' in question:assert len(summary['months'])==7
+   page.screenshot(path=str(OUT/f'gemini-economia-{width}.png'),full_page=True)
+   page.evaluate('d=>{state.allData=d;render()}',original)
    page.get_by_role('button',name='Nueva conversación',exact=True).click();assert page.evaluate('state.chatContext') is None;assert page.locator('.bubble').count()==0
    mode='quota';before=len(requests);page.locator('#chat-input').fill('Horas del mes');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('La IA no está disponible ahora.',timeout=45000);assert len(requests)==before+1;mode='ok'
    page.evaluate('navigator.__defineGetter__("onLine",()=>false)');before=len(requests);page.locator('#chat-input').fill('Horas');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('La IA no está disponible ahora.');assert len(requests)==before;page.evaluate('navigator.__defineGetter__("onLine",()=>true)')

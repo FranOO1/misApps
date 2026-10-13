@@ -17,11 +17,12 @@
   <script defer src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
 
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="./core.js?v=10"></script>
-  <script src="./sync.js?v=10"></script>
-  <script src="./ai-data.js?v=10"></script>
-  <script src="./reports.js?v=10"></script>
-  <script src="./ai-history.js?v=10"></script>
+  <script src="./core.js?v=11"></script>
+  <script src="./sync.js?v=11"></script>
+  <script src="./ai-data.js?v=11"></script>
+  <script src="./reports.js?v=11"></script>
+  <script src="./ai-history.js?v=11"></script>
+  <script src="./chat-ui.js?v=11"></script>
   
 
   <style>
@@ -50,7 +51,32 @@
     .nav-icon { flex: 0 0 44px; width: 44px; padding: 0; }
     .hours-breakdown { margin-top: 2px; color: var(--muted); font-size: 11px; }
     .eye-btn { width: 44px; flex: 0 0 44px; border-radius: 9px; color: var(--muted); display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0; }
-    @media (max-width: 379px) { .tabs-bar { display: grid; grid-template-columns: minmax(0,1fr) 44px 44px; gap: 3px 8px; } .view-selector { grid-column: 1; grid-row: 1; width: 112px; } #nav-ia { grid-column: 2 / span 2; grid-row: 1; } #nav-historico { grid-column: 1; grid-row: 2; justify-self: start; } #nav-ajustes { grid-column: 2; grid-row: 2; } .eye-btn { grid-column: 3; grid-row: 2; } }
+    .tabs-bar { justify-content: center; }
+    @media (max-width: 379px) { .tabs-bar { gap: 2px; } }
+    [data-tip] { position: relative; }
+    [data-tip]:focus-visible::after,[data-tip]:active::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); padding: 6px 8px; border-radius: 7px; background: #2A3247; color: var(--text); font-size: 12px; white-space: nowrap; z-index: 5; }
+    .big-btn.history-month { text-align: left; padding: 10px; border: 1px solid #43516A; background: var(--month-tone); }
+    .history-month strong { display: block; font-size: 15px; color: #E8EDF7; }
+    .history-month small { display: block; margin-top: 5px; color: #C0C8D8; font-size: 11px; }
+    .history-month[aria-pressed="true"] { border: 2px solid var(--accent); background: linear-gradient(rgba(79,163,255,.15),rgba(79,163,255,.15)),var(--month-tone); }
+    .big-btn.report-download { background: #193833; border-color: #367C65; color: #9FE5C8; }
+    .chat-card { display: flex; flex-direction: column; }
+    .chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .chat-heading h2 { font-size: 17px; margin: 0; }
+    .chat-reset { min-height: 44px; padding: 6px 9px; border-radius: 9px; color: var(--muted); font-size: 12px; }
+    .chat-messages { display: flex; flex-direction: column; gap: 10px; padding: 8px 0 12px; min-height: 180px; }
+    .chat-card .bubble { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+    .bubble.user { white-space: pre-wrap; }
+    .bubble p { margin: 0 0 7px; }
+    .bubble p:last-child { margin-bottom: 0; }
+    .bubble ul,.bubble ol { margin: 6px 0; padding-left: 20px; }
+    .chat-period { font-size: 12px; color: #9FCBFF; font-weight: 600; margin-bottom: 8px; }
+    .chat-net table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+    .chat-net th,.chat-net td { text-align: left; padding: 7px 4px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+    .chat-net caption { text-align: left; margin-bottom: 8px; font-weight: 600; }
+    .chat-net .privacy-note { margin-top: 8px; }
+    @media (min-width: 840px) and (min-height: 540px) { .ia-wrap { overflow-y: auto; padding-right: 6px; } }
+
     .history-list { display: flex; flex-direction: column; gap: 8px; }
     .history-year summary { padding: 12px 0; min-height: 44px; cursor: pointer; font-weight: 600; }
     .history-months { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 8px 0; }
@@ -122,14 +148,9 @@
     .card, .neto-block { overflow-wrap: anywhere; }
     .config-input { min-width: 0; max-width: 100%; }
     .day-cell span { line-height: 1.4; }
-    .calendar-legend { display: flex; gap: 10px; margin: 0; color: var(--muted); font-size: 12px; }
-    .calendar-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-bottom: 5px; }
-    .calendar-heading .privacy-note { margin: 0; font-size: 11px; }
     .month-details { margin-bottom: 8px; }
     .month-details > summary { min-height: 44px; padding: 10px 4px; color: var(--muted); font-weight: 600; cursor: pointer; }
     .month-details[open] > summary { margin-bottom: 6px; }
-    .calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
-    .legend-swatch { width: 14px; height: 14px; border-radius: 4px; }
     .tab-enter { animation: fadeIn 180ms ease-out; }
     .money-detail { font-size: 12px; color: var(--text); line-height: 1.35; }
     .hours-total { font-size: 16px; font-weight: 700; margin-top: 4px; }
@@ -189,7 +210,7 @@
     const TYPES = {
       normal:   { label: "Normal",   color: "#4FA3FF", bg: "rgba(79,163,255,0.18)" },
       festivo:  { label: "Festivo",  color: "#FFB04F", bg: "rgba(255,176,79,0.20)" },
-      descanso: { label: "Descanso", color: "#AAB5C5", bg: "#222B38", border: "#394557" },
+      descanso: { label: "Descanso", color: "#CE8D9A", bg: "#331F26", border: "#60313C" },
     };
 
     const state = {
@@ -518,8 +539,8 @@
     }
     function historyMarkup(){
       const periods=R.available(state.allData,state.config),years=[...new Set([...periods.map(p=>+p.slice(0,4)),state.year,state.reportYear])].sort((a,b)=>b-a),period=reportPeriod(),model=R.month(state.allData,state.config,period);
-      const listing=years.map(y=>`<details class="history-year" ${y===state.reportYear?'open':''}><summary>${y}</summary><div class="history-months">${periods.filter(p=>+p.slice(0,4)===y).map(p=>{const m=R.month(state.allData,state.config,p);return `<button class="big-btn" aria-pressed="${p===period}" style="${p===period?'border-color:var(--accent);color:var(--accent)':''}" onclick="selectReportMonth('${p}')">${esc(m.title)}<br><small>${m.hasHours?'Con jornadas':'Sin jornadas'} · ${m.payroll.exists?'Con nómina':'Sin nómina'}</small></button>`;}).join('')||'<p class="privacy-note">Sin meses guardados.</p>'}</div></details>`).join('');
-      return `<div class="tab-content"><div class="two-col"><div class="col-scroll"><div class="card"><div class="card-title">Histórico e informes</div><p class="privacy-note">Meses disponibles, del más reciente al más antiguo. Cada descarga es un PDF individual, sin ZIP.</p><div class="history-list">${listing}</div><label class="report-field" for="report-period">Mes del informe y de la nómina<input id="report-period" type="month" min="1900-01" max="2200-12" value="${period}" onchange="selectReportMonth(this.value)"></label><label class="report-field" for="report-year">Año del informe completo<select id="report-year" onchange="state.reportYear=Number(this.value);state.reportContext='';render()">${years.map(y=>`<option ${y===state.reportYear?'selected':''} value="${y}">${y}</option>`).join('')}</select></label><label class="report-choice"><input id="report-economy" type="checkbox" ${state.reportEconomy?'checked':''} onchange="state.reportEconomy=this.checked;state.reportContext='';state.pdfReady=null;render()">Incluir información económica en el PDF</label><p class="privacy-note">Sin esta opción se omiten nóminas, importes, tarifas, porcentajes y notas libres. Si la activas, el PDF contendrá datos económicos aunque estén ocultos en pantalla.</p><div class="report-actions"><button class="big-btn" onclick="doExportMonth(reportPeriod())">Descargar PDF mensual</button><button class="big-btn" onclick="doExportYear(state.reportYear)">Descargar PDF anual completo</button></div>${state.pdfReady?`<p class="privacy-note">PDF preparado: ${esc(state.pdfReady.filename)}</p><button class="big-btn" onclick="processDownload(state.pdfReady.blob,state.pdfReady.filename)">Descargar / Compartir PDF preparado</button>`:''}<h3 style="font-size:15px">Contexto para IA</h3><p class="privacy-note">Prepara un texto del informe para copiarlo tú. No se envía automáticamente. Con importes ocultos, el contexto omite información económica. Revisa y elimina información personal antes de compartirlo.</p><label class="report-field" for="report-scope">Informe del contexto<select id="report-scope" onchange="state.reportScope=this.value;state.reportContext='';render()"><option value="month" ${state.reportScope==='month'?'selected':''}>Mes seleccionado</option><option value="year" ${state.reportScope==='year'?'selected':''}>Año seleccionado</option></select></label><label class="report-field" for="report-question">Mi pregunta<textarea id="report-question" maxlength="2000" oninput="state.reportQuestion=this.value">${esc(state.reportQuestion)}</textarea></label><button class="big-btn" onclick="copyReportContext()">Copiar contexto para IA</button>${state.reportContext?`<label class="report-field" for="report-context">Contexto preparado<textarea id="report-context" class="report-preview" readonly>${esc(state.reportContext)}</textarea></label>`:''}</div></div><div class="col-scroll"><div class="card"><div class="card-title">Nómina real · ${esc(model.title)}</div><p class="privacy-note">${model.payroll.exists?'Hay datos reales registrados.':'No hay nómina registrada.'} Las tarifas y retenciones actuales no cambian estos datos ni las tarifas ya guardadas del mes.</p><p id="report-notice" class="privacy-note" role="status">${esc(state.reportNotice)}</p>${realPayrollMarkup()}</div></div></div></div>`;
+      const listing=years.map(y=>`<details class="history-year" ${y===state.reportYear?'open':''}><summary>${y}</summary><div class="history-months">${periods.filter(p=>+p.slice(0,4)===y).map(p=>{const m=R.month(state.allData,state.config,p);return `<button class="big-btn history-month" aria-pressed="${p===period}" style="--month-tone:${['#1D2C42','#193833','#302640','#3A3021'][m.month%4]}" onclick="selectReportMonth('${p}')"><strong>${esc(MESES[m.month])}</strong><small>${m.year} · ${m.hasHours?'Con jornadas':'Sin jornadas'} · ${m.payroll.exists?'Con nómina':'Sin nómina'}</small></button>`;}).join('')||'<p class="privacy-note">Sin meses guardados.</p>'}</div></details>`).join('');
+      return `<div class="tab-content"><div class="two-col"><div class="col-scroll"><div class="card"><div class="card-title">Histórico e informes</div><p class="privacy-note">Meses disponibles, del más reciente al más antiguo. Cada descarga es un PDF individual, sin ZIP.</p><div class="history-list">${listing}</div><label class="report-field" for="report-period">Mes del informe y de la nómina<input id="report-period" type="month" min="1900-01" max="2200-12" value="${period}" onchange="selectReportMonth(this.value)"></label><label class="report-field" for="report-year">Año del informe completo<select id="report-year" onchange="state.reportYear=Number(this.value);state.reportContext='';render()">${years.map(y=>`<option ${y===state.reportYear?'selected':''} value="${y}">${y}</option>`).join('')}</select></label><label class="report-choice"><input id="report-economy" type="checkbox" ${state.reportEconomy?'checked':''} onchange="state.reportEconomy=this.checked;state.reportContext='';state.pdfReady=null;render()">Incluir información económica en el PDF</label><p class="privacy-note">Sin esta opción se omiten nóminas, importes, tarifas, porcentajes y notas libres. Si la activas, el PDF contendrá datos económicos aunque estén ocultos en pantalla.</p><div class="report-actions"><button class="big-btn report-download" onclick="doExportMonth(reportPeriod())">Descargar PDF mensual</button><button class="big-btn report-download" onclick="doExportYear(state.reportYear)">Descargar PDF anual completo</button></div>${state.pdfReady?`<p class="privacy-note">PDF preparado: ${esc(state.pdfReady.filename)}</p><button class="big-btn report-download" onclick="processDownload(state.pdfReady.blob,state.pdfReady.filename)">Descargar / Compartir PDF preparado</button>`:''}<h3 style="font-size:15px">Contexto para IA</h3><p class="privacy-note">Prepara un texto del informe para copiarlo tú. No se envía automáticamente. Con importes ocultos, el contexto omite información económica. Revisa y elimina información personal antes de compartirlo.</p><label class="report-field" for="report-scope">Informe del contexto<select id="report-scope" onchange="state.reportScope=this.value;state.reportContext='';render()"><option value="month" ${state.reportScope==='month'?'selected':''}>Mes seleccionado</option><option value="year" ${state.reportScope==='year'?'selected':''}>Año seleccionado</option></select></label><label class="report-field" for="report-question">Mi pregunta<textarea id="report-question" maxlength="2000" oninput="state.reportQuestion=this.value">${esc(state.reportQuestion)}</textarea></label><button class="big-btn" onclick="copyReportContext()">Copiar contexto para IA</button>${state.reportContext?`<label class="report-field" for="report-context">Contexto preparado<textarea id="report-context" class="report-preview" readonly>${esc(state.reportContext)}</textarea></label>`:''}</div></div><div class="col-scroll"><div class="card"><div class="card-title">Nómina real · ${esc(model.title)}</div><p class="privacy-note">${model.payroll.exists?'Hay datos reales registrados.':'No hay nómina registrada.'} Las tarifas y retenciones actuales no cambian estos datos ni las tarifas ya guardadas del mes.</p><p id="report-notice" class="privacy-note" role="status">${esc(state.reportNotice)}</p>${realPayrollMarkup()}</div></div></div></div>`;
     }
 
     // ============================================================
@@ -527,7 +548,7 @@
     const AI_UNAVAILABLE='La IA no está disponible ahora. Tus horas siguen guardándose con normalidad.';
     const canUseAI=()=>state.aiEnabled&&!state.aiBlocked;
     let aiService;
-    const ai=()=>aiService ||= import('./ai-service.js?v=10').catch(e=>{aiService=null;throw e;});
+    const ai=()=>aiService ||= import('./ai-service.js?v=11').catch(e=>{aiService=null;throw e;});
     const aiSession=()=>`${privateGeneration}:${cloud.user?.uid||''}`;
     const knownIdentifiers=()=>[state.config.userName,cloud.user?.displayName,cloud.user?.email].filter(Boolean);
     function discardAI(){privateGeneration++;state.chatMsgs=[];state.chatContext=null;state.chatInput='';state.chatLoading=false;state.aiDiagnostic=null;state.nomina={status:'idle',result:null,error:null};if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});}
@@ -565,12 +586,12 @@
         if(/^(?:hola|buenos días|buenas tardes|buenas noches|gracias)[!.¡\s]*$/i.test(clean)){loaded=true;const reply=await callAI('chat',clean,'',{general:true,conversation});if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:reply});return;}
         const availability=await sync.ensureHistory();if(session!==aiSession())return;loaded=true;const queryData=C.copy(state.allData),queryConfig=C.copy(state.config);
         const plannerContext={catalog:HorasAIHistory.catalog(queryData,queryConfig),previousPlan,conversation};
-        const plan=await callAI('history-plan',clean,'',plannerContext);if(session!==aiSession())return;
+        const rawPlan=await callAI('history-plan',clean,'',plannerContext);const plan=HorasAIHistory.preparePlan(rawPlan,clean,plannerContext.catalog);if(session!==aiSession())return;
         if(plan.clarification){state.chatMsgs.push({role:'bot',text:HorasAIData.redact(plan.clarification,knownIdentifiers())});return;}
         const context=HorasAIHistory.query(queryData,queryConfig,plan,availability,{redact:t=>HorasAIData.redact(t,knownIdentifiers())});
-        const periodLabel=plan.groups.map(g=>`${g.from} – ${g.to}`).join(' · ');
-        const reply=await callAI('chat',clean,'',{history:context,conversation,previousPlan});
-        if(session===aiSession()&&!state.config.hideMoney){state.chatContext=plan;state.chatMsgs.push({role:'bot',text:`Periodo: ${periodLabel}\n${reply}`,periods:plan.groups.map(g=>({from:g.from,to:g.to}))});}
+        const netSummary=plan.metrics.includes('realPayroll')&&!/bruto|irpf|cotiz|retenci|deducc|tarifa/i.test(clean)?HorasAIHistory.netSummary(context):null;
+        const reply=await callAI('chat',clean,'',{history:context,conversation,previousPlan,localNetTable:!!netSummary});
+        if(session===aiSession()&&!state.config.hideMoney){state.chatContext=plan;state.chatMsgs.push({role:'bot',text:HorasChatUI.clean(reply),netSummary,periods:plan.groups.map(g=>({from:g.from,to:g.to}))});}
       }catch(e){if(session!==aiSession())return;const message=loaded?await aiError(e):e.message;if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:message||'No se pudo cargar el historial completo. Tus horas siguen guardándose con normalidad.'});}
       finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
@@ -640,7 +661,7 @@
                   style="border-color:${borderColor}; ${isT?'box-shadow:inset 0 0 0 2px var(--accent);':''} ${t ? `background:${t.bg}` : ''}"
                   aria-label="${d} de ${MESES[state.month]}, ${t?t.label:'sin registro'}${e&&e.type!=='descanso'?', '+fmtH(e.hours)+' horas':''}" aria-current="${isT?'date':'false'}" title="${isT?'Hoy. ':''}${isSel?'Día seleccionado. ':''}${t?t.label:'Sin registro'}" aria-pressed="${isSel}" onclick="selectDay(${d})">
             <span style="color:${t?t.color:'#AFB8CC'}">${d}</span>
-            ${e&&e.type!=='descanso'?`<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>`:''}
+            ${e?.type==='descanso'?`<span style="color:${TYPES.descanso.color}">ZZ</span>`:e?`<span style="color:${hoursColor(Number(e.hours))}">${fmtH(e.hours)}h</span>`:''}
           </button>`;
       }
       grid.innerHTML = DIAS_SEMANA.map(d=>`<div style="text-align:center;color:var(--muted);font-size:11px;font-weight:600">${d}</div>`).join('') + gridHtml;
@@ -730,8 +751,8 @@
       const icon=(path)=>`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`;
       const renderTabs = `<nav class="tabs-bar" aria-label="Secciones de Mis Horas">
         <div class="view-selector" role="group" aria-label="Vista de horas">${[["mes","Mes"],["anual","Año"]].map(([k,l])=>`<button id="nav-${k}" aria-controls="tab-panel" class="tab-btn ${state.tab===k?'active':''}" onclick="switchTab('${k}')">${l}</button>`).join('')}</div>
-        <button id="nav-ia" aria-controls="tab-panel" class="tab-btn nav-link ${state.tab==='ia'?'active':''}" onclick="switchTab('ia')">${icon('<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/>')}<span>IA</span></button>
-        <button id="nav-historico" aria-controls="tab-panel" class="tab-btn nav-link ${state.tab==='historico'?'active':''}" onclick="switchTab('historico')">${icon('<path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/><path d="M12 7v5l3 2"/>')}<span>Histórico</span></button>
+        <button id="nav-ia" aria-label="IA" data-tip="Asistente IA" title="Asistente IA" aria-controls="tab-panel" class="tab-btn nav-icon ${state.tab==='ia'?'active':''}" onclick="switchTab('ia')">${icon('<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/>')}</button>
+        <button id="nav-historico" aria-label="Histórico" data-tip="Histórico e informes" title="Histórico e informes" aria-controls="tab-panel" class="tab-btn nav-icon ${state.tab==='historico'?'active':''}" onclick="switchTab('historico')">${icon('<path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/><path d="M12 7v5l3 2"/>')}</button>
         <button id="nav-ajustes" class="tab-btn nav-icon ${state.tab==='ajustes'?'active':''}" aria-controls="tab-panel" aria-label="Ajustes" title="Ajustes" onclick="switchTab('ajustes')">${icon('<path d="m9 3-.7 2.5-2.3 1-2.3-.7L2 9l1.7 1.8v2.4L2 15l1.7 3.2 2.3-.7 2.3 1L9 21h6l.7-2.5 2.3-1 2.3.7L22 15l-1.7-1.8v-2.4L22 9l-1.7-3.2-2.3.7-2.3-1L15 3Z"/><circle cx="12" cy="12" r="3"/>')}</button>
         <button id="nav-privacy" class="eye-btn ${state.config.hideMoney?'active':''}" aria-label="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" title="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" aria-pressed="${state.config.hideMoney}" onclick="toggleMoney()">${icon('<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>'+(state.config.hideMoney?'<path d="m4.2 20 15.6-16"/>':''))}</button>
       </nav>`;
@@ -762,7 +783,7 @@
                 ${c.hFestivo>0?`<div id="monthly-hours-breakdown" class="hours-breakdown">${fmtH(c.hFestivo)} horas festivas</div>`:''}
               </div>
               
-              <div class="calendar-heading"><p class="privacy-note">Toca un día para registrar tus horas</p><div class="calendar-legend"><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.festivo.bg}"></i>Festivo</span><span><i class="legend-swatch" aria-hidden="true" style="background:${TYPES.descanso.bg};border:1px solid ${TYPES.descanso.border}"></i>Descanso</span></div></div><div id="calendar-grid" class="grid"></div>
+              <div id="calendar-grid" class="grid"></div>
               <div id="editor-container"></div>
             </div>
             
@@ -851,15 +872,15 @@
       else if (state.tab === "ia") {
         content = !canUseAI()?`<div class="tab-content"><div class="ia-wrap"><div class="card"><div class="card-title">Asistente · Mis Horas</div><p class="privacy-note" role="status">${AI_UNAVAILABLE}</p></div></div></div>`:`
           <div class="tab-content"><div class="ia-wrap">
-            <div class="card" style="display:flex; flex-direction:column; flex:1; max-height: 70vh; min-height: 50vh;">
-              <div class="card-title">Asistente Gemini · Mis Horas</div><details><summary class="privacy-note">Diagnóstico de conexión</summary><p id="ai-diagnostic" class="privacy-note">${esc(diagnosticText())}</p></details><details><summary class="privacy-note">Comprobar conexión con datos ficticios</summary><p class="privacy-note">Solo se envían a Google 4 + 4,25 = 8,25 horas ficticias y la petición de explicarlas. No se leen ni envían registros o nóminas. Usa tu sesión Google y App Check reales. La respuesta no se guarda. Se aplican las <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener" style="color:var(--accent)">condiciones de Google</a>.</p><button class="big-btn" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="verifyGemini()">Autorizar consulta ficticia a Google</button></details>
-              
-              <div class="report-actions"><button id="new-conversation" class="big-btn" ${['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="newConversation()">Nueva conversación</button></div><p class="privacy-note">Puedes preguntar por cualquier mes, año o por todo tu historial. Se envían a Google tu consulta, una parte reciente de la conversación y los resúmenes necesarios. No se envían notas libres ni documentos nuevos sin tu autorización. La conversación se conserva solo mientras usas esta cuenta; Nueva conversación la borra.</p><div id="chat-scroll-box" style="flex:1; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; padding-right:5px; min-height:0;">
-                ${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: conversaciones y resultados de IA ocultos.</p>':''}${!state.config.hideMoney && state.chatMsgs.length === 0 ? `<p style="color:var(--muted); font-size:13px">Gemini explica los cálculos de la app y ayuda a consultar horas, tarifas y retenciones. No cambia tus registros. Necesita conexión y sesión Google.</p>` : ''}
-                ${(state.config.hideMoney?[]:state.chatMsgs).map(m => `<div class="bubble ${m.role === 'user' ? 'user' : 'bot'}">${esc(m.text)}</div>`).join('')}
-                ${!state.config.hideMoney && state.chatLoading ? `<div class="bubble bot">Consultando Gemini…</div>` : ''}
+            <div class="card chat-card">
+              <div class="chat-heading"><h2>Asistente</h2><button id="new-conversation" class="chat-reset" ${['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="newConversation()">Nueva conversación</button></div>
+              <details><summary class="privacy-note">Consulta tu historial · cómo se usan tus datos</summary><p class="privacy-note">Puedes preguntar por cualquier mes, año o todo el historial. Google recibe tu pregunta, conversación reciente y los resúmenes necesarios; no enviamos notas libres ni documentos nuevos sin autorización. La conversación solo permanece en esta cuenta y se borra con Nueva conversación. Las estimaciones no confirman pagos recibidos.</p></details>
+              <div id="chat-scroll-box" class="chat-messages">
+                ${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: conversación y resultados ocultos.</p>':''}${!state.config.hideMoney&&state.chatMsgs.length===0?'<p class="privacy-note">Pregunta por tus horas o importes, de cualquier periodo.</p>':''}
+                ${(state.config.hideMoney?[]:state.chatMsgs).map(m=>`<div class="bubble ${m.role==='user'?'user':'bot'}">${m.periods?`<div class="chat-period">${esc(HorasChatUI.periodTitle(m.periods))}</div>`:''}${m.netSummary?HorasChatUI.netTable(m.netSummary):''}${m.role==='user'?esc(m.text):HorasChatUI.markdown(m.text)}</div>`).join('')}
+                ${!state.config.hideMoney&&state.chatLoading?'<div class="bubble bot" role="status">Consultando…</div>':''}
               </div>
-              
+
               <div style="display:flex; gap:8px">
                 <input class="config-input" style="flex:1; text-align:left" id="chat-input" aria-label="Consulta al asistente" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} placeholder="Pregunta algo..." value="${esc(state.config.hideMoney?'':state.chatInput)}" oninput="state.chatInput=this.value" onkeydown="if(event.key==='Enter') sendChat()">
                 <button class="big-btn" style="flex:0 0 auto; width:auto; border-color:var(--accent); color:var(--accent)" ${state.config.hideMoney||state.chatLoading||['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="sendChat()">Enviar</button>
@@ -889,6 +910,7 @@
                 `}
               </div>
 
+              <div class="card"><details><summary>Diagnóstico de IA</summary><p id="ai-diagnostic" class="privacy-note">${esc(diagnosticText()||'Sin comprobación reciente.')}</p>${!state.config.hideMoney&&state.chatMsgs[0]?.text.startsWith('Respuesta real recibida')?`<div class="bubble bot">${HorasChatUI.markdown(state.chatMsgs[0].text)}</div>`:''}<p class="privacy-note">Prueba aislada con 8,25 horas ficticias; no lee jornadas ni nóminas. Usa App Check y tu sesión existente. Google recibe los datos necesarios para responder.</p><button class="big-btn" ${!canUseAI()||state.config.hideMoney||state.chatLoading?'disabled':''} onclick="verifyGemini()">Autorizar consulta ficticia a Google</button><p class="privacy-note"><a href="../gemini-prueba/historial.html" target="_blank" rel="noopener" style="color:var(--accent)">Prueba histórica ficticia</a></p></details></div>
               <div class="card">
                 <div class="card-title">Tu Perfil</div>
                 <div class="row">
@@ -1115,7 +1137,7 @@
     try{sync.load();}catch(e){alert(e.message);}
     sync.setOnline(navigator.onLine!==false);
     render();initCloud();
-    import('./ai-config.js?v=10').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
+    import('./ai-config.js?v=11').then(({aiConfig})=>{state.aiEnabled=aiConfig.enabled===true;render();}).catch(()=>{});
     document.addEventListener('DOMContentLoaded',()=>{if(!cloud.ready)initCloud();if(state.tab==='anual')render();});
 
     // ============================================================

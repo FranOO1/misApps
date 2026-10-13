@@ -23,6 +23,20 @@
   return {today:iso(now),earliest:chronological[0]||null,latest:chronological.at(-1)||null,years:[...new Set(chronological.map(p=>+p.slice(0,4)))],availableMonths:chronological.length,knownMonths:chronological.length<=120?chronological:null};
  }
  function monthKeys(from,to){const out=[];let [y,m]=from.slice(0,7).split('-').map(Number),last=to.slice(0,7);while(`${y}-${String(m).padStart(2,'0')}`<=last){out.push(`${y}-${String(m).padStart(2,'0')}`);if(++m>12){m=1;y++;}}return out;}
+ function preparePlan(raw,question,cat){
+  const plan=normalizePlan(raw),q=String(question).toLocaleLowerCase('es');
+  const financial=/neto|bruto|cobr|salario|sueldo|gan[eé]|reten|retenci|irpf|cotiz|n[oó]mina|deducc|estimaci[oó]n|importe|econ[oó]mic/.test(q)||plan.metrics.some(m=>['realPayroll','estimates'].includes(m));
+  if(financial)plan.metrics=[...new Set([...plan.metrics,'realPayroll','estimates','rates'])];
+  const all=/todos? (?:los )?meses|todo (?:mi |el )?historial|todos? (?:mis |los )?registros/.test(q);
+  const monthly=/mes a mes|cada mes|por meses/.test(q);
+  const explicit=/\b(?:19|20|21)\d{2}\b|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|este a[nñ]o|a[nñ]o (?:actual|anterior|pasado)|este mes|mes (?:actual|anterior|pasado)|verano|invierno|entre |desde |hasta |[uú]ltimos/.test(q);
+  if((all||monthly)&&!explicit&&cat.earliest&&cat.latest){
+   const [y,m]=cat.latest.split('-').map(Number);
+   plan.groups=[{label:'Todo el historial disponible',from:cat.earliest+'-01',to:cat.latest+'-'+String(C.dim(y,m-1)).padStart(2,'0')}];
+   plan.clarification=null;
+  }
+  return plan;
+ }
  function query(data,config,rawPlan,availability,{redact=x=>String(x)}={}){
   if(!availability?.complete)throw Error('El historial completo de esta cuenta todavía no está cargado.');
   const plan=normalizePlan(rawPlan);if(plan.clarification)return {clarification:redact(plan.clarification)};
@@ -58,14 +72,14 @@
     }
     if(wanted.has('estimates')){
      if(!whole){partialFinancial=true;row.estimate={unavailable:'La estimación mensual no se prorratea a días.'};}
-     else {row.estimate={gross:model.hasEstimate?model.calc.bruto:null,deductions:model.hasEstimate?model.calc.totalDed:null,net:model.hasEstimate?model.calc.neto:null,historicalRatesAvailable:model.hasHistoricalRates,historicalRatesConfirmed:model.historicalConfirmed};if(model.hasEstimate){estimateCoverage.push(period);for(const k of Object.keys(estimated))estimated[k].push(row.estimate[k]);}}
+     else {row.estimate={gross:model.hasEstimate?model.calc.bruto:null,deductions:model.hasEstimate?model.calc.totalDed:null,net:model.hasEstimate?model.calc.neto:null,historicalRatesAvailable:model.hasHistoricalRates,historicalRatesConfirmed:model.historicalConfirmed,parameters:model.hasEstimate?{normal:model.config.rateNormal,holiday:model.config.rateNormal+model.config.plusFestivo,extra:model.config.rateExtra,profile:model.config.profile,extraCalculationActive:model.config.sintaxUnlocked,deductions:model.config.deductions.map(l=>({name:redact(l.name),pct:l.pct}))}:null,parameterSource:model.hasHistoricalRates?'Tarifas guardadas del periodo':'Parámetros actuales de referencia; tarifas históricas no registradas',unavailableReason:model.hasEstimate?null:'No hay jornadas registradas ni horas extraordinarias aplicables para calcular este mes.'};if(model.hasEstimate){estimateCoverage.push(period);for(const k of Object.keys(estimated))estimated[k].push(row.estimate[k]);}}
     }
     if(wanted.has('realPayroll')&&wanted.has('estimates')&&whole)row.actualVsEstimate=model.comparison.map(c=>({label:c.label,actual:c.actual,estimated:c.estimated,difference:round(c.difference)}));
     if(plan.detail)for(const [d,e] of entries){dailyCount++;if(detail.length<62){const day={date:period+'-'+String(d).padStart(2,'0'),type:e.type,hours:e.hours,extraHours:e.extraHours??null,nightHours:e.nightHours??null,shift:redact(e.shift||''),segments:e.segments?C.copy(e.segments):null,breakMinutes:e.breakMinutes??null};detail.push(day);}}
     rows.push(row);
    }
    const totals={};for(const [metric,values] of [['hours',knownHours],['normalHours',normal],['holidayHours',holiday],['restDays',rests],['workDays',worked],['extraHours',extra],['nightHours',night]])if(wanted.has(metric))totals[metric]=round(sum(values));
-   const out={period:{label:redact(g.label),from:g.from,to:g.to},totals,coverage:{expectedMonths:keys.length,monthsWithRecordedDays:recordedMonths.length,recordedMonths:recordedMonths.slice(0,120),closedMonths:closedMonths.length,monthsWithoutRecordedDays:missingMonths.length,missingMonths:missingMonths.slice(0,24),missingListTruncated:missingMonths.length>24,extraClassifiedMonths:extraKnown.length,nightClassifiedMonths:nightKnown.length},months:rows.filter(r=>r.hasRecordedDays||r.realPayroll?.exists||num(r.estimate?.gross)||r.historicalRates).slice(0,120),monthRowsTruncated:rows.filter(r=>r.hasRecordedDays||r.realPayroll?.exists||num(r.estimate?.gross)||r.historicalRates).length>120};
+   const out={period:{label:redact(g.label),from:g.from,to:g.to},totals,coverage:{expectedMonths:keys.length,monthsWithRecordedDays:recordedMonths.length,recordedMonths:recordedMonths.slice(0,120),closedMonths:closedMonths.length,monthsWithoutRecordedDays:missingMonths.length,missingMonths:missingMonths.slice(0,24),missingListTruncated:missingMonths.length>24,extraClassifiedMonths:extraKnown.length,nightClassifiedMonths:nightKnown.length},months:rows.filter(r=>r.hasRecordedDays||r.realPayroll?.exists||num(r.estimate?.gross)||r.historicalRates),monthRowsTruncated:false};
    if(wanted.has('extraHours'))out.extraCalculation={generatedHours:round(sum(generatedExtra)),estimatedPayrollHours:round(sum(payrollExtra)),generatedMonths:generatedExtra.length,estimatedPayrollMonths:payrollExtra.length,source:'Algoritmo común de Sintax, solo cuando está activo; no es clasificación manual ni confirmación de pago.'};
    if(wanted.has('realPayroll')){out.realPayroll=Object.fromEntries(Object.entries(actual).map(([k,v])=>[k,round(sum(v))]));out.realPayrollCoverage=Object.fromEntries(Object.entries(actualCoverage).map(([k,v])=>[k,{count:v.length,months:v.slice(0,120)}]));out.deductionConcepts=[...concepts.values()].slice(0,120).map(({amounts,...c})=>({...c,periods:c.periods.slice(0,120),missing:c.missing.slice(0,120),amount:round(sum(amounts)),monthsWithAmount:c.periods.length,monthsWithMissingAmount:c.missing.length}));out.conceptsTruncated=concepts.size>120;}
    if(wanted.has('estimates')){out.estimate=Object.fromEntries(Object.entries(estimated).map(([k,v])=>[k,round(sum(v))]));out.estimateCoverage={count:estimateCoverage.length,months:estimateCoverage.slice(0,120)};}
@@ -77,5 +91,6 @@
   const comparisons=[];if(plan.operation==='compare')for(let i=1;i<groups.length;i++){const a=groups[0],b=groups[i],difference={};for(const k of plan.metrics)if(num(a.totals[k])&&num(b.totals[k]))difference[k]=round(b.totals[k]-a.totals[k]);for(const source of ['realPayroll','estimate'])if(a[source]&&b[source])difference[source]=Object.fromEntries(Object.keys(a[source]).map(k=>[k,num(a[source][k])&&num(b[source][k])?round(b[source][k]-a[source][k]):null]));comparisons.push({from:a.period,to:b.period,difference,meaning:'Segundo intervalo menos primero; cada total conserva su propia cobertura. No se comparan estimaciones con dinero cobrado.'});}
   return {source:'Historial de jornadas de la cuenta actual y nóminas introducidas manualmente',currency:'EUR',availability:{complete:true,source:availability.source,updatedAt:availability.updatedAt,pendingChanges:!!availability.pendingChanges},groups,comparisons,limits:'Los totales abarcan solo datos registrados. Un mes o día sin registro no demuestra cero trabajo. Nóminas reales y estimaciones se separan; null significa No registrado, diferente de cero. Extra y nocturnidad son subconjuntos y no se añaden de nuevo a horas. No se inventan deducciones ni tarifas ausentes. Los resúmenes no incluyen notas libres ni identificadores. La copia local sin conexión puede estar desactualizada. El IRPF retenido es un pago a cuenta, no el resultado de la declaración.'};
  }
- const api={metrics,normalizePlan,catalog,query};root.HorasAIHistory=api;if(typeof module!=='undefined')module.exports=api;
+  function netSummary(context){return context.groups.map(g=>({period:g.period,months:g.months.map(r=>({period:r.period,real:num(r.realPayroll?.net)?r.realPayroll.net:null,estimated:num(r.estimate?.net)?r.estimate.net:null,source:num(r.realPayroll?.net)?'Nómina registrada':num(r.estimate?.net)?'Estimación de la app':'No registrado',available:num(r.realPayroll?.net)?r.realPayroll.net:num(r.estimate?.net)?r.estimate.net:null,parameters:r.estimate?.parameterSource||r.estimate?.unavailableReason||null})),realTotal:g.realPayroll?.net??null,estimatedTotal:g.estimate?.net??null,realMonths:g.realPayrollCoverage?.net.count||0,estimatedMonths:g.estimateCoverage?.count||0}));}
+  const api={metrics,normalizePlan,preparePlan,catalog,query,netSummary};root.HorasAIHistory=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

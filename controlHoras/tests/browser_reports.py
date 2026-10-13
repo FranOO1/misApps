@@ -28,6 +28,9 @@ try:
    ctx=browser.new_context(viewport={'width':width,'height':height},service_workers='block',reduced_motion='reduce',has_touch=True,permissions=['clipboard-read','clipboard-write']);ctx.route('https://**/*',lambda r:r.abort());ctx.add_init_script('localStorage.setItem("horas-app-v2",'+json.dumps(json.dumps(fixture))+');')
    page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept());page.goto(URL)
    page.get_by_role('button',name='Histórico',exact=True).tap();fits(page)
+   tones=page.locator('.history-month').evaluate_all('es=>es.map(e=>getComputedStyle(e).backgroundColor)');assert len(set(tones))>=2,tones
+   assert page.get_by_role('button',name='Descargar PDF mensual',exact=True).evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(25, 56, 51)'
+   page.screenshot(path=str(OUT/f'history-palette-{width}.png'),full_page=True)
    years=page.locator('.history-year summary').all_text_contents();assert years==sorted(years,reverse=True)
    page.locator('#report-period').fill('2026-10');page.locator('#report-period').dispatch_event('change');expect(page.locator('#real-gross')).to_have_value('125');expect(page.locator('#real-received')).to_have_value('')
    assert not page.locator('#report-economy').is_checked();text,_=download(page,'Descargar PDF mensual',f'report-safe-{width}.pdf');assert '125,00 EUR' not in text and 'NOTA_' not in text;assert '12 h' in text and 'No registrado' in text
