@@ -29,7 +29,7 @@ try:
   for width,height in [(320,740),(390,844),(768,1024),(844,390),(1280,900)]:
    ctx=browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce',service_workers='block',has_touch=True)
    ctx.route('https://**/*',external);ctx.add_init_script("if(!localStorage.getItem('horas-app-v2'))localStorage.setItem('horas-app-v2',"+json.dumps(json.dumps(fixture))+");const OriginalDate=Date;window.Date=class extends OriginalDate{constructor(...a){super(...(a.length?a:['2026-10-08T12:00:00Z']));}static now(){return new OriginalDate('2026-10-08T12:00:00Z').getTime();}};")
-   page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept());page.goto(URL);expect(page.get_by_text('Toca un día para registrar tus horas')).to_be_visible();no_overflow(page)
+   page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept());page.goto(URL);expect(page.get_by_text('Toca un día para registrar tus horas')).to_have_count(0);no_overflow(page)
    expect(page.locator('#more-details')).not_to_have_attribute('open','')
    expect(page.get_by_text('Proyección a fin de mes',exact=True)).to_be_visible()
    for day,count in [(1,2),(3,2),(4,1)]:
