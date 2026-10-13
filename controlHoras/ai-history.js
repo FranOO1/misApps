@@ -53,7 +53,7 @@
      else {const p=model.payroll,irpf=p.deductions.filter(l=>l.kind==='irpf'&&num(l.amount));row.realPayroll={exists:p.exists,gross:p.gross,deductions:p.totalDed,net:p.net,received:p.received,irpf:irpf.length?sum(irpf.map(l=>l.amount)):p.exists&&p.deductionsComplete&&!p.deductions.some(l=>l.kind==='irpf')?0:null,incomesComplete:p.incomesComplete,deductionsComplete:p.deductionsComplete,grossSource:p.grossSource,deductionsSource:p.deductionsSource};
       if(plan.detail)row.payrollDetail={incomes:p.incomes.slice(0,20).map(l=>({name:redact(l.name),kind:l.kind,amount:l.amount})),deductions:p.deductions.slice(0,20).map(l=>({name:redact(l.name),kind:l.kind,base:l.base,pct:l.pct,amount:l.amount})),truncated:p.incomes.length>20||p.deductions.length>20};
       for(const k of Object.keys(actual))if(num(row.realPayroll[k])){actual[k].push(row.realPayroll[k]);actualCoverage[k].push(period);}
-      for(const line of p.deductions){const key=line.kind+'|'+redact(line.name).trim().toLowerCase();let concept=concepts.get(key);if(!concept){concept={name:redact(line.name),kind:line.kind,amounts:[],periods:[],missing:[]};concepts.set(key,concept);}if(num(line.amount)){concept.amounts.push(line.amount);concept.periods.push(period);}else concept.missing.push(period);}
+      for(const line of p.deductions){const key=line.kind+'|'+redact(line.name).trim().toLowerCase();let concept=concepts.get(key);if(!concept){concept={name:redact(line.name),kind:line.kind,amounts:[],periods:[],missing:[]};concepts.set(key,concept);}if(num(line.amount)){concept.amounts.push(line.amount);if(!concept.periods.includes(period))concept.periods.push(period);}else if(!concept.missing.includes(period))concept.missing.push(period);}
      }
     }
     if(wanted.has('estimates')){

@@ -62,6 +62,7 @@ try:
    for key,press in [('anual','Enter'),('ia','Space'),('historico','Enter'),('ajustes','Enter')]:
     page.keyboard.press('Tab');expect(page.locator('#nav-'+key)).to_be_focused();page.keyboard.press(press)
     expect(page.locator('#nav-'+key)).to_have_attribute('aria-current','page');expect(page.locator('#nav-'+key)).to_be_focused()
+   page.locator('#nav-privacy').focus();page.keyboard.press('Space');expect(page.locator('#nav-privacy')).to_be_focused();expect(page.locator('#nav-privacy')).to_have_attribute('aria-pressed','true');page.keyboard.press('Space');expect(page.locator('#nav-privacy')).to_be_focused();expect(page.locator('#nav-privacy')).to_have_attribute('aria-pressed','false')
    page.locator('#nav-mes').tap();expect(page.locator('#day-btn-4')).to_have_attribute('aria-label','4 de Octubre, Descanso')
    expect(page.locator('#day-btn-4 .rest-marker')).to_have_count(0);expect(page.locator('#day-btn-4')).to_have_text('4')
    assert page.locator('#day-btn-4').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(34, 43, 56)'

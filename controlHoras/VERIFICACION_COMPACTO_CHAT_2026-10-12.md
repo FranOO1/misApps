@@ -18,7 +18,7 @@ SDK, modelo, projectId, appId, claves públicas, proveedor, activación y tokens
 
 ## Verificación
 
-Pruebas locales: 131 pruebas Node correctas; incluyen lectura autoritativa/caché incompleta/cambio de cuenta/tiempo límite, sumas y comparaciones multimes, clasificación solapada, nóminas parciales y cero real, tarifas congeladas, privacidad, conversación, semana, informes y worker. Se ejecuta además el sincronizador exacto del respaldo sobre datos ficticios añadidos después del respaldo: conserva jornadas, bruto y neto cero, conceptos y journal. Python compilado y diff comprobado.
+Pruebas locales: 132 pruebas Node correctas; incluyen lectura autoritativa/caché incompleta/cambio de cuenta/tiempo límite, sumas y comparaciones multimes, clasificación solapada, nóminas parciales y cero real, tarifas congeladas, privacidad, conversación, semana, informes y worker. Se ejecuta además el sincronizador exacto del respaldo sobre datos ficticios añadidos después del respaldo: conserva jornadas, bruto y neto cero, conceptos y journal. Python compilado y diff comprobado.
 
 CI y capturas finales se enlazan en el PR. Comprobará teléfono 390x844 y pantallas estrechas, tablet, horizontal, texto ampliado, toque/teclado, Añadir en flujo visible tras seleccionar día, proyección, desplegable, PDFs descargados y leídos, worker anterior → v10, y dos navegadores con Firestore local. Auth/App Check y respuestas Gemini de CI son simulados; no representan una respuesta real de Google ni verifican reglas de Firestore de producción.
 
