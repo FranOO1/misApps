@@ -21,6 +21,8 @@ try{
     if(token!==session())return;status.textContent=`Consulta ${i+1} de 4: enviando a Google datos ficticios…`;
     const question=questions[i],plan=await ask('history-plan',question,{catalog:HorasAIHistory.catalog(fixture.data,fixture.config),conversation:conversation.slice(-6),previousPlan});
     if(plan.clarification)throw Error('La planificación pidió una aclaración inesperada para los datos ficticios.');
+    const expectedRanges=i===0?['2026-08-01/2026-08-31','2026-09-01/2026-09-30']:i<3?['2026-01-01/2026-12-31']:['2025-01-01/2025-12-31','2026-01-01/2026-12-31'];
+    if(plan.groups.map(g=>g.from+'/'+g.to).sort().join(';')!==expectedRanges.join(';')||plan.metrics.some(m=>['realPayroll','estimates','rates'].includes(m)))throw Error('El periodo o la categoría resueltos no coinciden con esta consulta ficticia.');
     const history=HorasAIHistory.query(fixture.data,fixture.config,plan,{complete:true,source:'fictitious',updatedAt:null});
     const values=history.groups.map(g=>g.totals[i<2?'hours':'holidayHours']);const expected=i===0?[10,15]:i===1?[30]:i===2?[5]:[1,5];
     if(values.slice().sort((a,b)=>a-b).join(',')!==expected.join(','))throw Error('El periodo o la categoría resueltos no coinciden con esta consulta ficticia.');
