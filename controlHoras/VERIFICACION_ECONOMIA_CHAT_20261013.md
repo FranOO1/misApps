@@ -16,7 +16,7 @@ Calendario: descanso #331F26, borde #60313C, ZZ #CE8D9A; sin ayuda ni leyenda en
 
 ## Comprobaciones
 
-141 pruebas Node: cálculo común, informes, historial, ausencia/cero real, privacidad, sincronización, restauración, calendario, formato y actualización del worker. Caso ficticio abril–octubre: junio sin nómina devuelve 54 EUR estimados; julio contiene 100 EUR de neto real y 63 EUR estimados; siete meses suman 441 EUR estimados y 100 EUR de nóminas registradas, sin mezclar totales. Una petición posterior de junio sustituye todo el intervalo.
+142 pruebas Node: cálculo común, informes, historial, ausencia/cero real, privacidad, sincronización, restauración, calendario, formato y actualización del worker. Caso ficticio abril–octubre: junio sin nómina devuelve 54 EUR estimados; julio contiene 100 EUR de neto real y 63 EUR estimados; siete meses suman 441 EUR estimados y 100 EUR de nóminas registradas, sin mezclar totales. Una petición posterior de junio sustituye todo el intervalo.
 
 CI enlazado en el PR: Chromium móvil/tablet/horizontal/texto ampliado, teclado/toque, capturas, PDF mensual/anual seleccionable, cambio del worker conservando datos y Firestore local con dos navegadores. Las respuestas de Auth, App Check y Gemini del CI son simuladas; no prueban Google ni las reglas de producción.
 

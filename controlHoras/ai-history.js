@@ -30,7 +30,7 @@
   const all=/todos? (?:los )?meses|todo (?:mi |el )?historial|todos? (?:mis |los )?registros/.test(q);
   const monthly=/mes a mes|cada mes|por meses/.test(q);
   const explicit=/\b(?:19|20|21)\d{2}\b|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|este a[nñ]o|a[nñ]o (?:actual|anterior|pasado)|este mes|mes (?:actual|anterior|pasado)|verano|invierno|entre |desde |hasta |[uú]ltimos/.test(q);
-  if((all||monthly&&!explicit)&&cat.earliest&&cat.latest){
+  if((all||monthly)&&!explicit&&cat.earliest&&cat.latest){
    const [y,m]=cat.latest.split('-').map(Number);
    plan.groups=[{label:'Todo el historial disponible',from:cat.earliest+'-01',to:cat.latest+'-'+String(C.dim(y,m-1)).padStart(2,'0')}];
    plan.clarification=null;
@@ -79,7 +79,7 @@
     rows.push(row);
    }
    const totals={};for(const [metric,values] of [['hours',knownHours],['normalHours',normal],['holidayHours',holiday],['restDays',rests],['workDays',worked],['extraHours',extra],['nightHours',night]])if(wanted.has(metric))totals[metric]=round(sum(values));
-   const out={period:{label:redact(g.label),from:g.from,to:g.to},totals,coverage:{expectedMonths:keys.length,monthsWithRecordedDays:recordedMonths.length,recordedMonths:recordedMonths.slice(0,120),closedMonths:closedMonths.length,monthsWithoutRecordedDays:missingMonths.length,missingMonths:missingMonths.slice(0,24),missingListTruncated:missingMonths.length>24,extraClassifiedMonths:extraKnown.length,nightClassifiedMonths:nightKnown.length},months:rows.filter(r=>r.hasRecordedDays||r.realPayroll?.exists||num(r.estimate?.gross)||r.historicalRates).slice(0,120),monthRowsTruncated:rows.filter(r=>r.hasRecordedDays||r.realPayroll?.exists||num(r.estimate?.gross)||r.historicalRates).length>120};
+   const out={period:{label:redact(g.label),from:g.from,to:g.to},totals,coverage:{expectedMonths:keys.length,monthsWithRecordedDays:recordedMonths.length,recordedMonths:recordedMonths.slice(0,120),closedMonths:closedMonths.length,monthsWithoutRecordedDays:missingMonths.length,missingMonths:missingMonths.slice(0,24),missingListTruncated:missingMonths.length>24,extraClassifiedMonths:extraKnown.length,nightClassifiedMonths:nightKnown.length},months:rows.filter(r=>r.hasRecordedDays||r.realPayroll?.exists||num(r.estimate?.gross)||r.historicalRates),monthRowsTruncated:false};
    if(wanted.has('extraHours'))out.extraCalculation={generatedHours:round(sum(generatedExtra)),estimatedPayrollHours:round(sum(payrollExtra)),generatedMonths:generatedExtra.length,estimatedPayrollMonths:payrollExtra.length,source:'Algoritmo común de Sintax, solo cuando está activo; no es clasificación manual ni confirmación de pago.'};
    if(wanted.has('realPayroll')){out.realPayroll=Object.fromEntries(Object.entries(actual).map(([k,v])=>[k,round(sum(v))]));out.realPayrollCoverage=Object.fromEntries(Object.entries(actualCoverage).map(([k,v])=>[k,{count:v.length,months:v.slice(0,120)}]));out.deductionConcepts=[...concepts.values()].slice(0,120).map(({amounts,...c})=>({...c,periods:c.periods.slice(0,120),missing:c.missing.slice(0,120),amount:round(sum(amounts)),monthsWithAmount:c.periods.length,monthsWithMissingAmount:c.missing.length}));out.conceptsTruncated=concepts.size>120;}
    if(wanted.has('estimates')){out.estimate=Object.fromEntries(Object.entries(estimated).map(([k,v])=>[k,round(sum(v))]));out.estimateCoverage={count:estimateCoverage.length,months:estimateCoverage.slice(0,120)};}
