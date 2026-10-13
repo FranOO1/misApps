@@ -18,6 +18,7 @@ jobs:
           node-version: '24'
       - run: node controlHoras/tests/ui.test.cjs
       - run: node controlHoras/tests/ai.test.cjs
+      - run: node controlHoras/tests/history.test.cjs
       - run: node controlHoras/tests/reports.test.cjs
       - run: node controlHoras/tests/core.test.cjs
       - run: node controlHoras/tests/sync.test.cjs

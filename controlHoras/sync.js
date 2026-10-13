@@ -4,6 +4,8 @@
   const C=root.HorasCore;
   function create({defaults,getState,apply,onStatus,onRemote=()=>{},storage=root.localStorage,db,FieldPath}) {
     let account='guest',epoch=0,user=null,unsub=null,sending=false,online=true,baseline=null,pending=[],lastRemote=null,blocked=false,listenerFailed=false,migrationTried=new Set();
+    let historyConfirmed=false,historyFresh=false,historyAt=null;
+    const envelope=p=>({payload:p,pending,historyComplete:historyConfirmed,historyAt});
     const key=()=>`horas-app-v3:${account}`;
     const status=(kind,message)=>onStatus(kind,message);
     const blank=()=>({schemaVersion:3,config:C.copy(defaults),data:{}});
@@ -13,11 +15,12 @@
       list.push({at:new Date().toISOString(),reason,payload:C.copy(p)});
       storage.setItem(k,JSON.stringify(list.slice(-10)));return list.at(-1);
     }
-    function persist() {storage.setItem(key(),JSON.stringify({payload:getState(),pending}));baseline=C.copy(getState());}
+    function persist() {storage.setItem(key(),JSON.stringify(envelope(getState())));baseline=C.copy(getState());}
     function read() {
       const raw=storage.getItem(key());
       if(raw){
         const saved=JSON.parse(raw);pending=saved.pending||[];
+        historyConfirmed=account!=='guest'&&saved.historyComplete===true;historyAt=historyConfirmed&&typeof saved.historyAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(saved.historyAt)&&Number.isFinite(Date.parse(saved.historyAt))?saved.historyAt:null;
         if(!Array.isArray(pending)||pending.length>100000)throw Error('Diario local no válido.');
         for(const op of pending){
           if(typeof op.id!=='string'||!op.id||!Array.isArray(op.path)||!(['config','data'].includes(op.path[0]))||op.path.some(k=>typeof k!=='string'))throw Error('Diario local no válido.');
@@ -41,7 +44,7 @@
       pending=[];return blank();
     }
     function load() {
-      blocked=false;
+      blocked=false;historyConfirmed=false;historyFresh=false;historyAt=null;
       try {const p=read();apply(p);persist();}
       catch(e){blocked=true;pending=[];apply(blank());baseline=blank();status('error','La copia local no se pudo abrir. Está protegida contra sobrescrituras; exporta la recuperación.');throw e;}
     }
@@ -63,7 +66,7 @@
         const p=C.validateBackup(getState(),defaults),nextPending=[...pending,...diff(baseline||blank(),p)];
         // A failed device write must not enter the journal, reach Firestore later,
         // or leave the visible state pretending the change has been saved.
-        storage.setItem(key(),JSON.stringify({payload:p,pending:nextPending}));
+        storage.setItem(key(),JSON.stringify({...envelope(p),pending:nextPending}));
         pending=nextPending;baseline=C.copy(p);apply(p);
       }catch(e){if(baseline)apply(C.copy(baseline));status('error',blocked?'Copia local protegida; no se guardaron cambios.':'No se pudo guardar en este dispositivo. El cambio no se ha aplicado.');throw e;}
       status(user?'pending':'local',user?'Cambios guardados aquí, pendientes de nube':'Guardado en este dispositivo');void flush();
@@ -112,14 +115,16 @@
         if(!lastRemote && Object.keys(getState().data).length)recover('Antes de recibir la nube');
         const next=C.validateBackup(C.applyOps(remote,pending),defaults);
         // Persist the replacement before changing the visible state.
-        storage.setItem(key(),JSON.stringify({payload:next,pending}));
+        const complete=account!=='guest'&&(!metadata.fromCache||historyConfirmed),at=!metadata.fromCache?new Date().toISOString():historyAt;
+        storage.setItem(key(),JSON.stringify({...envelope(next),historyComplete:complete,historyAt:at}));
+        historyConfirmed=complete;historyFresh=account!=='guest'&&!metadata.fromCache;historyAt=at;
         lastRemote=remote;apply(next);baseline=C.copy(next);onRemote();
         if(metadata.fromCache)status('offline','Copia de nube en caché; esperando conexión');
         else if(!pending.length)status('ok','Sincronizado');
-        if(!metadata.fromCache)void migrateRates(raw,remote);void flush();
-      }catch(e){status('error','Datos remotos no válidos. Se conserva la copia local.');}
+        if(!metadata.fromCache&&!metadata.historyRead)void migrateRates(raw,remote);void flush();return true;
+      }catch(e){status('error','Datos remotos no válidos. Se conserva la copia local.');return false;}
     }
-    function detach() {epoch++;if(unsub)unsub();unsub=null;sending=false;lastRemote=null;listenerFailed=false;migrationTried.clear();user=null;}
+    function detach() {epoch++;if(unsub)unsub();unsub=null;sending=false;lastRemote=null;listenerFailed=false;historyConfirmed=false;historyFresh=false;historyAt=null;migrationTried.clear();user=null;}
     function listen() {
       if(unsub)unsub();listenerFailed=false;
       const session=epoch,uid=user.uid;
@@ -154,7 +159,23 @@
       recover('Antes de sustituir con la nube');receive(snap.data(),snap.metadata);
     }
     function setOnline(value){online=value;if(!value)status('offline','Sin conexión; cambios guardados en este dispositivo');else {status(!user?'local':pending.length?'pending':'syncing',!user?'Guardado en este dispositivo':'Conectando…');void flush();}}
-    return {load,save,recover,switchAccount,pull,setOnline,flush,retry,receive,session:()=>epoch,account:()=>account,pending:()=>C.copy(pending),recovery:()=>storage.getItem(`horas-recovery:${account}`),isBlocked:()=>blocked,original:()=>storage.getItem(key())||(account==='guest'?storage.getItem('horas-original-v2'):null)};
+    function historyState(){return {complete:historyConfirmed,fresh:historyFresh&&online&&!listenerFailed,source:historyFresh&&online&&!listenerFailed?'server':'cache',updatedAt:historyAt,pendingChanges:pending.length>0};}
+    async function ensureHistory({timeout=10000}={}){
+      if(!user)throw Error('Inicia sesión para consultar el historial de tu cuenta.');
+      if(blocked)throw Error('La copia de esta cuenta está protegida. No se puede consultar el historial.');
+      if(historyState().fresh)return historyState();
+      if(!online){if(historyConfirmed)return historyState();throw Error('Todavía no se ha cargado el historial completo de esta cuenta. Conecta la app para recuperarlo.');}
+      const session=epoch,uid=user.uid;let timer;
+      try{
+        const snap=await Promise.race([db.collection('users').doc(uid).get({source:'server'}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('No se pudo completar la carga del historial. Tus registros siguen guardados.')),timeout);})]);
+        if(session!==epoch||user?.uid!==uid)throw Error('La cuenta ha cambiado. No se ha consultado el historial anterior.');
+        if(snap.metadata?.fromCache||snap.metadata?.hasPendingWrites)throw Error('El historial de la nube todavía no está confirmado. Espera a sincronizar.');
+        if(!receive(snap.exists?snap.data():{}, {...snap.metadata,historyRead:true}))throw Error('No se pudo validar el historial completo. Se conserva la copia local.');
+        return {...historyState(),source:'server',fresh:true};
+      }catch(e){if(session!==epoch)throw Error('La cuenta ha cambiado.');const safe=new Set(['No se pudo completar la carga del historial. Tus registros siguen guardados.','El historial de la nube todavía no está confirmado. Espera a sincronizar.','No se pudo validar el historial completo. Se conserva la copia local.']);throw Error(safe.has(e.message)?e.message:e.code==='permission-denied'?'No hay permiso para cargar el historial de esta cuenta. Tus registros siguen guardados.':'No se pudo cargar el historial completo. Comprueba la conexión.');}
+      finally{clearTimeout(timer);}
+    }
+    return {load,save,recover,switchAccount,pull,setOnline,flush,retry,receive,ensureHistory,historyState,session:()=>epoch,account:()=>account,pending:()=>C.copy(pending),recovery:()=>storage.getItem(`horas-recovery:${account}`),isBlocked:()=>blocked,original:()=>storage.getItem(key())||(account==='guest'?storage.getItem('horas-original-v2'):null)};
   }
   root.HorasSync={create};
   if(typeof module!=='undefined')module.exports={create};

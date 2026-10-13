@@ -41,7 +41,14 @@ def route_external(route):
   payload=json.loads(route.request.post_data);requests.append({'payload':payload,'headers':route.request.headers});(OUT/'gemini-endpoint.json').write_text(json.dumps({'url':url.split('?')[0]}))
   if mode=='quota':route.fulfill(status=429,json={'error':{'code':429,'message':'Synthetic quota','status':'RESOURCE_EXHAUSTED'}},headers=headers)
   else:
-   payroll='responseSchema' in payload.get('generationConfig',{});text='{invalid}' if mode=='invalid' else json.dumps(facts) if payroll else '<img src=x onerror="window.pwned=1"> 10 horas registradas.'
+   schema=payload.get('generationConfig',{}).get('responseSchema',{}).get('properties',{});payroll='period' in schema;planner='groups' in schema
+   if planner:
+    prompt=payload['contents'][0]['parts'][0]['text'];question=prompt.split('\nConsulta:\n')[-1];context=json.loads(prompt.split(':\n',1)[1].rsplit('\nConsulta:\n',1)[0]);groups=[{'label':'Octubre 2026','from':'2026-10-01','to':'2026-10-31'}];metrics=['hours'];operation='sum'
+    if 'Compara septiembre' in question:groups=[{'label':'Septiembre','from':'2026-09-01','to':'2026-09-30'},groups[0]];operation='compare'
+    elif 'año 2026' in question:groups=[{'label':'Año 2026','from':'2026-01-01','to':'2026-12-31'}]
+    elif 'festivas' in question:groups=context['previousPlan']['groups'];metrics=['holidayHours']
+    text=json.dumps({'clarification':None,'groups':groups,'metrics':metrics,'operation':operation,'detail':False})
+   else:text='{invalid}' if mode=='invalid' else json.dumps(facts) if payroll else '<img src=x onerror="window.pwned=1"> 10 horas registradas.'
    route.fulfill(json={'candidates':[{'content':{'role':'model','parts':[{'text':text}]},'finishReason':'STOP'}]},headers=headers)
  else:route.abort()
 try:
@@ -51,9 +58,16 @@ try:
    ctx=browser.new_context(viewport={'width':width,'height':height},service_workers='block',reduced_motion='reduce');ctx.route('https://**/*',route_external);ctx.add_init_script('localStorage.setItem("horas-app-v2",'+json.dumps(json.dumps(fixture))+');')
    page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept());page.goto(URL)
    # Real compat SDK constructs a User; fake HTTP auth response never contacts production Auth.
-   page.evaluate('''async()=>{const a=firebase.initializeApp(firebaseConfig,'fixture-user');const c=await a.auth().signInWithCustomToken('fixture-custom-token');cloud.user=c.user;}''')
-   page.get_by_role('button',name='IA',exact=True).click();page.locator('#ai-period').fill('2026-10');page.locator('#ai-period').dispatch_event('change');page.locator('#chat-input').fill('¿Cuántas horas registré este mes?');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot')).to_contain_text('10 horas registradas.',timeout=60000)
+   page.evaluate('''async()=>{const a=firebase.initializeApp(firebaseConfig,'fixture-user');const c=await a.auth().signInWithCustomToken('fixture-custom-token');cloud.user=c.user;sync.ensureHistory=async()=>({complete:true,source:'fixture',updatedAt:null});}''')
+   page.get_by_role('button',name='IA',exact=True).click();expect(page.locator('#ai-period')).to_have_count(0);page.locator('#chat-input').fill('¿Cuántas horas registré este mes?');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot')).to_contain_text('10 horas registradas.',timeout=60000)
    req=requests[-1];assert req['headers'].get('authorization')=='Firebase '+jwt,'Official SDK Auth session header';assert req['headers'].get('x-firebase-appcheck') in consumed_tokens,'Official SDK limited-use attestation header';payload=json.dumps(req['payload']);assert '2026-09' not in payload;assert '2026-09' not in payload;assert 'Persona Ficticia' not in payload;assert 'gross' not in payload;assert page.locator('.bubble img').count()==0;assert not page.evaluate('window.pwned||false');assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1');page.screenshot(path=str(OUT/f'gemini-chat-{width}.png'),full_page=True)
+   page.locator('#chat-input').fill('Compara septiembre con octubre de 2026');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('2026-09-01',timeout=60000)
+   prompt=requests[-1]['payload']['contents'][0]['parts'][0]['text'];ctx_data=json.loads(prompt.split(':\n',1)[1].rsplit('\nConsulta:\n',1)[0]);assert ctx_data['history']['comparisons'][0]['difference']['hours']==-10;assert len(ctx_data['conversation'])==2
+   page.locator('#chat-input').fill('Horas del año 2026');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('2026-01-01',timeout=60000)
+   prompt=requests[-1]['payload']['contents'][0]['parts'][0]['text'];ctx_data=json.loads(prompt.split(':\n',1)[1].rsplit('\nConsulta:\n',1)[0]);assert ctx_data['history']['groups'][0]['totals']['hours']==30
+   page.locator('#chat-input').fill('¿Y las festivas?');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('2026-01-01',timeout=60000)
+   prompt=requests[-1]['payload']['contents'][0]['parts'][0]['text'];ctx_data=json.loads(prompt.split(':\n',1)[1].rsplit('\nConsulta:\n',1)[0]);assert ctx_data['history']['groups'][0]['totals']['holidayHours']==0;assert ctx_data['previousPlan']['groups'][0]['from']=='2026-01-01'
+   page.get_by_role('button',name='Nueva conversación',exact=True).click();assert page.evaluate('state.chatContext') is None;assert page.locator('.bubble').count()==0
    mode='quota';before=len(requests);page.locator('#chat-input').fill('Horas del mes');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('La IA no está disponible ahora.',timeout=45000);assert len(requests)==before+1;mode='ok'
    page.evaluate('navigator.__defineGetter__("onLine",()=>false)');before=len(requests);page.locator('#chat-input').fill('Horas');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('.bubble.bot').last).to_contain_text('La IA no está disponible ahora.');assert len(requests)==before;page.evaluate('navigator.__defineGetter__("onLine",()=>true)')
    page.get_by_role('button',name='Mes',exact=True).click()
