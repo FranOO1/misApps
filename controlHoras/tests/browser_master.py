@@ -15,7 +15,7 @@ try:
   assert page.evaluate('masterHistory.ensure().then(m=>m.months.find(x=>x.period==="2026-06").calc.neto)')==72
   assert page.evaluate('monthly(2026,5).neto')==72;assert page.evaluate('R.month(state.allData,state.config,"2026-06").calc.neto')==72
   page.evaluate('selectReportMonth("2026-07");editRealPayroll("net","110");saveRealPayroll()');assert page.evaluate('masterHistory.ensure().then(m=>m.originals.data["2026-07"].payroll.net)')==110
-  page.evaluate('selectDay(1);clearDay()');assert page.evaluate('masterHistory.ensure().then(m=>m.total.groups[0].totals.hours)')==43
+  page.evaluate('if(state.selectedDay!==1)selectDay(1);clearDay()');assert page.evaluate('masterHistory.ensure().then(m=>m.total.groups[0].totals.hours)')==43
   page.evaluate('replaceFromBackup({config:fixture.config,data:fixture.data});switchTab("ajustes")')
   with page.expect_download() as event:page.get_by_role('button',name='Exportar historial maestro JSON',exact=True).click()
   download=event.value;download.save_as(OUT/'master-ficticio.json');file=json.loads((OUT/'master-ficticio.json').read_text());assert file['kind']=='mis-horas-master';assert file['total']['groups'][0]['estimate']['net']==441;assert len(file['months'])==7
