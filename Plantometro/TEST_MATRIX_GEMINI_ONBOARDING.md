@@ -9,7 +9,7 @@ servicios y datos son simulados; no equivale a producción.
 |---|---|---|
 | Primer acceso: pregunta exacta, Continuar, nombre discreto | Probado en navegador Chromium, SDK simulado, 320/390/768 | Pasa; persiste por UID local, no pregunta al recargar |
 | Migración de apodo existente, sesión inicial cerrada, cambio de cuenta | Probado con módulos reales/adaptador y navegador | Pasa; una sola cuenta hereda el apodo antiguo, otra no; preferencias y jardín intactos |
-| Dos dispositivos mismo UID con Frank/Rosita; otra cuenta | Probado con Auth/Firestore oficiales locales y SDK real 12.10 | Pasa; autores locales y jardín aislado, sincronización en dos perfiles |
+| Dos dispositivos mismo UID con Frank/Rosita; otra cuenta | Probado con Auth/Firestore oficiales locales y SDK real 12.14 | Pasa; autores locales y jardín aislado, sincronización en dos perfiles |
 | Alta manual, foto, edición, riego/deshacer, reconexión, copia, borrado/logout | Probado con servicios locales Auth/Firestore y navegador | Pasa; datos de prueba, campos extra/fotos/historial conservados |
 | Alta con nombre, foto, sugerencias aceptadas/corregidas/descartadas | Probado en navegador, proveedor simulado | Pasa; no sobrescribe ni guarda sin selección explícita; abono opcional |
 | SDK oficial Firebase AI Logic y autenticación | Probado con SDK real, Auth local, respuesta HTTP de modelo y App Check adaptados | Pasa; ID token Firebase en petición, prompt y respuesta validados; NO consulta Gemini real |
@@ -26,7 +26,7 @@ servicios y datos son simulados; no equivale a producción.
 | IA ausente y migración antigua clave | Suite seguridad Chromium, 320 y 768 | Pasa; borra solo geminiKey, conserva preferencias/otros almacenes; cuidados manuales disponibles |
 | Errores, consulta lenta/cierre/cambio de borrador | Suite seguridad, callable/proveedor simulado | Pasa; timeout, respuesta tardía ignorada; sin datos técnicos al usuario |
 | Estrecho/tablet, texto 200%, teclado | Navegador 320/390/768 y altura reducida | Pasa: sin desbordamiento del formulario, botones propios y foto visible; teclado físico Android pendiente |
-| PWA actualización v16→v19 y apertura offline | Worker/cache reales, Auth/Firestore locales y SDK real | Pasa; módulos coherentes, plantas/fotos/historial/preferencias conservados; cachés de otras apps intactas |
+| PWA actualización v16→v20 y apertura offline | Worker/cache reales, Auth/Firestore locales y SDK real | Pasa; módulos coherentes, plantas/fotos/historial/preferencias conservados; cachés de otras apps intactas |
 | Gemini de producción: nombre + foto/análisis | Pendiente | Cliente activado con clave pública; propietario confirma configuración externa. Falta consulta real desde su sesión, sin guardar plantas; esta rama aún no está publicada |
 | Cuotas/atestación producción, modelo Spark y precios de la cuenta | Pendiente | Modelo 3.1 Flash-Lite sin facturación confirmado en documentación oficial; Spark y Auth/App Check aplicados confirmados por propietario. Cuotas y atestación válida no comprobadas con sesión real |
 | Login Google producción, Android instalado, cámara física | Pendiente | Consulta de borrador con cuenta actual, sin guardar ni modificar plantas. Cámara física/PWA instalada pendientes; no declarar superado por emulación |
@@ -81,3 +81,26 @@ activar el cliente no convierte esa demostración en una prueba real.
 Se comprueba nuevamente la actualización/cache coherente v19 por cambiar un
 archivo cacheado y el transporte SDK oficial con Auth/Firestore locales, modelo
 y atestación adaptados. La prueba real única pendiente está en SECURE_AI.md.
+
+## Revisión 14 de octubre: preguntas/fotos y App Check
+
+- Transporte y diagnóstico: 12/12 pruebas deterministas, sin servicios de
+  producción. App compartida Auth/App Check/AI, tokens de uso limitado, preflight
+  rechazado sin llamar al modelo, mensaje seguro, cancelación/cambio de cuenta,
+  bloqueo tras timeout, 429, pregunta/conversación acotadas y sin autores.
+- Chromium 320/390/768 claro/oscuro: pregunta, continuación, misma foto explícita,
+  conservación de pregunta nueva durante espera, ninguna escritura automática,
+  cierre/cambio de cuenta, error de cuota, texto 200% y altura de teclado simulada:
+  pasa. Preview autocontenido con diez ejemplos y sin red externa pasa en 390/768.
+- Integración SDK 12.14.0 con Auth/Firestore locales: 8/8 pasa. Después se amplía
+  la prueba dirigida SDK oficial a preguntas/follow-up/foto y se vuelve a comprobar
+  cache/worker v16→v20: 2/2 pasa. Inferencia y atestación siguen adaptadas.
+- Suites de seguridad 320/768 y creación/foto/cámara simulada 320/390/768 pasan
+  con las acciones secundarias recogidas en «Guardar o copiar consejo».
+- 11/11 pruebas de servidor alternativa y módulos/migración pasan.
+- Sin consulta real a Gemini, sin inspección administrativa App Check, sin
+  pruebas físicas de Android. No se leyó ni modificó el jardín personal.
+
+La evidencia encontrada en Mis Horas incluye App Check HTTP 400, no una
+respuesta real del modelo. El nuevo diagnóstico permite distinguir ese bloqueo
+sin exponer metadatos ni afirmar que modificar el cliente resolvió el servidor.

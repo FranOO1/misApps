@@ -72,15 +72,15 @@ with sync_playwright() as pw:
         expect(c.locator('#grid .card')).to_have_count(0)
         assert not forbidden,'A request tried to use a production Firebase service';assert not errors,'Browser JavaScript errors: '+str(len(errors))
         print('PASS actual browser SDK + local Auth/Firestore: mobile/tablet sign-in, isolated accounts, live sync, add/photo/edit, riego/undo, offline queue/reconnect, export/restore, delete cancel/success and logout',flush=True)
-    # Real Firebase 12.10 SDK + local authenticated session. AI HTTP response and
+    # Real Firebase 12.14 SDK + local authenticated session. AI HTTP response and
     # App Check boundary are adapters: no actual Gemini or attestation is claimed.
     ai_ctx=browser.new_context(viewport={'width':390,'height':844},service_workers='block')
     ai_ctx.add_init_script('window.localTestToken='+json.dumps(tokens['owner'])+';')
     ai_ctx.route('**/js/sync.js',lambda r:r.fulfill(body=sync,content_type='application/javascript'))
-    ai_service=(ROOT/'js/ai-service.js').read_text().replace('throw {code};', 'window.testAIErrorCode={code,originalCode:error?.code,name:error?.name};throw {code};')
+    ai_service=(ROOT/'js/ai-service.js').read_text().replace('throw {code,...', 'window.testAIErrorCode={code,originalCode:error?.code,name:error?.name};throw {code,...')
     ai_ctx.route('**/js/ai-service.js',lambda r:r.fulfill(body=ai_service,content_type='application/javascript'))
     ai_ctx.route('**/js/ai-config.js',lambda r:r.fulfill(body="export const aiConfig={enabled:true,provider:'firebase-ai',appCheckSiteKey:'public-adapter-only'}",content_type='application/javascript'))
-    ai_ctx.route('**/firebase-app-check.js',lambda r:r.fulfill(body="export class ReCaptchaEnterpriseProvider{};export const initializeAppCheck=()=>({});",content_type='application/javascript'))
+    ai_ctx.route('**/firebase-app-check.js',lambda r:r.fulfill(body="export class ReCaptchaEnterpriseProvider{};export const initializeAppCheck=()=>({});export const getToken=async()=>({token:'test-only'});",content_type='application/javascript'))
     requests=[];ai_mode={"status":200,"invalid":False}
     response={'resumen':'Modelo de prueba HTTP, no Gemini.','consejo':'Comprueba la tierra.','confianza':'baja','motivo':'Sin identificación real.','sugerencias':{'nombreComun':None,'especie':None,'ubicacion':None,'revisarCadaDias':8,'abonoCadaDias':None,'luz':None}}
     def ai_response(route):
@@ -104,9 +104,18 @@ with sync_playwright() as pw:
     ai_page.get_by_role('button',name='Descartar sugerencias').click()
     ai_mode['status']=429;ai_page.locator('#f-identify').click();expect(ai_page.locator('#f-aistatus')).to_contain_text('límite');expect(ai_page.locator('#f-name')).to_have_value('Poto de prueba')
     ai_mode['status']=200;ai_mode['invalid']=True;ai_page.locator('#f-identify').click();expect(ai_page.locator('#f-aistatus')).to_contain_text('respuesta válida');expect(ai_page.locator('#f-name')).to_have_value('Poto de prueba')
-    ai_ctx.set_offline(True);ai_page.locator('#f-identify').click();expect(ai_page.locator('#f-aistatus')).to_contain_text('No hay conexión');assert len(requests)==3
+    # Ask and photo/follow-up through the real AI SDK, same disposable local account.
+    ai_mode['invalid']=False;ai_page.locator('#form-modal .xbtn').click()
+    ai_page.locator('[data-open=keep]').click();ai_page.locator('#d-ai-section > summary').click();ai_page.locator('#d-aicard').click()
+    ai_page.locator('#ai-question').fill('¿Qué luz le conviene?');ai_page.locator('#ai-send').click();expect(ai_page.locator('#ai-question')).to_have_value('')
+    assert '¿Qué luz le conviene?' in requests[-1]['contents'][0]['parts'][0]['text']
+    ai_page.locator('#ai-question').fill('¿Y en invierno?');ai_page.locator('#ai-send').click();expect(ai_page.locator('#ai-question')).to_have_value('')
+    assert '¿Qué luz le conviene?' in requests[-1]['contents'][0]['parts'][0]['text']
+    ai_page.locator('#ai-modal .xbtn').click();ai_page.locator('#d-aiphoto').click();ai_page.locator('#camera-file').set_input_files(str(ROOT/'preview-assets/plant.jpg'));ai_page.locator('#camera-analyze').click();expect(ai_page.locator('.ai-photo-thumb')).to_be_visible()
+    assert any('inlineData' in part for part in requests[-1]['contents'][0]['parts'])
+    before_offline=len(requests);ai_ctx.set_offline(True);ai_page.locator('#ai-question').fill('Consulta sin conexión');ai_page.locator('#ai-send').click();expect(ai_page.locator('#ai-body')).to_contain_text('No hay conexión');assert len(requests)==before_offline
     assert not errors,errors
-    print('PASS official Firebase AI Logic 12.10 SDK transport + real local Auth: Firebase ID token, prompt, structured response and explicit suggestions; Gemini/App Check adapted',flush=True)
+    print('PASS official Firebase AI Logic 12.14 SDK transport + real local Auth: Firebase ID token, prompt, structured response, questions/follow-up and photo; Gemini/App Check adapted',flush=True)
     ai_ctx.close()
     if not os.environ.get('PLANTOMETRO_AI_TRANSPORT_ONLY'):ac.close();bc.close();cc.close()
     browser.close()

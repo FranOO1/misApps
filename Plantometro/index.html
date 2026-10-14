@@ -138,8 +138,8 @@
       <summary>Ayuda con Gemini</summary>
       <p class="note" id="d-ai-availability" role="status"></p>
       <div class="aibtns">
-        <button class="btn soft" id="d-aiphoto">Consultar una foto</button>
-        <button class="btn soft" id="d-aicard">Revisar los cuidados</button>
+        <button class="btn soft" id="d-aiphoto">Analizar foto</button>
+        <button class="btn soft" id="d-aicard">Preguntar</button>
       </div>
       <div class="lastai" id="d-lastai"><span id="d-lastai-txt"></span><button id="d-lastai-btn">Ver</button></div>
     </details>
@@ -203,13 +203,17 @@
       <button class="xbtn" data-action="closeModal" data-arg="ai-modal" aria-label="Cerrar">✕</button>
     </div>
     <div id="ai-body" class="ai-out"></div>
-    <button class="text-button" id="ai-save" hidden>Guardar consejo en la ficha</button>
-    <button class="btn primary" id="ai-apply" style="display:none">Revisar sugerencias</button>
-    <div class="actions2" style="margin-top:12px">
-      <button class="btn soft" id="ai-copy">Copiar</button>
-      <button class="btn soft" data-action="closeModal" data-arg="ai-modal">Cerrar</button>
-    </div>
-    <p class="note">La IA puede equivocarse. Ante dudas serias, consulta en un vivero.</p>
+    <form id="ai-question-form" class="ai-question-form" hidden>
+      <label for="ai-question">Tu pregunta</label>
+      <textarea id="ai-question" rows="2" maxlength="1000" placeholder="¿Por qué amarillean las hojas?" required></textarea>
+      <button class="btn primary" id="ai-send" type="submit">Preguntar</button>
+    </form>
+    <button class="btn soft" id="ai-apply" style="display:none">Revisar sugerencias</button>
+    <details id="ai-options" class="detail-section" hidden><summary>Guardar o copiar consejo</summary>
+      <button class="text-button" id="ai-save" hidden>Guardar consejo en la ficha</button>
+      <button class="text-button" id="ai-copy" type="button">Copiar consejo</button>
+    </details>
+    <p class="note">La IA puede equivocarse. Consultar no cambia los datos de tu planta.</p>
   </div>
 </div>
 

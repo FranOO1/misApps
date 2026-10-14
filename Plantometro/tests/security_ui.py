@@ -30,6 +30,7 @@ with sync_playwright() as pw:
     for width,height in [(320,740),(768,1024)]:
         ctx=browser.new_context(viewport={'width':width,'height':height},has_touch=True,service_workers='block')
         ctx.route('https://**/*',helpers['route_external'])
+        ctx.route('**/js/ai-config.js',lambda r:r.fulfill(body="export const aiConfig={enabled:false};",content_type='application/javascript'))
         prefs={'name':'Test','city':'Granada','theme':'dark','summerMode':True,'lastNotif':'2026-01-01','customPreference':'preserve','geminiKey':'obsolete-test-marker'}
         ctx.add_init_script('window.testPlants='+json.dumps([plant])+';window.testWrites=[];window.notificationCalls=0;localStorage.setItem("pg3b_settings",'+json.dumps(json.dumps(prefs))+');localStorage.setItem("other-app","preserve");'+
           "Object.defineProperty(window,'Notification',{value:class{constructor(){window.notificationCalls++;}static permission='granted';static async requestPermission(){window.notificationCalls++;return 'granted';}}});Object.defineProperty(navigator,'serviceWorker',{value:{ready:Promise.resolve({showNotification:async()=>window.notificationCalls++}),addEventListener(){},register:async()=>({update:async()=>{}})},configurable:true});")
@@ -60,7 +61,8 @@ with sync_playwright() as pw:
         ctx.close()
 
         ctx=browser.new_context(viewport={'width':width,'height':height},has_touch=True,service_workers='block')
-        ctx.route('https://**/*',helpers['route_external']);helpers['enable_test_ai'](ctx)
+        ctx.route('https://**/*',helpers['route_external'])
+        ctx.route('**/js/ai-config.js',lambda r:r.fulfill(body="export const aiConfig={enabled:false};",content_type='application/javascript'));helpers['enable_test_ai'](ctx)
         ctx.add_init_script('window.testPlants='+json.dumps([plant])+';window.testWrites=[];')
         page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto(URL);expect(page.locator('#grid .card')).to_have_count(1)
         if page.locator('#nickname-gate').is_visible():page.locator('#nickname-input').fill('Prueba');page.locator('#nickname-form button').click()
@@ -79,14 +81,14 @@ with sync_playwright() as pw:
         expect(page.locator('#f-aistatus')).to_contain_text('tardando demasiado');expect(page.locator('#f-identify')).to_be_enabled();page.evaluate('window.testAIWait=false;finishAI()');assert page.evaluate('testWrites.length')==0;page.clock.resume()
         close(page,'form-modal')
         # Review is human-readable and has no automatic writes, including after close.
-        ficha(page);section(page,'d-ai-section');page.locator('#d-aicard').click();expect(page.locator('#ai-save')).to_be_visible()
+        ficha(page);section(page,'d-ai-section');page.locator('#d-aicard').click();page.locator('#ai-question').fill('¿Qué cuidados recomiendas?');page.locator('#ai-send').click();section(page,'ai-options');expect(page.locator('#ai-save')).to_be_visible()
         assert '{' not in page.locator('#ai-body').inner_text();assert page.evaluate('testWrites.length')==0
         assert page.evaluate('testAIOptions.limitedUseAppCheckTokens') is True and page.evaluate('testAIOptions.timeout')==45000
         page.locator('#ai-apply').click();expect(page.locator('#f-freq')).to_have_value('7');page.locator('#use-revisarCadaDias').check();page.locator('#suggest-revisarCadaDias').fill('9');page.get_by_role('button',name='Usar los datos seleccionados').click()
         expect(page.locator('#f-freq')).to_have_value('9');assert page.evaluate('testPlants[0].waterFreq')==7;close(page,'form-modal');assert page.evaluate('testWrites.length')==0
-        ficha(page);section(page,'d-ai-section');page.locator('#d-aicard').click();expect(page.locator('#ai-save')).to_be_visible();page.locator('#ai-save').click();page.wait_for_function('testWrites.length===1')
+        ficha(page);section(page,'d-ai-section');page.locator('#d-aicard').click();page.locator('#ai-question').fill('¿Qué cuidados recomiendas?');page.locator('#ai-send').click();section(page,'ai-options');expect(page.locator('#ai-save')).to_be_visible();page.locator('#ai-save').click();page.wait_for_function('testWrites.length===1')
         assert page.evaluate('testWrites[0].plant.history')==plant['history'] and page.evaluate('testWrites[0].plant.gallery')==plant['gallery'];assert '{' not in page.evaluate('testWrites[0].plant.lastAI.text')
-        close(page,'detail-modal');page.evaluate('window.testAIWait=true');ficha(page);section(page,'d-ai-section');page.locator('#d-aicard').click();page.wait_for_function('typeof finishAI==="function"');close(page,'ai-modal');page.evaluate('window.testAIWait=false;finishAI()');close(page,'detail-modal');assert page.evaluate('testWrites.length')==1
+        close(page,'detail-modal');page.evaluate('window.testAIWait=true');ficha(page);section(page,'d-ai-section');page.locator('#d-aicard').click();page.locator('#ai-question').fill('¿Qué cuidados recomiendas?');page.locator('#ai-send').click();page.wait_for_function('typeof finishAI==="function"');close(page,'ai-modal');page.evaluate('window.testAIWait=false;finishAI()');close(page,'detail-modal');assert page.evaluate('testWrites.length')==1
         # Photo advice requires an explicit save; decoding errors/cancel preserve data.
         ficha(page);section(page,'d-ai-section')
         page.locator('#d-aiphoto').click()

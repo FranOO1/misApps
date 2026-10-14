@@ -16,7 +16,7 @@ entorno. Manual, fotos, riegos, abono opcional e historial funcionan sin IA.
 
 Se prepara Firebase AI Logic con Gemini Developer API, modelo fijo
 `gemini-3.1-flash-lite`, Firebase Auth y App Check Enterprise. SDK web coherente
-12.10.0 para Auth, Firestore, App Check, Functions y AI; worker v19. Firebase
+12.14.0 para Auth, Firestore, App Check, Functions y AI; worker v20. Firebase
 administra la credencial Gemini en su proxy, nunca se copia al navegador.
 El SDK envía la **clave pública Firebase** existente al proxy Firebase: esto no es
 una clave secreta de Gemini. No confundir `x-goog-api-key` de ese SDK con enviar
@@ -66,7 +66,7 @@ real de consola no se ha verificado aquí y el código no puede imponerlo.
 La configuración de esta rama ya intenta Gemini real; **no está publicada**
 mientras los PR #3 y #4 sigan abiertos. Integrar #3 primero y #4 después conserva
 clima/actividad/apodos. GitHub Pages sirve main: HTMLPreview no prueba Gemini
-y no debe autorizarse como origen de acceso real. Worker v19 instala
+y no debe autorizarse como origen de acceso real. Worker v20 instala
 la nueva configuración junto con sus módulos sin borrar preferencias/jardines.
 
 **Única prueba de usuario, una vez publicada la rama:** en
@@ -129,3 +129,39 @@ nueva credencial; no pegar un reemplazo. Si no sabes cuál es, no borrar claves 
 azar: revisar nombre y restricciones en la consola, sin publicar sus valores.
 
 [Resultados y pendientes](TEST_MATRIX_GEMINI_ONBOARDING.md).
+
+## Preguntas y revisión con Mis Horas (14 de octubre)
+
+Implementación comparada con `controlHoras/` de main `92bf4f8`; solo cambia
+Plantometro. Se adopta SDK 12.14.0, `useLimitedUseAppCheckTokens:true` y
+preflight `getToken` sin refresco automático. No se envía una consulta si
+App Check no devuelve atestación. Tras un rechazo se evita repetirlo durante
+esa sesión; sin atestación no hay inferencia real. Mis Horas documenta
+`appCheck/initial-throttle`, HTTP 400; no se da su Gemini por probado.
+
+`js/app-check-diagnostic.js` reutiliza su observador de fallos: solo endpoint
+exacto del proyecto/appId, primera respuesta HTTP fallida, lectura acotada
+a 16 KiB/500 ms, causas reconocidas por lista cerrada. Nunca guarda o muestra
+cabeceras, tokens, cuerpos libres ni respuestas exitosas. El mensaje de error
+muestra únicamente HTTP y causa segura cuando se conocen.
+
+Ficha → «Ayuda con Gemini» → «Preguntar» o «Analizar foto». Una pregunta
+puede continuar con hasta seis mensajes recientes, acotados a 1.200 caracteres
+por mensaje y pregunta de hasta 1.000; solo memoria, se descarta al cerrar o
+cambiar de cuenta. Una pregunta de texto no adjunta automáticamente la foto
+guardada. Tras elegir/analizar una foto, las preguntas siguientes pueden usar
+esa imagen explícita hasta cerrar la consulta. Guardar/copiar son secundarios.
+Ni preguntar ni analizar escribe plantas/riegos ni eventos. Una respuesta
+tardía no borra una nueva pregunta que aún se esté escribiendo.
+
+Auth/App Check/AI usan la misma instancia modular; Plantómetro no necesita
+la copia Auth compat→modular que utiliza Mis Horas. Cambios de cuenta, cierre
+y timeout invalidan la consulta, la cancelan cuando el SDK lo permite y
+mantienen el bloqueo hasta que la operación termine, evitando solapamientos.
+La alternativa callable admite el mismo modo de pregunta, pero sigue sin
+desplegarse ni activarse; no se añaden costes.
+
+Las pruebas de SDK/modelo y App Check adaptados no prueban el servicio real.
+No hay sesión del usuario disponible aquí; no se piden cuentas o claves nuevas.
+Esta rama sigue pendiente de publicar tras los PR #3/#4. Véase
+[revisión y cobertura](SIMPLICITY_GEMINI_REVIEW.md).

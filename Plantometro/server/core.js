@@ -7,7 +7,8 @@ function checkRequest(request){
   if(typeof request.auth?.uid!=='string'||!request.auth.uid||request.auth.uid.includes('/'))throw new AIError('unauthenticated');
   if(!request.app?.appId || request.app.alreadyConsumed)throw new AIError('failed-precondition');
   const data=request.data;
-  if(!data || !['identify','review','photo'].includes(data.mode) || JSON.stringify(data).length>750000)throw new AIError('invalid-argument');
+  if(!data || !['identify','review','photo','question'].includes(data.mode) || JSON.stringify(data).length>750000)throw new AIError('invalid-argument');
+  if(data.mode==='question' && (typeof data.question!=='string'||!data.question.trim()||data.question.length>1000))throw new AIError('invalid-argument');
   if(data.mode!=='identify' && (typeof data.plantId!=='string'||!/^[\w-]{1,128}$/.test(data.plantId)))throw new AIError('invalid-argument');
   if(data.mode==='identify' && (!data.draft || typeof data.draft!=='object'||Array.isArray(data.draft)))throw new AIError('invalid-argument');
   if(data.photo!=null && (typeof data.photo!=='string'||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data.photo)||data.photo.length>650000))throw new AIError('invalid-argument');
@@ -25,7 +26,7 @@ function createAIHandler({store,generate,authorize=async()=>true,now=()=>Date.no
       if(data.mode==='identify' && !safeText(plant.name,160) && !data.photo)throw new AIError('invalid-argument');
       const savedPhoto=typeof plant.photo==='string' && plant.photo.length<=650000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(plant.photo)?plant.photo:null;
       const previousPhotos=data.mode==='photo'?(Array.isArray(plant.gallery)?plant.gallery:[]).slice(0,2).filter(e=>typeof e?.img==='string'&&e.img.length<=220000&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(e.img)).map(e=>({img:e.img,date:safeText(e.date,10)})):[];
-      const raw=await generate({prompt:makePrompt(data.mode,plant,data.context),photo:data.photo||savedPhoto,previousPhotos});
+      const raw=await generate({prompt:makePrompt(data.mode,plant,data.context,data),photo:data.photo||(data.mode==='question'?null:savedPhoto),previousPhotos});
       try{return normalizeAIResponse(raw);}catch{throw new AIError('data-loss');}
     }catch(error){
       if(error instanceof AIError)throw error;

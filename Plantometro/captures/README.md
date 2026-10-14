@@ -10,7 +10,8 @@ Servicios y jardín simulados, sin sesión ni datos personales.
 | `mobile-ai.png`, `tablet-ai.png` | Consejo legible, IA simulada y guardado explícito. |
 | `mobile-settings.png`, `tablet-settings.png` | Ajustes sin clave ni notificaciones. |
 
-La app real mantiene la IA desactivada; la demostración la simula expresamente.
+La rama tiene el cliente IA activado, pendiente de publicación y consulta real;
+la demostración la simula expresamente.
 Hardware, Google y PWA instalada siguen pendientes: ver `../TEST_MATRIX.md`.
 
 ## Clima y actividad compartida (3 octubre 2026)
@@ -37,3 +38,11 @@ También hay variantes estrechas de 320 px. Capturadas con Chromium real y
 `tests/gemini_onboarding_ui.py`, usando datos, SDK de servicio y respuestas de
 modelo simulados. No son una consulta Gemini real ni un teléfono físico.
 Las capturas anteriores de clima corresponden al PR #3 que esta rama conserva.
+
+## Preguntas sencillas (14 octubre 2026)
+
+`preview-question-390.png` y `preview-question-768.png`: capturas directas de
+preview.html con diez ejemplos y Gemini simulado, ninguna petición a servicios
+reales. `gemini-question-{320,390,768}-{light,dark}.png`: módulos reales con
+adaptadores de Auth/Firestore/modelo, nombres largos, ambos temas. Son capturas
+Chromium sin edición, no pruebas físicas Android ni respuestas Gemini reales.

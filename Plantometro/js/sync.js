@@ -1,6 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 import { $, PLANT_ART } from "./utils.js";
 import { toast, render, closeModal } from "./ui.js";
 import {whoAmI,selectNickname} from './settings.js';

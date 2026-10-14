@@ -1,18 +1,18 @@
 # Probar esta rama desde móvil o tablet
 
-https://franoo1.github.io/misApps/Plantometro/ sirve `main`. El PR #2 prepara seguridad de IA y worker v16; sus cambios se publican
-al fusionarlo. Crear un PR por sí solo no actualiza la aplicación instalada.
+https://franoo1.github.io/misApps/Plantometro/ sirve `main`. Los PR #3/#4 añaden clima/actividad y preguntas/fotos Gemini con worker v20;
+crear o actualizar esos PR no publica la rama. Crear un PR por sí solo no actualiza la aplicación instalada.
 
 ## Demostración sin usar tu jardín
 
 Abrir en Chrome de Android o el navegador de la tablet:
 
-https://htmlpreview.github.io/?https://github.com/FranOO1/misApps/blob/fix/plantometro-secure-ai/Plantometro/preview.html
+https://htmlpreview.github.io/?https://github.com/FranOO1/misApps/blob/improve/plantometro-gemini-onboarding/Plantometro/preview.html
 
 La franja superior y «Sobre esta prueba» identifican servicios simulados. Permite
 probar formularios, fotos, riegos, diario y consejos legibles. «IA simulada en esta
-prueba» se muestra en la demostración. La app real de la rama muestra «Ayuda con IA
-no disponible» hasta configurar servidor.
+prueba» se muestra en la demostración. La app real de la rama tiene el cliente AI Logic activado con Auth/App Check;
+no hay una respuesta real del modelo verificada desde este entorno.
 
 Login, datos, clima e IA son simulados. Bob es ejemplo calculado con 77 días pendientes,
 no tu planta ni una medida de humedad. Fotos ilustrativas documentadas en
@@ -27,9 +27,10 @@ embebidas.
 - Abrir ficha: foto o nombre. Si la tierra está húmeda, salir sin registrar nada.
 - Añadir: botón fijo terracota, nombre/frecuencia y guardar. Foto opcional con botón
   español/vista previa; cancelar conserva la anterior.
-- Clima, copia o cuenta: Ajustes y la opción correspondiente.
-- IA simulada: ficha → Cuidados → «Revisar los cuidados». Leer consejo, revisar/corregir
-  campos elegidos o descartar; nada cambia sin aceptar y guardar.
+- Clima: pieza de la cabecera; copia y cuenta: Ajustes.
+- IA simulada: ficha → «Ayuda con Gemini» → «Preguntar» o «Analizar foto».
+  Escribir una pregunta y continuar; elegir foto/cámara y preguntar sobre ella.
+  Guardar/copiar quedan recogidos; revisar/corregir sugerencias es opcional.
 
 Una acción por planta. Añadir tiene espacio propio y se oculta con ventanas. Sin
 filtros/estadísticas/avisos grandes ni controles para justificar que no has regado.
