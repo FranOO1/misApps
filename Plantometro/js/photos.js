@@ -1,6 +1,6 @@
 import { $, esc, todayStr, fmt } from "./utils.js";
 import { whoAmI } from "./settings.js";
-import { plants, putPlant, sessionToken } from "./sync.js";
+import { plants, patchPlant, arrayUnion, arrayRemove, sessionToken } from "./sync.js";
 import { trimPlant } from "./plants.js";
 import { toast, openModal, closeModal } from "./ui.js";
 
@@ -22,7 +22,7 @@ function openDiaryPhoto(id, i){
     const index=current?.gallery?.findIndex(photo=>photo.img===e.img&&photo.date===e.date&&(photo.note||'')===(e.note||''));
     if(index==null||index<0){toast('Esta foto ya no está en el diario.');return;}
     const updated={...current,gallery:current.gallery.filter((_,n)=>n!==index),updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
-    if(await putPlant(updated) && session===sessionToken()){
+    if(await patchPlant(updated,{gallery:arrayRemove(e)},'photoRemoved') && session===sessionToken()){
       closeModal('photo-modal');const saved=plants.find(x=>x.id===id);if(saved)renderGallery(saved);toast('Foto quitada del diario.');
     }
   };
@@ -43,10 +43,10 @@ function shrinkImage(file, max, q){
     img.src = URL.createObjectURL(file);
   });
 }
-function pushDiary(p, dataUrl, note){
-  p.gallery = [{date: todayStr(), img: dataUrl, note: (note||"").slice(0,140)}, ...(p.gallery||[])];
-  p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-  return putPlant(trimPlant(p));
+function pushDiary(p,dataUrl,note){
+  const id=crypto.randomUUID(),at=new Date().toISOString(),entry={id,date:todayStr(),at,by:whoAmI(),img:dataUrl,note:(note||'').slice(0,140)};
+  const updated={...p,gallery:[entry,...(p.gallery||[])],updatedAt:at,updatedBy:whoAmI()};
+  return patchPlant(trimPlant(updated),{gallery:arrayUnion(entry)},'photoAdded',{},id);
 }
 let galAddPlantId = null;
 function galleryAdd(id){ galAddPlantId = id; $("g-file").value=""; $("g-file").click(); }

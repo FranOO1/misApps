@@ -2,7 +2,7 @@ import { validateBackup } from "./backup.js";
 import { aiEnabled, aiStatus } from "./ai-service.js";
 import { $, esc, todayStr, addDays, diffDays, dateNumber, PLANT_ART } from "./utils.js";
 import { whoAmI } from "./settings.js";
-import { plants, putPlant, removePlant, putPlantsBatch, updatePlantTransaction, sessionToken } from "./sync.js";
+import { plants, putPlant, removePlant, putPlantsBatch, updatePlantTransaction, sessionToken, patchPlant, arrayUnion, isPlantPending } from "./sync.js";
 import { shrinkImage } from "./photos.js";
 import { toast, splash, openDetail, openModal, closeModal } from "./ui.js";
 
@@ -18,7 +18,7 @@ function plantState(p){
   return { next, d, f, state: d<0 ? "late" : d===0 ? "today" : "ok" };
 }
 /* ============ Formulario ============ */
-let formPhoto = null, formLight = "", formRevision = 0;
+let formPhoto = null, formLight = "", formRevision = 0, formOriginal=null;
 function renderFormPhoto(){
   $("f-prev").innerHTML = formPhoto ? `<img src="${esc(formPhoto)}" alt="Vista previa de la foto">` : PLANT_ART;
   $("f-photo-button").textContent = formPhoto ? "Cambiar foto" : "Añadir foto";
@@ -34,6 +34,7 @@ function updateReminderUnit(){
 function setLight(v){ formLight = formLight===v ? "" : v; document.querySelectorAll("#f-light button").forEach(b=>b.classList.toggle("on", b.dataset.v===formLight)); }
 function openForm(id){
   const p = id ? plants.find(x=>x.id===id) : null;
+  formOriginal=p?JSON.parse(JSON.stringify(p)):null;
   $("form-title").textContent = p ? "Editar planta" : "Nueva planta";
   $("f-id").value = p?.id || "";
   $("f-name").value = p?.name || ""; $("f-species").value = p?.species || "";
@@ -95,42 +96,53 @@ async function savePlant(e){
     updatedAt: new Date().toISOString(),
     updatedBy: whoAmI()
   };
-  closeModal("form-modal");
-  const session=sessionToken(), result=putPlant(p);toast("Ficha actualizada en este dispositivo. Consulta Cuenta para ver la sincronización.");
-  if(!await result && session===sessionToken())openForm(id);
+  const fields=['name','species','loc','light','desc','photo','waterFreq','lastWater','fertFreq','lastFert','potSize','potDate'];
+  const patch=formOriginal?Object.fromEntries(fields.filter(k=>JSON.stringify(formOriginal[k]??(typeof p[k]==='number'?0:''))!==JSON.stringify(p[k]??'')).map(k=>[k,p[k]])):null;
+  if(patch&&Object.hasOwn(patch,'lastWater'))patch.lastWaterEventId='';
+  closeModal('form-modal');
+  if(patch&&!Object.keys(patch).length){toast('La ficha no ha cambiado.');return;}
+  const session=sessionToken(),result=putPlant(p,{type:'edited',...(patch?{patch}:{})});
+  toast(navigator.onLine===false?'Ficha pendiente de conexión.':'Guardando la ficha…');
+  if(await result){if(session===sessionToken())toast(old?'Ficha actualizada.':'Planta añadida.');}
+  else if(session===sessionToken())openForm(id);
 }
 
 /* ============ Acciones ============ */
 function trimPlant(p){ return p; } // Nunca recortar fotos ni historial silenciosamente.
 
-function water(id, el){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  const eventId=crypto.randomUUID();
-  const event={t:"agua",date:todayStr(),by:whoAmI(),eventId,previousLastWater:p.lastWater||"",previousWaterEventId:p.history?.find(h=>h.t==="agua")?.eventId||""};
-  splash(el);p.lastWater=todayStr();p.history=[event,...(p.history||[])];
-  p.updatedAt=new Date().toISOString();p.updatedBy=whoAmI();
-  const pending=putPlant(p);
-  toast("Riego anotado. Gracias por cuidarla.","Deshacer",()=>correctWater(id,eventId));
-  return pending;
+async function water(id,el){
+  const original=plants.find(x=>x.id===id);if(!original||isPlantPending(id))return false;
+  const p=JSON.parse(JSON.stringify(original)),eventId=crypto.randomUUID(),at=new Date().toISOString();
+  const event={t:'agua',date:todayStr(),at,by:whoAmI(),eventId,previousLastWater:p.lastWater||'',previousWaterEventId:p.history?.find(h=>h.t==='agua')?.eventId||''};
+  splash(el);p.lastWater=todayStr();p.lastWaterEventId=eventId;p.history=[event,...(p.history||[])];p.updatedAt=at;p.updatedBy=whoAmI();
+  const session=sessionToken(),pending=patchPlant(p,{lastWater:p.lastWater,lastWaterEventId:eventId,history:arrayUnion(event)},'watered',{},eventId);
+  toast(navigator.onLine===false?'Riego pendiente de conexión.':'Guardando riego…');
+  const success=await pending;
+  if(success&&session===sessionToken())toast('Riego guardado. Gracias por cuidarla.','Deshacer',()=>correctWater(id,eventId));
+  return success;
 }
 function removeWaterEvent(p,eventId){
-  const event=p.history?.find(h=>h.eventId===eventId && h.t==="agua");if(!event)return null;
-  const newest=p.history.find(h=>h.t==="agua");
-  const history=p.history.filter(h=>h.eventId!==eventId).map(h=>h.previousWaterEventId===eventId ? {...h,previousWaterEventId:event.previousWaterEventId||"",previousLastWater:event.previousLastWater||""}:h);
-  return {...p,history,lastWater:newest.eventId===eventId && p.lastWater===event.date ? (event.previousLastWater||"") : p.lastWater,updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
+  const ordered=(p.history||[]).slice().sort((a,b)=>(Date.parse(b.at||b.date+'T12:00:00')||0)-(Date.parse(a.at||a.date+'T12:00:00')||0));
+  const event=ordered.find(h=>h.eventId===eventId&&h.t==='agua');if(!event)return null;
+  const newest=ordered.find(h=>h.t==='agua'),remaining=ordered.filter(h=>h.t==='agua'&&h.eventId!==eventId);
+  const older=remaining.find(h=>(Date.parse(h.at||h.date+'T12:00:00')||0)<=(Date.parse(event.at||event.date+'T12:00:00')||0));
+  const history=p.history.filter(h=>h.eventId!==eventId).map(h=>h.previousWaterEventId===eventId?{...h,previousWaterEventId:older?.eventId||event.previousWaterEventId||'',previousLastWater:older?.date||event.previousLastWater||''}:h);
+  const wasLatest=p.lastWaterEventId? p.lastWaterEventId===eventId : newest.eventId===eventId&&p.lastWater===event.date;
+  return {...p,history,...(wasLatest?{lastWater:remaining[0]?.date||event.previousLastWater||'',lastWaterEventId:remaining[0]?.eventId||''}:{}),updatedAt:new Date().toISOString(),updatedBy:whoAmI()};
 }
 async function correctWater(id,eventId){
-  const result=await updatePlantTransaction(id,p=>removeWaterEvent(p,eventId));
-  if(result && $("detail-modal").classList.contains("open"))openDetail(id);
+  const result=await updatePlantTransaction(id,p=>removeWaterEvent(p,eventId),{correctsEventId:eventId});
+  if(result&&$('detail-modal').classList.contains('open'))openDetail(id);
   return result;
 }
-
-function fertilize(id){
-  const p = plants.find(x=>x.id===id); if(!p) return;
-  p.lastFert = todayStr();
-  p.history = [{t:"abono", date:todayStr(), by:whoAmI()}, ...(p.history||[])];
-  p.updatedAt = new Date().toISOString(); p.updatedBy = whoAmI();
-  putPlant(p); openDetail(id); toast("Abono anotado.");
+async function fertilize(id){
+  const original=plants.find(x=>x.id===id);if(!original||isPlantPending(id))return false;
+  const p=JSON.parse(JSON.stringify(original)),eventId=crypto.randomUUID(),at=new Date().toISOString();
+  const entry={t:'abono',date:todayStr(),at,by:whoAmI(),eventId};
+  p.lastFert=todayStr();p.history=[entry,...(p.history||[])];p.updatedAt=at;p.updatedBy=whoAmI();
+  const session=sessionToken(),pending=patchPlant(p,{lastFert:p.lastFert,history:arrayUnion(entry)},'fertilized',{},eventId);
+  toast(navigator.onLine===false?'Abono pendiente de conexión.':'Guardando abono…');
+  const success=await pending;if(success&&session===sessionToken()){openDetail(id);toast('Abono guardado.');}return success;
 }
 async function delPlant(id){
   const p = plants.find(x=>x.id===id); if(!p) return;

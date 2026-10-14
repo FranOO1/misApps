@@ -32,7 +32,7 @@ try:
   page.evaluate('navigator.serviceWorker.ready');page.wait_for_function('!!navigator.serviceWorker.controller');assert 'plantometro-v13' in page.evaluate('caches.keys()')
   page.evaluate('([prefs,garden])=>{localStorage.setItem("pg3b_settings",JSON.stringify(prefs));localStorage.setItem("pg3_cache_qa_only",JSON.stringify(garden));return caches.open("horas-v1")}',[prefs,garden])
   phase['legacy']=False;page.reload(wait_until='domcontentloaded')
-  page.wait_for_function("caches.keys().then(k=>k.includes('plantometro-v16')&&!k.includes('plantometro-v13'))",timeout=60000)
+  page.wait_for_function("caches.keys().then(k=>k.includes('plantometro-v17')&&!k.includes('plantometro-v13'))",timeout=60000)
   expect(page.get_by_role('button',name='Continuar con Google')).to_be_visible(timeout=60000)
   assert page.evaluate("import('./js/sync.js').then(s=>s.auth.currentUser===null)")
   assert page.locator('#s-gkey').count()==0
@@ -45,6 +45,6 @@ try:
   assert len(errors)==legacy_errors,'The coherent new build has a browser error'
   ctx.set_offline(True);page.reload(wait_until='domcontentloaded');expect(page.get_by_role('button',name='Continuar con Google')).to_be_visible(timeout=45000)
   assert len(errors)==legacy_errors
-  print('PASS legacy v13→v16 automatically recovers with real Firebase SDK; local preferences/photo/history/unrelated cache retained; final shell offline without new errors; no account/garden accessed',flush=True)
+  print('PASS legacy v13→v17 automatically recovers with real Firebase SDK; local preferences/photo/history/unrelated cache retained; final shell offline without new errors; no account/garden accessed',flush=True)
   ctx.close();browser.close()
 finally:server.shutdown()

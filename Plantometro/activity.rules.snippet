@@ -1,0 +1,11 @@
+// Add ONLY this match inside the existing /databases/{database}/documents block.
+// Do not replace the current project's rules or rules for plants/other apps.
+match /users/{userId}/plantometroActivity/recent {
+  allow read: if request.auth != null && request.auth.uid == userId;
+  allow create, update: if request.auth != null && request.auth.uid == userId
+    && request.resource.data.keys().hasOnly(['events', 'updatedAt'])
+    && request.resource.data.events is list
+    && request.resource.data.events.size() <= 120
+    && request.resource.data.updatedAt == request.time;
+  allow delete: if false;
+}
