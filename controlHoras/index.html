@@ -23,6 +23,7 @@
   <script src="./reports.js?v=11"></script>
   <script src="./ai-history.js?v=11"></script>
   <script src="./chat-ui.js?v=11"></script>
+  <script src="./master-history.js?v=12"></script>
   
 
   <style>
@@ -41,18 +42,25 @@
     
     .app-root { max-width: 640px; margin: 0 auto; padding: 8px 10px; display: flex; flex-direction: column; flex: 1; width: 100%; }
     
-    .tabs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 6px; flex: 0 0 auto; }
-    .view-selector { display: flex; flex: 0 0 112px; padding: 2px; gap: 2px; background: #1B2330; border: 1px solid #303B4C; border-radius: 11px; }
+    .tabs-bar { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin-bottom: 6px; flex: 0 0 auto; width:100%; padding:4px; border:1px solid #2B374B; border-radius:14px; background:#171F2D; }
+    .view-selector { display: flex; flex: 0 0 112px; padding: 2px; gap: 2px; background: #101825; border: 1px solid transparent; border-radius: 11px; }
     .tab-btn { min-width: 44px; min-height: 44px; padding: 8px 5px; border-radius: 9px; color: #AFB8CC; font-size: 13px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: background-color .15s,color .15s; }
     .view-selector .tab-btn { flex: 1; }
-    .tab-btn.active { background: rgba(79,163,255,.15); color: #9FCBFF; }
-    .view-selector .tab-btn.active { background: #29496C; color: #F6FAFF; }
+    .tab-btn.active { background: #263F5F; color: #EEF6FF; }
+    .view-selector .tab-btn.active { background: #263F5F; color: #EEF6FF; }
     .nav-link { flex: 1 0 auto; }
     .nav-icon { flex: 0 0 44px; width: 44px; padding: 0; }
     .hours-breakdown { margin-top: 2px; color: var(--muted); font-size: 11px; }
     .eye-btn { width: 44px; flex: 0 0 44px; border-radius: 9px; color: var(--muted); display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0; }
-    .tabs-bar { justify-content: center; }
-    @media (max-width: 379px) { .tabs-bar { gap: 2px; } }
+    .nav-group { display:flex; align-items:center; gap:2px; }
+    .nav-tools { margin-left:auto; }
+    .nav-tools [data-tip]::after { left:auto; right:0; transform:none; }
+    .tabs-bar svg { width:21px; height:21px; flex:0 0 21px; }
+    .tabs-bar .tab-btn,.tabs-bar .eye-btn { color:#ACB7CA; }
+    .tabs-bar .tab-btn.active { color:#EEF6FF; }
+    .tabs-bar .eye-btn.active { color:#FFCE8A; background:rgba(255,176,79,.08); }
+    @media (max-width:379px) { .view-selector { flex-basis:108px; } .tabs-bar { gap:2px; } }
+    @media (max-width:300px) { .tabs-bar { flex-wrap:wrap; } .nav-tools { flex-basis:100%; justify-content:flex-end; } }
     [data-tip] { position: relative; }
     [data-tip]:focus-visible::after,[data-tip]:active::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); padding: 6px 8px; border-radius: 7px; background: #2A3247; color: var(--text); font-size: 12px; white-space: nowrap; z-index: 5; }
     .big-btn.history-month { text-align: left; padding: 10px; border: 1px solid #43516A; background: var(--month-tone); }
@@ -119,7 +127,7 @@
     .week-banner { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-radius: 12px; padding: 6px 8px; margin-bottom: 4px; background: linear-gradient(160deg, rgba(79,163,255,0.10), rgba(79,163,255,0.03)); border: 1px solid var(--border);  }
     
     .bubble { max-width: 85%; border-radius: 14px; border: 1px solid; padding: 9px 13px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
-    .bubble.user { background: rgba(79,163,255,0.18); border-color: rgba(79,163,255,0.35); margin-left: auto; color: var(--text); }
+    .bubble.user { max-width:88%; background:#005C4B; border-color:rgba(233,237,239,.12); margin-left:auto; margin-right:0; color:#E9EDEF; padding:10px 13px; overflow-wrap:anywhere; white-space:pre-wrap; }
     .bubble.bot { background: var(--border-light); border-color: var(--border); margin-right: auto; color: var(--text); }
     
     .modal-overlay { position: fixed; inset: 0; background: rgba(8,10,16,0.72); z-index: 50; display: none; align-items: center; justify-content: center; padding: 20px; }
@@ -129,7 +137,7 @@
 
     @media (min-width: 840px) and (min-height: 540px) {
       .app-root { max-width: 1240px; height: 100vh; overflow: hidden; padding-bottom: 0; }
-      .tabs-bar { max-width: 620px; width: 100%; margin: 0 auto 14px auto; }
+      .tabs-bar { width:100%; margin:0 0 8px; }
       .tab-content { overflow: hidden; }
       .two-col, .ajustes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; height: 100%; min-height: 0; align-items: stretch; }
       .col-scroll { overflow-y: auto; height: 100%; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
@@ -267,12 +275,16 @@
       appId: "1:282064047722:web:24a04aabeecb4a67394413"
     };
 
+    let masterError='';
+    function refreshMaster(){return masterHistory.update().then(m=>{masterError='';return m;}).catch(e=>{masterError=e.message;return null;});}
+    async function prepareMaster(){try{if(cloud.user)await sync.ensureHistory();await masterHistory.ensure();masterError='';}catch(e){masterError=e.message;}}
     const cloud = {ready:false,user:null,status:'local',errorMsg:''};
     const sync=HorasSync.create({defaults:DEFAULT_CONFIG,getState:payload,
-      apply:p=>{const hidden=state.config.hideMoney;state.config={...p.config,hideMoney:hidden};state.allData=p.data;if(state.selectedDay && state.dayConfirmed){const e=state.allData[monthKey(state.year,state.month)]?.days[state.selectedDay];if(e)state.draft=C.copy(e);else state.selectedDay=null;}},
+      apply:p=>{const hidden=state.config.hideMoney;state.config={...p.config,hideMoney:hidden};state.allData=p.data;if(state.selectedDay && state.dayConfirmed){const e=state.allData[monthKey(state.year,state.month)]?.days[state.selectedDay];if(e)state.draft=C.copy(e);else state.selectedDay=null;}Promise.resolve().then(refreshMaster);},
       onStatus:(kind,message)=>{cloud.status=kind;cloud.errorMsg=message;for(const id of ['cloud-status','local-status']){const el=document.getElementById(id);if(el){el.textContent=message;el.style.color=kind==='error'?'var(--danger)':'var(--muted)';}}},onRemote:()=>{if(!document.activeElement?.matches('input,textarea,select'))render();else state.remoteRefresh=true;},
       db:{collection:(...args)=>cloud.db.collection(...args),runTransaction:(...args)=>cloud.db.runTransaction(...args)},FieldPath:class {constructor(...parts){return new firebase.firestore.FieldPath(...parts);}}
     });
+    const masterHistory=HorasMaster.create({current:()=>({account:sync.account(),payload:payload(),blocked:sync.isBlocked(),availability:sync.account()==='guest'?{complete:true,source:'local',updatedAt:null,pendingChanges:false}:sync.historyState()})});
     function initCloud() {
       try {
         if(typeof firebase==='undefined')throw Error('SDK no disponible');
@@ -574,7 +586,7 @@
       catch(e){if(session!==aiSession())return;const message=await aiError(e);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs=[{role:'bot',text:message}];}
       finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
-    window.newConversation=()=>{if(['reading','loading'].includes(state.nomina.status))return;privateGeneration++;state.chatMsgs=[];state.chatContext=null;state.chatInput='';state.chatLoading=false;if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});render();};
+    window.newConversation=()=>{if(['reading','loading'].includes(state.nomina.status))return;privateGeneration++;state.chatMsgs=[];state.chatContext=null;state.chatInput='';state.chatLoading=false;void prepareMaster();if(aiService)aiService.then(mod=>mod.invalidate()).catch(()=>{});render();};
     window.sendChat=async(forceText)=>{
       const q=String(forceText||state.chatInput).trim();if(!canUseAI()||!q||state.chatLoading||['reading','loading'].includes(state.nomina.status)||state.config.hideMoney)return;
       if(q.length>2000){alert('Consulta demasiado larga: máximo 2.000 caracteres.');return;}
@@ -584,15 +596,15 @@
       let loaded=false;
       try{
         if(/^(?:hola|buenos días|buenas tardes|buenas noches|gracias)[!.¡\s]*$/i.test(clean)){loaded=true;const reply=await callAI('chat',clean,'',{general:true,conversation});if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:reply});return;}
-        const availability=await sync.ensureHistory();if(session!==aiSession())return;loaded=true;const queryData=C.copy(state.allData),queryConfig=C.copy(state.config);
-        const plannerContext={catalog:HorasAIHistory.catalog(queryData,queryConfig),previousPlan,conversation};
-        const rawPlan=await callAI('history-plan',clean,'',plannerContext);const plan=HorasAIHistory.preparePlan(rawPlan,clean,plannerContext.catalog);if(session!==aiSession())return;
+        const availability=await sync.ensureHistory();if(session!==aiSession())return;loaded=true;const master=await masterHistory.ensure(),queryData=master.originals.data,queryConfig=master.originals.config;
+        const plannerContext={catalog:master.index,previousPlan,conversation};
+        const rawPlan=await callAI('history-plan',clean,'',plannerContext);let plan=HorasAIHistory.preparePlan(rawPlan,clean,plannerContext.catalog);if(session!==aiSession())return;
         if(plan.clarification){state.chatMsgs.push({role:'bot',text:HorasAIData.redact(plan.clarification,knownIdentifiers())});return;}
-        const context=HorasAIHistory.query(queryData,queryConfig,plan,availability,{redact:t=>HorasAIData.redact(t,knownIdentifiers())});
+        const latestMaster=await masterHistory.ensure();plan=HorasAIHistory.preparePlan(rawPlan,clean,latestMaster.index);const functionName=plan.detail?'detalle':plan.operation==='compare'?'comparar_periodos':plan.operation==='sum'?'totales':'consultar_periodo';const executed=await masterHistory.execute(functionName,{plan,includeNotes:/notas|comentarios/i.test(clean)},{redact:t=>HorasAIData.redact(t,knownIdentifiers())});const context=executed.result;const usedMaster=await masterHistory.ensure();if(usedMaster.sourceVersion!==executed.sourceVersion)throw Error('Los registros cambiaron durante la consulta; no se utilizarán cifras antiguas.');
         const netSummary=plan.metrics.includes('realPayroll')&&!/bruto|irpf|cotiz|retenci|deducc|tarifa/i.test(clean)?HorasAIHistory.netSummary(context):null;
-        const reply=await callAI('chat',clean,'',{history:context,conversation,previousPlan,localNetTable:!!netSummary});
-        if(session===aiSession()&&!state.config.hideMoney){state.chatContext=plan;state.chatMsgs.push({role:'bot',text:HorasChatUI.clean(reply),netSummary,periods:plan.groups.map(g=>({from:g.from,to:g.to}))});}
-      }catch(e){if(session!==aiSession())return;const message=loaded?await aiError(e):e.message;if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:message||'No se pudo cargar el historial completo. Tus horas siguen guardándose con normalidad.'});}
+        const reply=await callAI('chat',clean,'',{history:context,executedFunction:{name:executed.name,sourceVersion:executed.sourceVersion,updatedAt:executed.updatedAt},conversation,previousPlan,localNetTable:!!netSummary});
+        if(!masterHistory.unchanged(usedMaster))throw Error('Los registros cambiaron durante la respuesta. La siguiente consulta usará la versión actual.');if(session===aiSession()&&!state.config.hideMoney){state.chatContext=plan;state.chatMsgs.push({role:'bot',text:HorasChatUI.clean(reply),source:plan.metrics.some(m=>['realPayroll','estimates'].includes(m))?'Nóminas introducidas y estimaciones de la app':'Registros y parámetros del periodo',netSummary,periods:plan.groups.map(g=>({from:g.from,to:g.to}))});}
+      }catch(e){if(session!==aiSession())return;const localError=/archivo maestro|historial|registros cambiaron|cuenta cambió/i.test(e.message||'');const message=localError||!loaded?e.message:await aiError(e);if(session===aiSession()&&!state.config.hideMoney)state.chatMsgs.push({role:'bot',text:message||'No se pudo cargar el historial completo. Tus horas siguen guardándose con normalidad.'});}
       finally{if(session===aiSession()){state.chatLoading=false;render();}}
     };
     async function extractTextFromPDF(file){
@@ -740,7 +752,7 @@
     window.switchTab = (t) => {
       vibrate(20);
       if (state.tab === 'anual' && t !== 'anual' && chartInst) { chartInst.destroy(); chartInst = null; }
-      state.tab = t; render();
+      state.tab = t;if(t==='ia')void prepareMaster();render();
     };
     
     let lastRenderedTab=null;
@@ -751,11 +763,11 @@
       const icon=(path)=>`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`;
       const renderTabs = `<nav class="tabs-bar" aria-label="Secciones de Mis Horas">
         <div class="view-selector" role="group" aria-label="Vista de horas">${[["mes","Mes"],["anual","Año"]].map(([k,l])=>`<button id="nav-${k}" aria-controls="tab-panel" class="tab-btn ${state.tab===k?'active':''}" onclick="switchTab('${k}')">${l}</button>`).join('')}</div>
-        <button id="nav-ia" aria-label="IA" data-tip="Asistente IA" title="Asistente IA" aria-controls="tab-panel" class="tab-btn nav-icon ${state.tab==='ia'?'active':''}" onclick="switchTab('ia')">${icon('<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/>')}</button>
+        <div class="nav-group" role="group" aria-label="Consultas e informes"><button id="nav-ia" aria-label="IA" data-tip="Asistente IA" title="Asistente IA" aria-controls="tab-panel" class="tab-btn nav-icon ${state.tab==='ia'?'active':''}" onclick="switchTab('ia')">${icon('<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/>')}</button>
         <button id="nav-historico" aria-label="Histórico" data-tip="Histórico e informes" title="Histórico e informes" aria-controls="tab-panel" class="tab-btn nav-icon ${state.tab==='historico'?'active':''}" onclick="switchTab('historico')">${icon('<path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/><path d="M12 7v5l3 2"/>')}</button>
-        <button id="nav-ajustes" class="tab-btn nav-icon ${state.tab==='ajustes'?'active':''}" aria-controls="tab-panel" aria-label="Ajustes" title="Ajustes" onclick="switchTab('ajustes')">${icon('<path d="m9 3-.7 2.5-2.3 1-2.3-.7L2 9l1.7 1.8v2.4L2 15l1.7 3.2 2.3-.7 2.3 1L9 21h6l.7-2.5 2.3-1 2.3.7L22 15l-1.7-1.8v-2.4L22 9l-1.7-3.2-2.3.7-2.3-1L15 3Z"/><circle cx="12" cy="12" r="3"/>')}</button>
-        <button id="nav-privacy" class="eye-btn ${state.config.hideMoney?'active':''}" aria-label="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" title="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" aria-pressed="${state.config.hideMoney}" onclick="toggleMoney()">${icon('<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>'+(state.config.hideMoney?'<path d="m4.2 20 15.6-16"/>':''))}</button>
-      </nav>`;
+        </div><div class="nav-group nav-tools" role="group" aria-label="Ajustes y privacidad"><button id="nav-ajustes" class="tab-btn nav-icon ${state.tab==='ajustes'?'active':''}" aria-controls="tab-panel" aria-label="Ajustes" data-tip="Ajustes" title="Ajustes" onclick="switchTab('ajustes')">${icon('<path d="m9 3-.7 2.5-2.3 1-2.3-.7L2 9l1.7 1.8v2.4L2 15l1.7 3.2 2.3-.7 2.3 1L9 21h6l.7-2.5 2.3-1 2.3.7L22 15l-1.7-1.8v-2.4L22 9l-1.7-3.2-2.3.7-2.3-1L15 3Z"/><circle cx="12" cy="12" r="3"/>')}</button>
+        <button id="nav-privacy" data-tip="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" class="eye-btn ${state.config.hideMoney?'active':''}" aria-label="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" title="${state.config.hideMoney?'Mostrar importes':'Ocultar importes'}" aria-pressed="${state.config.hideMoney}" onclick="toggleMoney()">${icon('<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/>'+(state.config.hideMoney?'<path d="m4.2 20 15.6-16"/>':''))}</button>
+      </div></nav>`;
 
       let content = "";
       
@@ -874,10 +886,10 @@
           <div class="tab-content"><div class="ia-wrap">
             <div class="card chat-card">
               <div class="chat-heading"><h2>Asistente</h2><button id="new-conversation" class="chat-reset" ${['reading','loading'].includes(state.nomina.status)?'disabled':''} onclick="newConversation()">Nueva conversación</button></div>
-              <details><summary class="privacy-note">Consulta tu historial · cómo se usan tus datos</summary><p class="privacy-note">Puedes preguntar por cualquier mes, año o todo el historial. Google recibe tu pregunta, conversación reciente y los resúmenes necesarios; no enviamos notas libres ni documentos nuevos sin autorización. La conversación solo permanece en esta cuenta y se borra con Nueva conversación. Las estimaciones no confirman pagos recibidos.</p></details>
+              <details><summary class="privacy-note">Consulta tu historial · cómo se usan tus datos</summary><p class="privacy-note">Puedes preguntar por cualquier mes, año o todo el historial. Google recibe tu pregunta, conversación reciente y los resúmenes necesarios; solo enviamos notas cuando las pides y documentos nuevos tras tu autorización. La conversación solo permanece en esta cuenta y se borra con Nueva conversación. Las estimaciones no confirman pagos recibidos.</p></details>
               <div id="chat-scroll-box" class="chat-messages">
                 ${state.config.hideMoney?'<p class="privacy-note">Importes ocultos: conversación y resultados ocultos.</p>':''}${!state.config.hideMoney&&state.chatMsgs.length===0?'<p class="privacy-note">Pregunta por tus horas o importes, de cualquier periodo.</p>':''}
-                ${(state.config.hideMoney?[]:state.chatMsgs).map(m=>`<div class="bubble ${m.role==='user'?'user':'bot'}">${m.periods?`<div class="chat-period">${esc(HorasChatUI.periodTitle(m.periods))}</div>`:''}${m.netSummary?HorasChatUI.netTable(m.netSummary):''}${m.role==='user'?esc(m.text):HorasChatUI.markdown(m.text)}</div>`).join('')}
+                ${(state.config.hideMoney?[]:state.chatMsgs).map(m=>`<div class="bubble ${m.role==='user'?'user':'bot'}">${m.periods?`<div class="chat-period">${esc(HorasChatUI.periodTitle(m.periods))}</div>`:''}${m.netSummary?HorasChatUI.netTable(m.netSummary):''}${m.role==='user'?esc(m.text):HorasChatUI.markdown(m.text)}${m.source?`<p class="privacy-note">Fuente: ${esc(m.source)}</p>`:''}</div>`).join('')}
                 ${!state.config.hideMoney&&state.chatLoading?'<div class="bubble bot" role="status">Consultando…</div>':''}
               </div>
 
@@ -955,6 +967,7 @@
                   <button class="big-btn" style="border-color:var(--accent); color:var(--accent)" onclick="vibrate(20); getEl('backup-upload').click()">⬆ Importar</button>
                 </div>
               </div>
+              <div class="card"><div class="card-title">Archivo maestro del historial</div><p class="privacy-note">Copia derivada por cuenta, actualizada desde jornadas, nóminas y parámetros. No sustituye los registros ni la copia restaurable. La exportación incluye notas e información económica.</p>${masterError?`<p class="privacy-note" role="status">${esc(masterError)}</p>`:''}<button class="big-btn" onclick="exportMaster()">Exportar historial maestro JSON</button></div>
               <div class="card"><div class="card-title">Configuración de ${MESES[state.month]} ${state.year}</div><p class="privacy-note">${state.allData[monthKey(state.year,state.month)]?.historicalStatus==='confirmed'?'Configuración del periodo confirmada.':'Tarifas históricas desconocidas. La migración conservó las tarifas disponibles, sin inventar las anteriores.'} Revisa tarifas y retenciones actuales antes de aplicarlas a este periodo. Esta acción cambia sus cálculos de forma explícita.</p><button class="big-btn" onclick="confirmPeriodRates()">Aplicar tarifas y retenciones actuales a este periodo</button><button class="big-btn" onclick="toggleClosed()">${state.allData[monthKey(state.year,state.month)]?.closed?'Marcar registros como incompletos':'Confirmar que los registros del periodo están completos'}</button></div>
               <div class="card"><div class="card-title">Recuperación local</div><p class="privacy-note">Copias previas por cuenta antes de migrar, importar o descargar. Contienen datos económicos.</p><button class="big-btn" onclick="exportRecovery()">Exportar copia previa</button><button class="big-btn" onclick="restoreRecovery()">Restaurar última copia previa</button>${cloud.user?'<button class="big-btn" onclick="copyGuest()">Revisar e importar datos locales anteriores</button>':''}</div>
             </div>
@@ -1073,6 +1086,7 @@
       try{sync.recover('Antes de corregir tarifas del periodo');const rec=ensurePeriod();rec.rateConfig=C.financial(state.config);rec.historicalStatus='confirmed';saveState();render();}catch(e){alert(e.message);}
     };
     window.toggleClosed=()=>{ensurePeriod().closed=!ensurePeriod().closed;saveState();render();};
+    window.exportMaster=async()=>{try{if(cloud.user)await sync.ensureHistory();const text=await masterHistory.exportJSON();await processDownload(new Blob([text],{type:'application/json'}),'MisHoras_Historial_Maestro_'+new Date().toISOString().slice(0,10)+'.json');}catch(e){alert(e.message||'No se pudo recuperar el archivo maestro.');}};
     window.exportBackup=()=>processDownload(new Blob([JSON.stringify({...payload(),config:{...state.config}})],{type:'application/json'}),`Backup_Horas_${new Date().toISOString().slice(0,10)}.json`);
     function replaceFromBackup(p,reason='Importar copia') {
       p=C.validateBackup(p,DEFAULT_CONFIG);
