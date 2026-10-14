@@ -16,16 +16,23 @@ function normalizeAIResponse(value){
   const s=value.sugerencias;
   if(!s || typeof s!=='object' || Array.isArray(s) || !CONFIDENCE.includes(value.confianza))throw Error('invalid-ai-response');
   if(s.luz!=null && !['sol','media','sombra'].includes(s.luz))throw Error('invalid-ai-response');
+  let analysis;
+  if(value.analisis!=null){
+    const a=value.analisis;if(typeof a!=='object'||Array.isArray(a))throw Error('invalid-ai-response');
+    const list=v=>{if(!Array.isArray(v)||v.length>3)throw Error('invalid-ai-response');return v.map(x=>text(x,220,true));};
+    analysis={observado:text(a.observado,300,true),causas:list(a.causas),comprobar:list(a.comprobar),recomendacion:text(a.recomendacion,400,true)};
+  }
   return {
-    resumen:text(value.resumen,300,true),consejo:text(value.consejo,700,true),
+    ...(analysis?{analisis:analysis}:{}),resumen:text(value.resumen,300,true),consejo:text(value.consejo,700,true),
     confianza:value.confianza,motivo:text(value.motivo,600,true),
     sugerencias:{nombreComun:text(s.nombreComun,120),especie:text(s.especie,160),
-      revisarCadaDias:number(s.revisarCadaDias,1,120),abonoCadaDias:number(s.abonoCadaDias,0,365),luz:s.luz||null}
+      revisarCadaDias:number(s.revisarCadaDias,1,120),abonoCadaDias:number(s.abonoCadaDias,0,365),luz:s.luz||null,...(s.ubicacion!=null?{ubicacion:text(s.ubicacion,160)}:{})}
   };
 }
 function aiResponseText(value){
   const r=normalizeAIResponse(value);
-  return r.resumen+'\n\n'+r.consejo+'\n\n'+(r.confianza==='baja'?'Identificación dudosa. ':'')+r.motivo;
+  const detail=r.analisis?'\n\n'+r.analisis.observado+'\nCausas posibles: '+r.analisis.causas.join('; ')+'\nQué comprobar: '+r.analisis.comprobar.join('; ')+'\n'+r.analisis.recomendacion:'';
+  return r.resumen+detail+'\n\n'+r.consejo+'\n\n'+(r.confianza==='baja'?'Identificación dudosa. ':'')+r.motivo;
 }
 function readableSavedAI(text){
   const value=typeof text==='string'?text.trim():'';

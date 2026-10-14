@@ -2,18 +2,20 @@ import {GoogleAuth} from 'google-auth-library';
 import {AIError} from './core.js';
 const nullableString={type:'STRING',nullable:true};
 const responseSchema={type:'OBJECT',required:['resumen','consejo','confianza','motivo','sugerencias'],properties:{
+  analisis:{type:'OBJECT',nullable:true,required:['observado','causas','comprobar','recomendacion'],properties:{observado:{type:'STRING'},causas:{type:'ARRAY',maxItems:3,items:{type:'STRING'}},comprobar:{type:'ARRAY',maxItems:3,items:{type:'STRING'}},recomendacion:{type:'STRING'}}},
   resumen:{type:'STRING'},consejo:{type:'STRING'},confianza:{type:'STRING',enum:['alta','media','baja']},motivo:{type:'STRING'},
   sugerencias:{type:'OBJECT',required:['nombreComun','especie','revisarCadaDias','abonoCadaDias','luz'],properties:{
-    nombreComun:nullableString,especie:nullableString,revisarCadaDias:{type:'INTEGER',nullable:true},
+    nombreComun:nullableString,especie:nullableString,ubicacion:nullableString,revisarCadaDias:{type:'INTEGER',nullable:true},
     abonoCadaDias:{type:'INTEGER',nullable:true},luz:{type:'STRING',enum:['sol','media','sombra'],nullable:true}
   }}
 }};
 function createVertex({project,location='global',model='gemini-3.1-flash-lite',googleAuth=new GoogleAuth({scopes:['https://www.googleapis.com/auth/cloud-platform']}),fetcher=fetch}){
   if(!/^[a-z][a-z0-9-]{4,62}$/.test(project||'') || location!=='global' || model!=='gemini-3.1-flash-lite')throw new AIError('unavailable');
-  return async({prompt,photo})=>{
+  return async({prompt,photo,previousPhotos=[]})=>{
     const token=await googleAuth.getAccessToken();if(!token)throw new AIError('unavailable');
     const parts=[{text:prompt}];
     if(photo){const [,mimeType,data]=/^data:(image\/[^;]+);base64,(.+)$/.exec(photo);parts.push({inlineData:{mimeType,data}});}
+    for(const previous of previousPhotos){const [,mimeType,data]=/^data:(image\/[^;]+);base64,(.+)$/.exec(previous.img);parts.push({text:"Foto anterior del diario: "+previous.date},{inlineData:{mimeType,data}});}
     let response;
     try{response=await fetcher(`https://aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent`,{
       method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},

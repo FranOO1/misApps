@@ -139,7 +139,7 @@ function openDetail(id){
       const text = readableSavedAI(p.lastAI.text);
       $("ai-body").innerHTML = mdToHtml(text);
       $("ai-apply").style.display="none";
-      $("ai-save").hidden=true;
+      $("ai-save").hidden=true;$("ai-options").hidden=false;$("ai-question-form").hidden=true;
       $("ai-copy").onclick = ()=>{ navigator.clipboard?.writeText(text).then(()=>toast("Copiado.")).catch(()=>{}); };
       openModal("ai-modal");
     };

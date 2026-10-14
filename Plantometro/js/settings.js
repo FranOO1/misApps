@@ -37,8 +37,35 @@ function toggleSummer(){
   settings.summerMode=!settings.summerMode;persistSettings();renderSettingsUI();render();
   toast(settings.summerMode?'Contexto de verano activado':'Modo verano desactivado');
 }
+const legacyNickname=(settings.name||"").trim();
+let nicknameUid=null;
+function nicknameKey(uid){return "pg3_nickname_"+uid;}
+function showCurrentName(){const el=$("current-name");if(el){el.textContent=settings.name?"Con "+settings.name:"";el.hidden=!settings.name;}}
+function selectNickname(uid){
+  const previous=nicknameUid;nicknameUid=uid||null;
+  if(!uid){settings.name="";showCurrentName();$("nickname-gate").hidden=true;$("app-shell").inert=false;return;}
+  let name="";
+  try{
+    name=localStorage.getItem(nicknameKey(uid))||"";
+    // The old device nickname belongs only to the first account migrating here.
+    if(!localStorage.getItem("pg3_nickname_migrated")&&!previous){
+      if(!name)name=legacyNickname.slice(0,40);
+      if(name)localStorage.setItem(nicknameKey(uid),name);
+      localStorage.setItem("pg3_nickname_migrated",uid);
+    }
+  }catch{}
+  settings.name=name;showCurrentName();renderSettingsUI();
+  $("nickname-gate").hidden=!!name;$("app-shell").inert=!name;
+  if(!name){$("nickname-input").value="";setTimeout(()=>$("nickname-input").focus(),0);}
+}
+function continueNickname(e){
+  e?.preventDefault();if(!nicknameUid)return;
+  const name=$("nickname-input").value.trim().slice(0,40);if(!name){$("nickname-input").focus();return;}
+  try{localStorage.setItem(nicknameKey(nicknameUid),name);}catch{}
+  settings.name=name;persistSettings();showCurrentName();renderSettingsUI();$("nickname-gate").hidden=true;$("app-shell").inert=false;window.dispatchEvent(new Event("plantometro:sync-idle"));
+}
 function saveSettings(){
-  settings.name=$('s-name').value.trim();persistSettings();renderSettingsUI();closeModal('settings-modal');toast('Ajustes guardados.');
+  settings.name=$('s-name').value.trim().slice(0,40);if(nicknameUid){try{localStorage.setItem(nicknameKey(nicknameUid),settings.name);}catch{}}showCurrentName();persistSettings();renderSettingsUI();closeModal('settings-modal');toast('Ajustes guardados.');
 }
 function whoAmI(){return (settings.name||'').trim()||'Alguien';}
-export {settings,persistSettings,applyTheme,setTheme,renderSettingsUI,toggleSummer,saveSettings,whoAmI};
+export {settings,persistSettings,applyTheme,setTheme,renderSettingsUI,toggleSummer,saveSettings,whoAmI,selectNickname,continueNickname};

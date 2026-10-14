@@ -66,7 +66,7 @@ AI_RESPONSE = dict(resumen='Una planta que observar.',consejo='Comprueba la tier
 APP_CHECK = 'export class ReCaptchaEnterpriseProvider {}; export const initializeAppCheck = () => ({});'
 FUNCTIONS = """export const getFunctions=()=>({});
 export const httpsCallable=(f,name,options)=>async data=>{
- window.testAIOptions=options;window.testAIRequest=data;window.testAICalls=(window.testAICalls||0)+1;
+ window.testAIOptions=options;window.testAIRequest=structuredClone(data);window.testAICalls=(window.testAICalls||0)+1;
  if(window.testAIWait)await new Promise(r=>window.finishAI=r);
  if(window.testAIError)throw {code:window.testAIError,message:'Details must never be shown'};
  return {data:window.testAIResponse||RESPONSE};
