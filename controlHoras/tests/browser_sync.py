@@ -36,8 +36,10 @@ try:
    ctx=browser.new_context(viewport={'width':width,'height':height},service_workers='block');contexts.append(ctx);ctx.route('https://**/*',external);page=ctx.new_page();page.on('dialog',lambda d:d.accept());page.goto(URL);page.evaluate('cloud.db.useEmulator("127.0.0.1",8080)');page.evaluate('firebase.auth().signInWithCustomToken("one")');wait(page,'cloud.user?.uid==="one"&&cloud.status==="ok"');pages.append(page)
   a,b=pages;a.evaluate('selectDay(1);stepHours(0,8.25);saveDay()');b.evaluate('selectDay(2);stepHours(0,9.5);saveDay()');
   for page in pages:wait(page,'sync.pending().length===0&&state.allData[monthKey(state.year,state.month)]?.days[1]?.hours===8.25&&state.allData[monthKey(state.year,state.month)]?.days[2]?.hours===9.5')
+  for page in pages:assert page.evaluate('masterHistory.ensure().then(m=>m.total.groups[0].totals.hours)')==17.75
   contexts[1].set_offline(True);b.evaluate('selectDay(3);stepHours(0,7.5);saveDay()');a.evaluate('if(state.selectedDay!==1)selectDay(1);clearDay()');assert a.evaluate('state.allData[monthKey(state.year,state.month)].days[1]===null');wait(a,'sync.pending().length===0');contexts[1].set_offline(False)
   for page in pages:wait(page,'sync.pending().length===0&&state.allData[monthKey(state.year,state.month)]?.days[1]===null&&state.allData[monthKey(state.year,state.month)]?.days[3]?.hours===7.5')
+  for page in pages:assert page.evaluate('masterHistory.ensure().then(m=>m.total.groups[0].totals.hours)')==17
   # Same-day conflict is explicitly last server commit; unrelated offline work never restores deletion.
   a.evaluate('selectDay(4);stepHours(0,6);saveDay()');wait(b,'state.allData[monthKey(state.year,state.month)]?.days[4]?.hours===6');b.evaluate('selectDay(4);clearDay()');wait(a,'state.allData[monthKey(state.year,state.month)]?.days[4]===null')
   # Real payroll uses per-scalar/per-concept mergeFields, separately from days.
@@ -51,7 +53,7 @@ try:
   for page in pages:wait(page,'sync.pending().length===0&&state.allData[monthKey(state.year,state.month)].payroll?.received===109&&Object.values(state.allData[monthKey(state.year,state.month)].payroll.deductions).every(l=>l===null)')
   for page in pages:page.evaluate('switchTab("mes")')
   b.evaluate('toggleMoney()');a.evaluate('updateConfig("userName","Nombre ficticio")');wait(b,'state.config.userName==="Nombre ficticio"');assert b.evaluate('state.config.hideMoney') is True
-  a.evaluate('firebase.auth().signOut()');wait(a,'cloud.user===null&&Object.keys(state.allData).length===0');a.evaluate('firebase.auth().signInWithCustomToken("two")');wait(a,'cloud.user?.uid==="two"&&cloud.status==="ok"');assert a.evaluate('Object.keys(state.allData).length')==0
+  a.evaluate('firebase.auth().signOut()');wait(a,'cloud.user===null&&Object.keys(state.allData).length===0');a.evaluate('firebase.auth().signInWithCustomToken("two")');wait(a,'cloud.user?.uid==="two"&&cloud.status==="ok"');assert a.evaluate('Object.keys(state.allData).length')==0;assert a.evaluate('masterHistory.ensure().then(m=>m.account)')=='two';assert a.evaluate('masterHistory.ensure().then(m=>m.coverage.months)')==0
   a.evaluate('selectDay(5);saveDay()');wait(a,'sync.pending().length===0');assert b.evaluate('state.allData[monthKey(state.year,state.month)].days[5]||null') is None
   a.evaluate('firebase.auth().signOut()');wait(a,'cloud.user===null');a.evaluate('firebase.auth().signInWithCustomToken("one")');wait(a,'cloud.user?.uid==="one"&&state.allData[monthKey(state.year,state.month)]?.days[3]?.hours===7.5');assert a.evaluate('state.allData[monthKey(state.year,state.month)].days[5]||null') is None
   for ctx in contexts:ctx.close()

@@ -20,6 +20,7 @@ jobs:
       - run: node controlHoras/tests/ai.test.cjs
       - run: node controlHoras/tests/history.test.cjs
       - run: node controlHoras/tests/chat-ui.test.cjs
+      - run: node controlHoras/tests/master.test.cjs
       - run: node controlHoras/tests/reports.test.cjs
       - run: node controlHoras/tests/core.test.cjs
       - run: node controlHoras/tests/sync.test.cjs
@@ -28,10 +29,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install playwright==1.55.0 pypdf==5.9.0
+      - run: pip install playwright==1.55.0 pypdf==5.9.0 pymupdf==1.26.4
       - run: python -m playwright install --with-deps chromium
       - run: python controlHoras/tests/browser_ui.py
       - run: python controlHoras/tests/browser_reports.py
+      - run: python controlHoras/tests/browser_master.py
       - run: python controlHoras/tests/browser_gemini.py
       - run: python controlHoras/tests/browser_probe.py
       - run: python controlHoras/tests/browser_data.py
@@ -46,6 +48,8 @@ jobs:
         if: always()
         with:
           name: mis-horas-ui-captures
-          path: controlHoras/captures/*.png
+          path: |
+            controlHoras/captures/*.png
+            controlHoras/captures/*.pdf
           if-no-files-found: warn
 

@@ -75,9 +75,12 @@ try:
    page.evaluate('const f=HorasEconomiaFixture.create();state.allData=f.data;state.config={...state.config,...f.config};render()')
    for question,month,estimated,real in [('¿Cuánto cobré en junio de 2026?','junio',54,None),('¿Y en julio de 2026?','julio',63,100),('Consúltame mes a mes el neto y dime el total.','octubre',441,100),('Ahora solo junio de 2026.','junio',54,None)]:
     page.locator('#chat-input').fill(question);page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('#chat-input')).to_be_enabled(timeout=60000);expect(page.locator('.bubble.bot').last.locator('.chat-net')).to_be_visible(timeout=60000)
+    prompt=requests[-1]['payload']['contents'][0]['parts'][0]['text'];sent=json.loads(prompt.split(':\n',1)[1].rsplit('\nConsulta:\n',1)[0]);assert sent['executedFunction']['sourceVersion']>=1
     summary=page.evaluate('state.chatMsgs.at(-1).netSummary[0]');assert summary['estimatedTotal']==estimated;assert summary['realTotal']==real;expect(page.locator('.bubble.bot').last).to_contain_text(month)
     assert 'null' not in page.locator('.bubble.bot').last.inner_text();assert page.locator('.bubble.bot').last.locator('.chat-period').count()==1
     if 'mes a mes' in question:assert len(summary['months'])==7
+   page.evaluate('state.allData["2026-06"].days[1].hours=8;saveState()');page.locator('#chat-input').fill('Neto de junio');page.get_by_role('button',name='Enviar',exact=True).click();expect(page.locator('#chat-input')).to_be_enabled(timeout=60000);assert page.evaluate('state.chatMsgs.at(-1).netSummary[0].estimatedTotal')==72
+   persisted=page.evaluate('masterHistory.ensure().then(m=>m.sourceVersion)');page.get_by_role('button',name='Nueva conversación',exact=True).click();assert page.evaluate('masterHistory.ensure().then(m=>m.sourceVersion)')==persisted
    page.screenshot(path=str(OUT/f'gemini-economia-{width}.png'),full_page=True)
    page.evaluate('d=>{state.allData=d;render()}',original)
    page.get_by_role('button',name='Nueva conversación',exact=True).click();assert page.evaluate('state.chatContext') is None;assert page.locator('.bubble').count()==0
