@@ -20,7 +20,7 @@
   <script src="./core.js?v=11"></script>
   <script src="./sync.js?v=11"></script>
   <script src="./ai-data.js?v=11"></script>
-  <script src="./reports.js?v=11"></script>
+  <script src="./reports.js?v=13"></script>
   <script src="./ai-history.js?v=11"></script>
   <script src="./chat-ui.js?v=11"></script>
   <script src="./master-history.js?v=12"></script>
@@ -63,10 +63,14 @@
     @media (max-width:300px) { .tabs-bar { flex-wrap:wrap; } .nav-tools { flex-basis:100%; justify-content:flex-end; } }
     [data-tip] { position: relative; }
     [data-tip]:focus-visible::after,[data-tip]:active::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); padding: 6px 8px; border-radius: 7px; background: #2A3247; color: var(--text); font-size: 12px; white-space: nowrap; z-index: 5; }
-    .big-btn.history-month { text-align: left; padding: 10px; border: 1px solid #43516A; background: var(--month-tone); }
+    .history-card { width: 100%; }
+    .history-month { min-width: 0; padding: 10px; border: 1px solid #43516A; border-radius: 12px; background: var(--month-tone); }
+    .history-select { width: 100%; min-height: 72px; padding: 0 0 8px; background: transparent; border: 0; color: var(--text); text-align: left; cursor: pointer; font: inherit; }
+    .history-select span { display: block; margin-top: 6px; font-size: 14px; }
     .history-month strong { display: block; font-size: 15px; color: #E8EDF7; }
     .history-month small { display: block; margin-top: 5px; color: #C0C8D8; font-size: 11px; }
-    .history-month[aria-pressed="true"] { border: 2px solid var(--accent); background: linear-gradient(rgba(79,163,255,.15),rgba(79,163,255,.15)),var(--month-tone); }
+    .history-month[data-selected="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: linear-gradient(rgba(79,163,255,.15),rgba(79,163,255,.15)),var(--month-tone); }
+    .history-month .report-download { min-height: 44px; padding: 8px 5px; font-size: 12px; }
     .big-btn.report-download { background: #193833; border-color: #367C65; color: #9FE5C8; }
     .chat-card { display: flex; flex-direction: column; }
     .chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
@@ -88,6 +92,7 @@
     .history-list { display: flex; flex-direction: column; gap: 8px; }
     .history-year summary { padding: 12px 0; min-height: 44px; cursor: pointer; font-weight: 600; }
     .history-months { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 8px 0; }
+    @media (min-width:700px) { .history-months { grid-template-columns: repeat(3,minmax(0,1fr)); } }
     .report-field { display: flex; flex-direction: column; gap: 5px; margin: 9px 0; font-size: 13px; min-width: 0; }
     .report-field input,.report-field select,.report-field textarea { width: 100%; min-height: 44px; background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 9px; border-radius: 9px; font-size: 16px; }
     .report-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
@@ -228,7 +233,7 @@
       tab: "mes", selectedDay: null, draft: null, dayConfirmed: false,
       chatMsgs: [], chatContext: null, chatInput: "", chatLoading: false, aiEnabled: false, aiBlocked: false,
       nomina: { status: "idle", result: null, error: null },
-      pdfReady: null, reportPeriod: null, reportYear: new Date().getFullYear(), reportEconomy: false, reportScope: "month", reportQuestion: "", reportContext: "", reportNotice: "", payrollDrafts: {}, moreDetailsOpen: false
+      pdfReady: null, reportPeriod: null, reportYear: new Date().getFullYear(), reportEconomy: false, reportScope: "month", reportQuestion: "", reportContext: "", reportNotice: "", payrollDrafts: {}, historyBusy: false, historyError: '', moreDetailsOpen: false
     };
 
     // Privacy is a preference of this device, never an incoming cloud choice.
@@ -491,20 +496,20 @@
     }
 
     function reportBlob(doc){return new Blob([new Uint8Array([...assemblePdf(doc.pages)].map(c=>c.charCodeAt(0)))],{type:'application/pdf'});}
-    window.doExportMonth=(period=monthKey(state.year,state.month))=>{
-      const [y,m]=period.split('-').map(Number),doc=createPdfDoc();buildMonthReport(doc,y,m-1,state.reportEconomy===true);
-      const blob=reportBlob(doc),filename=`Mis_Horas_${period}_${state.reportEconomy?'con_importes':'sin_importes'}.pdf`;
+    window.doExportMonth=(period=monthKey(state.year,state.month),includeEconomic=state.reportEconomy===true)=>{
+      const [y,m]=period.split('-').map(Number),doc=createPdfDoc();buildMonthReport(doc,y,m-1,includeEconomic);
+      const blob=reportBlob(doc),filename=`Mis_Horas_${period}_${includeEconomic?'con_importes':'sin_importes'}.pdf`;
       state.pdfReady={blob,filename};processDownload(blob,filename);render();
     };
-    window.doExportYear=yy=>{
-      const doc=createPdfDoc();R.annual(doc,R.year(state.allData,state.config,Number(yy)),{includeEconomic:state.reportEconomy===true,identity:state.config.userName});
-      const blob=reportBlob(doc),filename=`Mis_Horas_${yy}_anual_${state.reportEconomy?'con_importes':'sin_importes'}.pdf`;
+    window.doExportYear=(yy,includeEconomic=state.reportEconomy===true)=>{
+      const doc=createPdfDoc();R.annual(doc,R.year(state.allData,state.config,Number(yy)),{includeEconomic,identity:state.config.userName});
+      const blob=reportBlob(doc),filename=`Mis_Horas_${yy}_anual_${includeEconomic?'con_importes':'sin_importes'}.pdf`;
       state.pdfReady={blob,filename};processDownload(blob,filename);render();
     };
 
     // HISTÓRICO: explicit, local reports and partial real payrolls.
     const reportPeriod=()=>state.reportPeriod||monthKey(state.year,state.month);
-    function clearReportPrivate(){state.payrollDrafts={};state.reportContext='';state.reportQuestion='';state.reportEconomy=false;state.reportNotice='';state.pdfReady=null;}
+    function clearReportPrivate(){state.historyError='';state.pdfReady=null;state.payrollDrafts={};state.reportContext='';state.reportQuestion='';state.reportEconomy=false;state.reportNotice='';state.pdfReady=null;}
     const draftCopy=value=>Array.isArray(value)?value.map(draftCopy):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,draftCopy(v)])):value;
     function payrollDraft(period=reportPeriod()){
       const value=C.realPayroll(state.allData[period]?.payroll||C.emptyPayroll());
@@ -540,19 +545,24 @@
       try{await navigator.clipboard.writeText(text);state.reportNotice='Contexto copiado. No se ha enviado a ninguna IA.';}catch{getEl('report-context')?.select();state.reportNotice='Selecciona y copia el contexto mostrado. No se ha enviado a ninguna IA.';}
       const notice=getEl('report-notice');if(notice)notice.textContent=state.reportNotice;
     };
-    function realPayrollMarkup(){
-      if(state.config.hideMoney)return '<p class="privacy-note">Importes ocultos. Muestra los importes para registrar o editar una nómina real.</p>';
-      const draft=payrollDraft(),input=(id,label,value,change,type='number')=>`<label class="report-field" for="${id}">${label}<input id="${id}" type="${type}" ${type==='number'?'step="0.01" inputmode="decimal"':''} value="${esc(value??'')}" oninput="${change}"></label>`;
-      const groups=['incomes','deductions'].map(collection=>`<h3 style="font-size:15px">${collection==='incomes'?'Ingresos por concepto':'Deducciones por concepto'}</h3>${Object.entries(draft[collection]).filter(([,l])=>l).map(([id,line])=>{
-        const arg=esc(JSON.stringify(id)),prefix='real-'+collection+'-'+id,handler=key=>`editRealLine('${collection}',${arg},'${key}',this.value)`,categories=collection==='incomes'?[['base','Salario base'],['complement','Complemento'],['extra','Horas extra'],['holiday','Festivos'],['extraPay','Paga extraordinaria'],['arrears','Atrasos'],['other','Otro']]:[['irpf','IRPF'],['socialSecurity','Seguridad Social'],['other','Otra']];
-        return `<div class="payroll-line">${input(prefix+'-name','Nombre del concepto',line.name,handler('name'),'text')}<label class="report-field" for="${prefix}-kind">Tipo de concepto<select id="${prefix}-kind" onchange="editRealLine('${collection}',${arg},'kind',this.value)">${categories.map(([k,l])=>`<option value="${k}" ${line.kind===k?'selected':''}>${l}</option>`).join('')}</select></label><div class="report-fields">${collection==='deductions'?input(prefix+'-base','Base (EUR)',line.base,handler('base'))+input(prefix+'-pct','Porcentaje (%)',line.pct,handler('pct')):''}${input(prefix+'-amount','Importe (EUR)',line.amount,handler('amount'))}</div><button class="big-btn" onclick="removeRealLine('${collection}',${arg})">Eliminar concepto</button></div>`;
-      }).join('')}<button class="big-btn" onclick="addRealLine('${collection}')">${collection==='incomes'?'Añadir ingreso':'Añadir deducción'}</button><label class="report-choice"><input type="checkbox" ${draft[collection==='incomes'?'incomesComplete':'deductionsComplete']?'checked':''} onchange="editRealPayroll('${collection==='incomes'?'incomesComplete':'deductionsComplete'}',this.checked)">Confirmo que este desglose está completo</label>`).join('');
-      return `<p class="privacy-note">Transcribe la nómina del mes seleccionado. Puedes guardar datos parciales: vacío significa «No registrado»; escribe 0 para un cero real. Se admiten ajustes negativos tal como figuren en la nómina. Los subtotales no sustituyen los totales hasta confirmar el desglose completo.</p>${groups}<h3 style="font-size:15px">Totales que figuran en la nómina</h3><div class="report-fields">${[['gross','Bruto real (EUR)'],['deductionsTotal','Total de deducciones real (EUR)'],['net','Neto de nómina (EUR)'],['received','Importe recibido (EUR)']].map(([key,label])=>input('real-'+key,label,draft[key],`editRealPayroll('${key}',this.value)`)).join('')}</div><label class="report-field" for="real-note">Notas de la nómina<textarea id="real-note" maxlength="2000" oninput="editRealPayroll('note',this.value)">${esc(draft.note)}</textarea></label><div class="report-actions"><button class="big-btn" style="color:var(--success)" onclick="saveRealPayroll()">Guardar nómina real</button><button class="big-btn" onclick="cancelRealEdits()">Descartar cambios pendientes</button></div>`;
-    }
+    window.selectReportYear=value=>{const year=Number(value);if(!Number.isInteger(year)||year<1900||year>2200)return;state.reportYear=year;state.reportPeriod=null;state.pdfReady=null;state.historyError='';render();};
+    window.downloadHistory=async(kind,value)=>{
+      if(state.historyBusy)return;
+      const session=sync.session(),account=sync.account();state.historyBusy=true;state.historyError='';render();
+      try{
+        if(cloud.user)await sync.ensureHistory();
+        if(sync.session()!==session||sync.account()!==account)return;
+        if(kind==='month'){state.reportPeriod=value;doExportMonth(value,true);}else if(kind==='year')doExportYear(Number(value),true);
+      }catch(e){if(sync.session()===session&&sync.account()===account)state.historyError=e.message||'No se pudo preparar el PDF. Tus registros siguen guardados.';}
+      finally{state.historyBusy=false;if(state.tab==='historico')render();}
+    };
     function historyMarkup(){
-      const periods=R.available(state.allData,state.config),years=[...new Set([...periods.map(p=>+p.slice(0,4)),state.year,state.reportYear])].sort((a,b)=>b-a),period=reportPeriod(),model=R.month(state.allData,state.config,period);
-      const listing=years.map(y=>`<details class="history-year" ${y===state.reportYear?'open':''}><summary>${y}</summary><div class="history-months">${periods.filter(p=>+p.slice(0,4)===y).map(p=>{const m=R.month(state.allData,state.config,p);return `<button class="big-btn history-month" aria-pressed="${p===period}" style="--month-tone:${['#1D2C42','#193833','#302640','#3A3021'][m.month%4]}" onclick="selectReportMonth('${p}')"><strong>${esc(MESES[m.month])}</strong><small>${m.year} · ${m.hasHours?'Con jornadas':'Sin jornadas'} · ${m.payroll.exists?'Con nómina':'Sin nómina'}</small></button>`;}).join('')||'<p class="privacy-note">Sin meses guardados.</p>'}</div></details>`).join('');
-      return `<div class="tab-content"><div class="two-col"><div class="col-scroll"><div class="card"><div class="card-title">Histórico e informes</div><p class="privacy-note">Meses disponibles, del más reciente al más antiguo. Cada descarga es un PDF individual, sin ZIP.</p><div class="history-list">${listing}</div><label class="report-field" for="report-period">Mes del informe y de la nómina<input id="report-period" type="month" min="1900-01" max="2200-12" value="${period}" onchange="selectReportMonth(this.value)"></label><label class="report-field" for="report-year">Año del informe completo<select id="report-year" onchange="state.reportYear=Number(this.value);state.reportContext='';render()">${years.map(y=>`<option ${y===state.reportYear?'selected':''} value="${y}">${y}</option>`).join('')}</select></label><label class="report-choice"><input id="report-economy" type="checkbox" ${state.reportEconomy?'checked':''} onchange="state.reportEconomy=this.checked;state.reportContext='';state.pdfReady=null;render()">Incluir información económica en el PDF</label><p class="privacy-note">Sin esta opción se omiten nóminas, importes, tarifas, porcentajes y notas libres. Si la activas, el PDF contendrá datos económicos aunque estén ocultos en pantalla.</p><div class="report-actions"><button class="big-btn report-download" onclick="doExportMonth(reportPeriod())">Descargar PDF mensual</button><button class="big-btn report-download" onclick="doExportYear(state.reportYear)">Descargar PDF anual completo</button></div>${state.pdfReady?`<p class="privacy-note">PDF preparado: ${esc(state.pdfReady.filename)}</p><button class="big-btn report-download" onclick="processDownload(state.pdfReady.blob,state.pdfReady.filename)">Descargar / Compartir PDF preparado</button>`:''}<h3 style="font-size:15px">Contexto para IA</h3><p class="privacy-note">Prepara un texto del informe para copiarlo tú. No se envía automáticamente. Con importes ocultos, el contexto omite información económica. Revisa y elimina información personal antes de compartirlo.</p><label class="report-field" for="report-scope">Informe del contexto<select id="report-scope" onchange="state.reportScope=this.value;state.reportContext='';render()"><option value="month" ${state.reportScope==='month'?'selected':''}>Mes seleccionado</option><option value="year" ${state.reportScope==='year'?'selected':''}>Año seleccionado</option></select></label><label class="report-field" for="report-question">Mi pregunta<textarea id="report-question" maxlength="2000" oninput="state.reportQuestion=this.value">${esc(state.reportQuestion)}</textarea></label><button class="big-btn" onclick="copyReportContext()">Copiar contexto para IA</button>${state.reportContext?`<label class="report-field" for="report-context">Contexto preparado<textarea id="report-context" class="report-preview" readonly>${esc(state.reportContext)}</textarea></label>`:''}</div></div><div class="col-scroll"><div class="card"><div class="card-title">Nómina real · ${esc(model.title)}</div><p class="privacy-note">${model.payroll.exists?'Hay datos reales registrados.':'No hay nómina registrada.'} Las tarifas y retenciones actuales no cambian estos datos ni las tarifas ya guardadas del mes.</p><p id="report-notice" class="privacy-note" role="status">${esc(state.reportNotice)}</p>${realPayrollMarkup()}</div></div></div></div>`;
+      const models=R.available(state.allData,state.config).map(p=>R.month(state.allData,state.config,p)).filter(m=>m.hasHours||m.hasEstimate||m.payroll.exists);
+      const years=[...new Set(models.map(m=>m.year))].sort((a,b)=>b-a);if(!years.length)years.push(new Date().getFullYear());
+      if(!years.includes(state.reportYear))state.reportYear=years[0];
+      const months=models.filter(m=>m.year===state.reportYear),period=months.some(m=>m.period===reportPeriod())?reportPeriod():months[0]?.period;
+      const listing=months.map(m=>`<article class="history-month" data-period="${m.period}" data-selected="${m.period===period}" style="--month-tone:${['#1D2C42','#193833','#302640','#3A3021'][m.month%4]}"><button class="history-select" aria-label="Seleccionar ${esc(m.title)}" aria-pressed="${m.period===period}" onclick="selectReportMonth('${m.period}')"><strong>${esc(MESES[m.month])}</strong><span>${esc(R.hours(m.totalHours))}</span><small>Neto estimado · ${state.config.hideMoney?'••••':esc(R.money(m.hasEstimate?m.calc.neto:null))}</small></button><button class="big-btn report-download" aria-label="Descargar PDF de ${esc(m.title)} con importes" ${state.historyBusy?'disabled':''} onclick="downloadHistory('month','${m.period}')">PDF con importes ↓</button></article>`).join('');
+      return `<div class="tab-content"><section class="card history-card" aria-label="Histórico"><h2 class="card-title">Histórico</h2><label class="report-field" for="report-year">Año<select id="report-year" onchange="selectReportYear(this.value)">${years.map(y=>`<option ${y===state.reportYear?'selected':''} value="${y}">${y}</option>`).join('')}</select></label><div class="history-months">${listing}</div>${!months.length?'<p class="privacy-note">No hay registros en este año.</p>':''}<button class="big-btn report-download" ${state.historyBusy||!months.length?'disabled':''} onclick="downloadHistory('year',state.reportYear)">Descargar PDF anual con importes</button>${state.historyBusy?'<p class="privacy-note" role="status">Preparando PDF…</p>':''}${state.historyError?`<p class="privacy-note" role="alert">${esc(state.historyError)}</p>`:''}</section></div>`;
     }
 
     // ============================================================
