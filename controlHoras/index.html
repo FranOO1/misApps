@@ -804,7 +804,7 @@
         const track=document.createElement('span');track.className='odo-track';const steps=((up?to-from:from-to)+10)%10||10;
         const sequence=Array.from({length:steps+1},(_,j)=>(from+(up?j:-j)+20)%10);if(!up)sequence.reverse();
         for(const n of sequence){const item=document.createElement('span');item.textContent=String(n);track.appendChild(item);}column.appendChild(track);el.appendChild(column);
-        const offset=-steps*1.25+'em';const animation=track.animate([{transform:'translateY('+(up?'0':offset)+')'},{transform:'translateY('+(up?offset:'0')+')'}],{duration:690,delay:Math.min(i*15,120),easing:'cubic-bezier(.12,.75,.16,1)',fill:'forwards'});netAnimations.push(animation);
+        const offset=-steps*1.25+'em';const animation=track.animate([{transform:'translateY('+(up?'0':offset)+')'},{transform:'translateY('+(up?offset:'0')+')'}],{duration:1600,delay:Math.min(i*15,120),easing:'cubic-bezier(.12,.75,.16,1)',fill:'forwards'});netAnimations.push(animation);
       }
       Promise.all(netAnimations.map(a=>a.finished.catch(()=>{}))).then(()=>{if(generation!==netMotionGeneration||state.config.hideMoney)return;let n=0;for(const column of el.querySelectorAll('.odo-column'))column.textContent=after.replace(/[^0-9]/g,'')[n++];el.removeAttribute('aria-hidden');netAnimations=[];announce();});
     }
