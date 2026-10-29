@@ -1,5 +1,5 @@
 // UI release: keep all records/preferences in localStorage and other apps' caches.
-const CACHE='horas-v13-historico-20261015';
+const CACHE='horas-v14-relieve-20261029';
 const BASE_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./core.js','./reports.js','./ai-history.js','./chat-ui.js','./master-history.js','./sync.js','./ai-data.js','./ai-config.js','./ai-service.js','./app-check-diagnostic.js'];
 const SHELL=['./master-history.js?v=12',...BASE_SHELL,...BASE_SHELL.filter(path=>path.endsWith('.js')).map(path=>path+'?v=11')];
 const WARM=['firebase-app-compat','firebase-auth-compat','firebase-firestore-compat'].map(name=>`https://www.gstatic.com/firebasejs/12.14.0/${name}.js`);
@@ -44,4 +44,5 @@ self.addEventListener('fetch',event=>{
     return Response.error(); // Never return HTML for a missing script/resource.
   }));
 });
+
 

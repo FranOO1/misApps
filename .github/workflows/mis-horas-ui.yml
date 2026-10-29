@@ -32,6 +32,7 @@ jobs:
       - run: pip install playwright==1.55.0 pypdf==5.9.0 pymupdf==1.26.4
       - run: python -m playwright install --with-deps chromium
       - run: python controlHoras/tests/browser_ui.py
+      - run: python controlHoras/tests/browser_odometer.py
       - run: python controlHoras/tests/browser_reports.py
       - run: python controlHoras/tests/browser_master.py
       - run: python controlHoras/tests/browser_gemini.py
@@ -52,4 +53,5 @@ jobs:
             controlHoras/captures/*.png
             controlHoras/captures/*.pdf
           if-no-files-found: warn
+
 

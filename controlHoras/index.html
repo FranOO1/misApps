@@ -179,6 +179,25 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
     }
+  
+    /* Version 1: quiet relief, without decorative objects or continuous motion. */
+    body { background:#10151E; }
+    .card { background:linear-gradient(155deg,#202C3C,#17212E); border-color:#344153; box-shadow:inset 0 1px 0 #ffffff09,0 3px 7px #0003; }
+    .tabs-bar { background-color:#171F2D; background-image:linear-gradient(#253247,#192231); border-color:#39485E; box-shadow:inset 0 1px 0 #ffffff0c,0 3px 6px #0004; }
+    .tabs-bar .tab-btn.active { background:linear-gradient(#426B9C,#2B4C73); box-shadow:inset 0 1px 0 #ffffff1f,0 2px 3px #0003; }
+    .tabs-bar .eye-btn.active { background:#352F29; box-shadow:none; }
+    .neto-block { background:linear-gradient(145deg,#263D50,#1B2B35); border-color:#425967; box-shadow:inset 0 1px 0 #bce8ff18,0 3px 7px #0003; }
+    .neto-value { color:#90E6B2; }
+    .big-btn { background-image:linear-gradient(#ffffff06,#0000000a); box-shadow:inset 0 1px 0 #ffffff09,0 2px 3px #0002; }
+    .add-btn { background:linear-gradient(#38845E,#246243); border:1px solid #589E78; box-shadow:inset 0 1px 0 #ffffff25,0 3px 4px #0004; }
+    .add-btn:active { transform:translateY(1px); box-shadow:inset 0 1px 2px #0003; }
+    .odo-value { display:inline-flex; justify-content:center; height:1.25em; line-height:1.25; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .odo-column { display:inline-block; width:.65em; height:1.25em; overflow:hidden; }
+    .odo-track { display:flex; flex-direction:column; }
+    .odo-track span { height:1.25em; flex:none; }
+    .net-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+    @media(prefers-reduced-motion:reduce) { .add-btn:active { transform:none; } }
+
   </style>
 </head>
 <body>
@@ -548,6 +567,7 @@
     window.selectReportYear=value=>{const year=Number(value);if(!Number.isInteger(year)||year<1900||year>2200)return;state.reportYear=year;state.reportPeriod=null;state.pdfReady=null;state.historyError='';render();};
     window.downloadHistory=async(kind,value)=>{
       if(state.historyBusy)return;
+      if(state.config.hideMoney&&!confirm('El PDF completo incluirá importes que ahora están ocultos. ¿Descargar con importes?'))return;
       const session=sync.session(),account=sync.account();state.historyBusy=true;state.historyError='';render();
       try{
         if(cloud.user)await sync.ensureHistory();
@@ -765,8 +785,32 @@
       state.tab = t;if(t==='ia')void prepareMaster();render();
     };
     
+    // Presentation only. Records and shared calculations finish before this runs.
+    let netAnimations=[],netMotionGeneration=0;
+    function cancelNetMotion(){netMotionGeneration++;for(const animation of netAnimations)animation.cancel();netAnimations=[];}
+    function animateNetChange(previous){
+      const next=monthly().neto,el=getEl('monthly-net'),announcement=getEl('net-announcement');
+      if(!el||state.tab!=='mes'||state.config.hideMoney||!Number.isFinite(previous)||!Number.isFinite(next))return;
+      if(Math.round(previous*100)===Math.round(next*100))return;
+      const announce=()=>{if(announcement)announcement.textContent='Neto estimado: '+eur(next);const delta=getEl('net-delta');if(delta)delta.textContent=(next>previous?'+':'−')+eur(Math.abs(next-previous));};
+      if(matchMedia('(prefers-reduced-motion: reduce)').matches||typeof el.animate!=='function'){announce();return;}
+      cancelNetMotion();const generation=netMotionGeneration;
+      const before=eur(previous),after=eur(next),length=Math.max(before.length,after.length),a=before.padStart(length,' '),b=after.padStart(length,' '),up=next>previous;
+      el.textContent='';el.classList.add('odo-value');el.setAttribute('aria-hidden','true');
+      for(let i=0;i<length;i++){
+        const digit=b[i];
+        if(!/\d/.test(digit)){const separator=document.createElement('span');separator.textContent=digit===' '?'\u00a0':digit;el.appendChild(separator);continue;}
+        const from=/\d/.test(a[i])?Number(a[i]):0,to=Number(digit),column=document.createElement('span');column.className='odo-column';
+        const track=document.createElement('span');track.className='odo-track';const steps=((up?to-from:from-to)+10)%10||10;
+        const sequence=Array.from({length:steps+1},(_,j)=>(from+(up?j:-j)+20)%10);if(!up)sequence.reverse();
+        for(const n of sequence){const item=document.createElement('span');item.textContent=String(n);track.appendChild(item);}column.appendChild(track);el.appendChild(column);
+        const offset=-steps*1.25+'em';const animation=track.animate([{transform:'translateY('+(up?'0':offset)+')'},{transform:'translateY('+(up?offset:'0')+')'}],{duration:690,delay:Math.min(i*15,120),easing:'cubic-bezier(.12,.75,.16,1)',fill:'forwards'});netAnimations.push(animation);
+      }
+      Promise.all(netAnimations.map(a=>a.finished.catch(()=>{}))).then(()=>{if(generation!==netMotionGeneration||state.config.hideMoney)return;let n=0;for(const column of el.querySelectorAll('.odo-column'))column.textContent=after.replace(/[^0-9]/g,'')[n++];el.removeAttribute('aria-hidden');netAnimations=[];announce();});
+    }
     let lastRenderedTab=null;
     function render() {
+      cancelNetMotion();
       refreshPayrollComparison();
       const active=document.activeElement,focusId=active?.id;
       const app = getEl("app");
@@ -799,7 +843,7 @@
               </div>
               <div class="neto-block">
                 <div style="color:var(--muted); font-size:11px; font-weight:600">Neto estimado · registros del mes</div>
-                <div class="neto-value">${fmt(c.neto)}</div>
+                <div id="monthly-net" class="neto-value">${fmt(c.neto)}</div><small id="net-delta" style="display:block;font-size:12px;color:#AABBC7" aria-hidden="true"></small><span id="net-announcement" class="net-announcement" role="status" aria-live="polite" aria-atomic="true"></span>
                 <div class="money-detail">Bruto ${fmt(c.bruto)} · Retenciones −${fmt(c.totalDed)}</div>
                 <div id="monthly-hours" class="hours-total">🕐 ${fmtH(c.hNormal + c.hFestivo)} h este mes</div>
                 ${c.hFestivo>0?`<div id="monthly-hours-breakdown" class="hours-breakdown">${fmtH(c.hFestivo)} horas festivas</div>`:''}
@@ -1060,6 +1104,7 @@
     };
 
     window.saveDay = () => {
+      const previousNet=monthly().neto;
       vibrate(100);
       const mk = monthKey(state.year, state.month);
       if(!state.selectedDay||!state.draft||!Number.isFinite(state.draft.hours)||state.draft.hours<0||state.draft.hours>24){alert('Horas no válidas.');return;}
@@ -1068,15 +1113,16 @@
       state.allData[mk].days[state.selectedDay] = C.copy(state.draft);
       if(!saveState())return;
       state.dayConfirmed = true;
-      render(); 
+      render();animateNetChange(previousNet); 
     };
     
     window.clearDay = () => {
+      const previousNet=monthly().neto;
       vibrate(20);
       const mk = monthKey(state.year, state.month);
       if(state.allData[mk] && state.allData[mk].days) state.allData[mk].days[state.selectedDay]=null;
       if(!saveState())return;
-      state.selectedDay = null; render();
+      state.selectedDay = null; render();animateNetChange(previousNet);
     }
 
     function setConfig(next) {
@@ -1173,4 +1219,5 @@
   </script>
 </body>
 </html>
+
 
