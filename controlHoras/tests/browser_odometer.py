@@ -36,7 +36,7 @@ try:
    # Length boundary uses controlled rates only in this fixture, never in production.
    page.evaluate('state.allData[monthKey(state.year,state.month)].rateConfig={...C.financial(state.config),rateNormal:1000,deductions:[]};state.draft.hours=.99999;saveDay()');page.wait_for_function('netAnimations.length===0')
    page.evaluate('state.draft.hours=1;saveDay()');page.wait_for_function('netAnimations.length===0');assert page.evaluate('monthly().neto')==1000
-   assert page.locator('#monthly-net').inner_text().strip()==page.evaluate('eur(monthly().neto)')
+   actual=page.locator('#monthly-net').text_content().strip();expected=page.evaluate('eur(monthly().neto)');assert actual==expected,repr((actual,expected))
    page.evaluate('clearDay()');page.wait_for_function('netAnimations.length===0');assert page.evaluate('monthly().neto')==0
    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
    page.evaluate('selectDay(2)');assert page.locator('#btn-add-day').evaluate('e=>getComputedStyle(e).position') not in ['fixed','sticky','absolute']
