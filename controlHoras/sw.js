@@ -1,7 +1,7 @@
 // UI release: keep all records/preferences in localStorage and other apps' caches.
-const CACHE='horas-v11-economia-chat-20261013';
-const BASE_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./core.js','./reports.js','./ai-history.js','./chat-ui.js','./sync.js','./ai-data.js','./ai-config.js','./ai-service.js','./app-check-diagnostic.js'];
-const SHELL=[...BASE_SHELL,...BASE_SHELL.filter(path=>path.endsWith('.js')).map(path=>path+'?v=11')];
+const CACHE='horas-v14-relieve-20261029';
+const BASE_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./core.js','./reports.js','./ai-history.js','./chat-ui.js','./master-history.js','./sync.js','./ai-data.js','./ai-config.js','./ai-service.js','./app-check-diagnostic.js'];
+const SHELL=['./master-history.js?v=12',...BASE_SHELL,...BASE_SHELL.filter(path=>path.endsWith('.js')).map(path=>path+'?v=11')];
 const WARM=['firebase-app-compat','firebase-auth-compat','firebase-firestore-compat'].map(name=>`https://www.gstatic.com/firebasejs/12.14.0/${name}.js`);
 const isDependency=url=>['www.gstatic.com','cdn.jsdelivr.net','cdnjs.cloudflare.com'].includes(url.hostname)&&/firebasejs\/12\.14\.0\/|\/npm\/chart\.js|\/pdf\.js\/4\.10\.38\//.test(url.pathname);
 const usable=response=>response.type==='opaque'||response.ok&&!/text\/html/i.test(response.headers.get('content-type')||'');
@@ -44,4 +44,5 @@ self.addEventListener('fetch',event=>{
     return Response.error(); // Never return HTML for a missing script/resource.
   }));
 });
+
 

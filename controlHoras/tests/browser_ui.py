@@ -26,7 +26,7 @@ def no_overflow(page):
 try:
  with sync_playwright() as p:
   browser=p.chromium.launch(headless=True)
-  for width,height in [(320,740),(390,844),(768,1024),(844,390),(1280,900)]:
+  for width,height in [(320,740),(360,800),(390,844),(768,1024),(1024,768),(844,390),(1280,900)]:
    ctx=browser.new_context(viewport={'width':width,'height':height},reduced_motion='reduce',service_workers='block',has_touch=True)
    ctx.route('https://**/*',external);ctx.add_init_script("if(!localStorage.getItem('horas-app-v2'))localStorage.setItem('horas-app-v2',"+json.dumps(json.dumps(fixture))+");const OriginalDate=Date;window.Date=class extends OriginalDate{constructor(...a){super(...(a.length?a:['2026-10-08T12:00:00Z']));}static now(){return new OriginalDate('2026-10-08T12:00:00Z').getTime();}};")
    page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('dialog',lambda d:d.accept());page.goto(URL);expect(page.get_by_text('Toca un día para registrar tus horas')).to_have_count(0);no_overflow(page)
@@ -46,6 +46,7 @@ try:
     else:expect(page.locator('#monthly-hours-breakdown')).to_have_count(0)
    page.evaluate('state.allData["2026-10"].days=savedDays;render()')
    page.screenshot(path=str(OUT/f'menu-{width}.png'),full_page=True,animations='disabled')
+   assert page.locator('.tabs-bar').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(23, 31, 45)'
    nav=page.locator('.tabs-bar');items=nav.locator('button').all()
    assert len(items)==6
    boxes=[item.bounding_box() for item in items]
@@ -86,6 +87,8 @@ try:
    page.get_by_role('button',name='Ajustes',exact=True).click();expect(page.get_by_role('spinbutton',name='Hora normal (€)',exact=True)).to_be_enabled();assert 'copias contienen datos económicos' in page.locator('#app').inner_text();page.get_by_role('button',name='Mes',exact=True).click();page.get_by_role('button',name='Exportar PDF').click();expect(page.get_by_text('Elige si el PDF incluye información económica. Los datos reales y las estimaciones se identifican por separado.')).to_be_visible()
    page.get_by_role('button',name='Cancelar',exact=True).click();page.evaluate('processDownload=async()=>{};doExportMonth()');assert page.evaluate('state.pdfReady.blob.size')>1000
    page.get_by_role('button',name='Mostrar importes').click();page.get_by_role('button',name='IA',exact=True).click();page.evaluate('state.aiEnabled=true;state.aiBlocked=false;state.chatMsgs=[{role:"user",text:"<script>window.pwned=1</script>"},{role:"bot",text:"<img src=x onerror=\\"window.pwned=1\\"> 23 €"}];render()');assert page.locator('.bubble script,.bubble img').count()==0;assert not page.evaluate('window.pwned||false')
+   page.evaluate('state.chatMsgs=[{"role": "user", "text": "Texto largo enlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espaciosenlace-largo-sin-espacios\\nSegunda l\\u00ednea"}, {"role": "bot", "text": "**Respuesta**\\n- Lista segura"}];render()');assert page.locator('.bubble.user').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(0, 92, 75)';assert page.locator('.bubble.bot').evaluate('e=>getComputedStyle(e).backgroundColor')!='rgb(0, 92, 75)';no_overflow(page)
+   page.screenshot(path=str(OUT/f'chat-verde-{width}.png'),full_page=True)
    page.evaluate('document.documentElement.style.fontSize="24px"');no_overflow(page);assert page.evaluate('getComputedStyle(document.querySelector(".tab-content")).animationName')=='none';assert not errors,errors
    page.evaluate('switchTab("mes");state.selectedDay=null;selectDay(13)');page.add_style_tag(content='body{font-size:20px!important}button,input,select,textarea,.privacy-note,.money-detail,.calendar-legend{font-size:18px!important}.day-cell span{font-size:16px!important}')
    no_overflow(page);page.locator('#btn-add-day').scroll_into_view_if_needed();expect(page.locator('#btn-add-day')).to_be_visible();assert page.locator('#btn-add-day').evaluate('e=>getComputedStyle(e).position')=='static';page.screenshot(path=str(OUT/f'enlarged-{width}.png'),full_page=True,animations='disabled')
