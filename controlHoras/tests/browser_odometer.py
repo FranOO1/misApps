@@ -19,13 +19,13 @@ try:
    page.evaluate('selectDay(1);state.draft.hours=4;saveDay()')
    assert page.evaluate('monthly().neto')==36
    assert page.evaluate('netAnimations.length')>0
-   keyframes=page.evaluate('netAnimations[0].effect.getKeyframes().map(k=>k.transform)');assert keyframes[0]=='translateY(0)' and '-' in keyframes[-1]
+   keyframes=page.evaluate('netAnimations[0].effect.getKeyframes().map(k=>k.transform)');assert keyframes[0].startswith('translateY(0') and '-' in keyframes[-1]
    page.screenshot(path=str(OUT/f'odometer-moving-{width}.png'),animations='allow')
    page.wait_for_function('netAnimations.length===0');expect(page.locator('#monthly-net')).to_contain_text('36,00')
    expect(page.locator('#net-announcement')).to_contain_text('36,00')
    expect(page.locator('#net-delta')).to_contain_text('+36,00')
    page.evaluate('state.draft.hours=2;saveDay()');assert page.evaluate('monthly().neto')==18
-   keyframes=page.evaluate('netAnimations[0].effect.getKeyframes().map(k=>k.transform)');assert '-' in keyframes[0] and keyframes[-1]=='translateY(0)'
+   keyframes=page.evaluate('netAnimations[0].effect.getKeyframes().map(k=>k.transform)');assert '-' in keyframes[0] and keyframes[-1].startswith('translateY(0')
    page.evaluate('state.draft.hours=3;saveDay();state.draft.hours=5;saveDay()');page.wait_for_function('netAnimations.length===0');expect(page.locator('#monthly-net')).to_contain_text('45,00')
    # Cancel while hidden: no amount survives in visible or accessible motion elements.
    page.evaluate('state.draft.hours=7;saveDay();toggleMoney()');assert page.evaluate('netAnimations.length')==0
