@@ -20,12 +20,30 @@ try:
    assert page.evaluate('monthly().neto')==36
    assert page.evaluate('netAnimations.length')>0
    keyframes=page.evaluate('netAnimations[0].effect.getKeyframes().map(k=>k.transform)');assert keyframes[0].startswith('translateY(0') and '-' in keyframes[-1]
+   # A real sync.receive callback used to cancel motion on every cloud echo.
+   page.evaluate('window.runningNet=netAnimations[0];window.runningNode=document.getElementById("monthly-net")')
+   page.wait_for_timeout(150)
+   page.evaluate('sync.receive(payload(),{fromCache:false,historyRead:true})')
+   assert page.evaluate('netAnimations[0]===window.runningNet && window.runningNet.playState==="running"'), 'Cloud confirmation interrupted the counter'
+   assert page.evaluate('document.getElementById("monthly-net")===window.runningNode'), 'Animated node was replaced'
+   page.wait_for_timeout(300)
+   page.evaluate('sync.receive(payload(),{fromCache:false,historyRead:true});render()')
+   assert page.evaluate('netAnimations[0]===window.runningNet && window.runningNet.currentTime>=400'), 'Cloud echo restarted the timeline'
+   # Movement must be distributed through the duration, not almost over at 450 ms.
+   assert page.evaluate('window.runningNet.effect.getComputedTiming().progress<.75')
+   assert page.evaluate('netAnimations.every(a=>a.effect.getComputedTiming().endTime<=1800)')
    page.screenshot(path=str(OUT/f'odometer-moving-{width}.png'),animations='allow')
    page.wait_for_function('netAnimations.length===0');expect(page.locator('#monthly-net')).to_contain_text('36,00')
    expect(page.locator('#net-announcement')).to_contain_text('36,00')
    expect(page.locator('#net-delta')).to_contain_text('+36,00')
    page.evaluate('state.draft.hours=2;saveDay()');assert page.evaluate('monthly().neto')==18
    keyframes=page.evaluate('netAnimations[0].effect.getKeyframes().map(k=>k.transform)');assert '-' in keyframes[0] and keyframes[-1].startswith('translateY(0')
+   page.evaluate('window.runningNet=netAnimations[0]')
+   page.wait_for_timeout(150)
+   page.evaluate('sync.receive(payload(),{fromCache:false,historyRead:true})')
+   assert page.evaluate('netAnimations[0]===window.runningNet && window.runningNet.playState==="running"'), 'Descending motion interrupted'
+   page.wait_for_function('netAnimations.length===0');expect(page.locator('#monthly-net')).to_contain_text('18,00')
+   expect(page.locator('#net-announcement')).to_contain_text('18,00')
    page.evaluate('state.draft.hours=3;saveDay();state.draft.hours=5;saveDay()');page.wait_for_function('netAnimations.length===0');expect(page.locator('#monthly-net')).to_contain_text('45,00')
    # Cancel while hidden: no amount survives in visible or accessible motion elements.
    page.evaluate('state.draft.hours=7;saveDay();toggleMoney()');assert page.evaluate('netAnimations.length')==0
@@ -37,10 +55,17 @@ try:
    page.evaluate('state.allData[monthKey(state.year,state.month)].rateConfig={...C.financial(state.config),rateNormal:1000,deductions:[]};state.draft.hours=.99999;saveDay()');page.wait_for_function('netAnimations.length===0')
    page.evaluate('state.draft.hours=1;saveDay()');page.wait_for_function('netAnimations.length===0');assert page.evaluate('monthly().neto')==1000
    actual=page.locator('#monthly-net').text_content().strip();expected=page.evaluate('eur(monthly().neto)');assert actual==expected,repr((actual,expected))
+   # Period changes cancel even when the destination has the same net value.
+   page.evaluate('state.draft.hours=2;saveDay();navMonth(-1)');assert page.evaluate('netAnimations.length')==0
+   page.evaluate('navMonth(1);selectDay(1)');assert page.evaluate('netAnimations.length')==0
    page.evaluate('clearDay()');page.wait_for_function('netAnimations.length===0');assert page.evaluate('monthly().neto')==0
    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
    page.evaluate('selectDay(2)');assert page.locator('#btn-add-day').evaluate('e=>getComputedStyle(e).position') not in ['fixed','sticky','absolute']
    page.screenshot(path=str(OUT/f'relief-{width}.png'),full_page=True)
+   # A different account must never retain the previous account's animated node.
+   page.evaluate('state.draft.hours=1;saveDay();cloud.db={collection:()=>({doc:()=>({onSnapshot:()=>()=>{}})})};sync.switchAccount({uid:"odometer-fixture-other"});render()')
+   assert page.evaluate('netAnimations.length')==0
+   expect(page.locator('#net-announcement')).to_have_text('');expect(page.locator('#net-delta')).to_have_text('')
    assert not errors,errors;ctx.close()
   browser.close();print('PASS actual Chromium odometer: increase/decrease, fast updates, digit-length boundary, final live announcement, hidden amounts, reduced motion, navigation, normal-flow Add; fictional data only.',flush=True)
 finally:server.shutdown()
