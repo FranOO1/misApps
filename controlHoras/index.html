@@ -796,18 +796,27 @@
       if(matchMedia('(prefers-reduced-motion: reduce)').matches||typeof el.animate!=='function'){announce();return;}
       cancelNetMotion();const generation=netMotionGeneration;
       netMotion={element:el,session:sync.session(),period:monthKey(state.year,state.month),cents:Math.round(next*100)};
-      const before=eur(previous),after=eur(next),length=Math.max(before.length,after.length),a=before.padStart(length,' '),b=after.padStart(length,' '),up=next>previous;
+      const before=eur(previous).replace(/[^0-9]/g,''),after=eur(next),digits=after.replace(/[^0-9]/g,''),length=Math.max(before.length,digits.length),up=next>previous;
+      // Align numeric places (including cents), never formatted character indexes.
+      const a=before.padStart(length,'0'),b=digits.padStart(length,'0');let index=0;
       el.textContent='';el.classList.add('odo-value');el.setAttribute('aria-hidden','true');
-      for(let i=0;i<length;i++){
-        const digit=b[i];
-        if(!/\d/.test(digit)){const separator=document.createElement('span');separator.textContent=digit===' '?'\u00a0':digit;el.appendChild(separator);continue;}
-        const from=/\d/.test(a[i])?Number(a[i]):0,to=Number(digit),column=document.createElement('span');column.className='odo-column';
-        const track=document.createElement('span');track.className='odo-track';const steps=((up?to-from:from-to)+10)%10||10;
+      const addColumn=(finalDigit)=>{
+        const i=index++,from=Number(a[i]),to=Number(b[i]),column=document.createElement('span');
+        column.className='odo-column';column.dataset.place=String(length-i-3);column.dataset.finalDigit=finalDigit;el.appendChild(column);
+        if(from===to){column.textContent=finalDigit;return;}
+        const track=document.createElement('span');track.className='odo-track';const steps=((up?to-from:from-to)+10)%10;
         const sequence=Array.from({length:steps+1},(_,j)=>(from+(up?j:-j)+20)%10);if(!up)sequence.reverse();
-        for(const n of sequence){const item=document.createElement('span');item.textContent=String(n);track.appendChild(item);}column.appendChild(track);el.appendChild(column);
+        for(const n of sequence){const item=document.createElement('span');item.textContent=String(n);track.appendChild(item);}column.appendChild(track);
         const offset=-steps*1.25+'em';const animation=track.animate([{transform:'translateY('+(up?'0':offset)+')'},{transform:'translateY('+(up?offset:'0')+')'}],{duration:1600,delay:Math.min(i*15,120),easing:'cubic-bezier(.25,.35,.45,1)',fill:'forwards'});netAnimations.push(animation);
+      };
+      // Retain space for disappearing leading places, so the amount and currency
+      // do not jump sideways when a shorter amount settles.
+      for(let i=0;i<length-digits.length;i++)addColumn('');
+      for(const character of after){
+        if(/\d/.test(character))addColumn(character);
+        else {const separator=document.createElement('span');separator.textContent=character;el.appendChild(separator);}
       }
-      Promise.all(netAnimations.map(a=>a.finished.catch(()=>{}))).then(()=>{if(generation!==netMotionGeneration||state.config.hideMoney)return;let n=0;for(const column of el.querySelectorAll('.odo-column'))column.textContent=after.replace(/[^0-9]/g,'')[n++];el.removeAttribute('aria-hidden');netAnimations=[];netMotion=null;announce();});
+      Promise.all(netAnimations.map(a=>a.finished.catch(()=>{}))).then(()=>{if(generation!==netMotionGeneration||state.config.hideMoney)return;for(const column of el.querySelectorAll('.odo-column'))column.textContent=column.dataset.finalDigit;el.removeAttribute('aria-hidden');netAnimations=[];netMotion=null;announce();});
     }
     let lastRenderedTab=null;
     function render() {

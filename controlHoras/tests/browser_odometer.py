@@ -62,10 +62,33 @@ try:
    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
    page.evaluate('selectDay(2)');assert page.locator('#btn-add-day').evaluate('e=>getComputedStyle(e).position') not in ['fixed','sticky','absolute']
    page.screenshot(path=str(OUT/f'relief-{width}.png'),full_page=True)
+   if width==390:
+    # Exercise saved amounts through the shared calculation, not a replacement
+    # animation. Expected places are euro powers; -1/-2 are tenths/cents.
+    page.evaluate('state.allData={};state.selectedDay=1;ensurePeriod().rateConfig={...C.financial(state.config),rateNormal:1000,deductions:[]}')
+    for previous,next_amount,places in [(1000,1080,[1]),(1080,1085,[0]),(1099,1100,[2,1,0]),(1080,1000,[1]),(1085,1080,[0]),(1100,1099,[2,1,0]),(999,1000,[3,2,1,0]),(1000,999,[3,2,1,0]),(9999,10000,[4,3,2,1,0]),(10000,9999,[4,3,2,1,0]),(1085.05,1085.06,[-2]),(1085.09,1085.10,[-1,-2]),(1085.10,1085.09,[-1,-2])]:
+     page.emulate_media(reduced_motion='reduce')
+     page.evaluate('(amount)=>{state.draft={type:"normal",hours:amount/1000};saveDay()}',previous)
+     page.emulate_media(reduced_motion='no-preference')
+     page.evaluate('(amount)=>{state.draft.hours=amount/1000;saveDay()}',next_amount)
+     actual=page.evaluate('netAnimations.map(a=>Number(a.effect.target.parentElement.dataset.place))')
+     assert actual==places,(previous,next_amount,actual,places)
+     assert page.evaluate('netAnimations.every(a=>a.effect.getTiming().duration===1600 && a.effect.getComputedTiming().endTime<=1720)')
+     # Static digits and separators must keep both their text and coordinates.
+     page.evaluate('window.stillNet=[...getEl("monthly-net").children].filter(e=>!e.querySelector(".odo-track")).map(e=>({node:e,text:e.textContent,x:e.getBoundingClientRect().x,y:e.getBoundingClientRect().y}));window.netBox=getEl("monthly-net").getBoundingClientRect()')
+     page.evaluate('for(const a of netAnimations){a.pause();a.currentTime=800;}')
+     if previous==1099:
+      page.screenshot(path=str(OUT/'odometer-selective-390.png'),animations='allow')
+     assert page.evaluate('window.stillNet.every(({node,text,x,y})=>node.textContent===text && Math.abs(node.getBoundingClientRect().x-x)<.1 && Math.abs(node.getBoundingClientRect().y-y)<.1)')
+     page.evaluate('for(const a of netAnimations)a.finish()');page.wait_for_function('netAnimations.length===0')
+     assert page.evaluate('window.stillNet.every(({node,text,x,y})=>node.textContent===text && Math.abs(node.getBoundingClientRect().x-x)<.1 && Math.abs(node.getBoundingClientRect().y-y)<.1)')
+     assert page.evaluate('Math.abs(getEl("monthly-net").getBoundingClientRect().width-window.netBox.width)<.1')
+     assert page.locator('#monthly-net').text_content()==page.evaluate('eur(monthly().neto)')
+     assert round(page.evaluate('monthly().neto'),2)==next_amount
    # A different account must never retain the previous account's animated node.
    page.evaluate('state.draft.hours=1;saveDay();cloud.db={collection:()=>({doc:()=>({onSnapshot:()=>()=>{}})})};sync.switchAccount({uid:"odometer-fixture-other"});render()')
    assert page.evaluate('netAnimations.length')==0
    expect(page.locator('#net-announcement')).to_have_text('');expect(page.locator('#net-delta')).to_have_text('')
    assert not errors,errors;ctx.close()
-  browser.close();print('PASS actual Chromium odometer: increase/decrease, fast updates, digit-length boundary, final live announcement, hidden amounts, reduced motion, navigation, normal-flow Add; fictional data only.',flush=True)
+  browser.close();print('PASS actual Chromium odometer: selective numeric places and static separators, increase/decrease, fast updates, digit-length boundary, final live announcement, hidden amounts, reduced motion, navigation, normal-flow Add; fictional data only.',flush=True)
 finally:server.shutdown()
